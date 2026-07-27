@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import QMainWindow, QMenuBar, QStackedWidget, QTabWidget
 
 from apps.Desktop.api.token_client import TokenRecibido
@@ -70,3 +71,22 @@ def test_set_connection_status_updates_label_text(qtbot):
 
     window.set_connection_status(False)
     assert window._connection_label.text() == "Sin conexión"
+
+
+def test_set_connection_status_toggles_wifi_icon_visibility(qtbot):
+    # isHidden() reflects the widget's own explicit visibility flag, unlike
+    # isVisible(), which also requires the whole ancestor chain to be shown.
+    window = _make_window(qtbot)
+
+    window.set_connection_status(True)
+    assert not window._wifi_icon.isHidden()
+
+    window.set_connection_status(False)
+    assert window._wifi_icon.isHidden()
+
+
+def test_window_uses_real_svg_icons_not_painted_placeholders(qtbot):
+    window = _make_window(qtbot)
+
+    # point.svg (badge) + time.svg (pill) + time.svg (footer) + wifi.svg (footer)
+    assert len(window.findChildren(QSvgWidget)) >= 4

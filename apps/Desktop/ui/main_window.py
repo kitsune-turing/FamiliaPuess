@@ -1,11 +1,13 @@
 from datetime import datetime
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPixmap, QTransform
 from PySide6.QtWidgets import QLabel, QWidget
 
 from apps.Desktop.api.token_client import TokenRecibido
 from apps.Desktop.services.qr_service import build_qr_pixmap
-from apps.Desktop.ui.icons import ClockIcon, LocationPinIcon
+from apps.Desktop.ui.icons import clock_icon, location_pin_icon, wifi_icon
+from apps.Desktop.utils.assets import image_path
 from apps.Desktop.utils.formatting import format_datetime_es
 
 COLOR_BACKGROUND = "#FBEFDE"
@@ -14,7 +16,6 @@ COLOR_BADGE = "#4C3523"
 COLOR_ACCENT_PINK = "#F24976"
 COLOR_TEXT_DARK = "#3B2415"
 COLOR_CODE_BOX = "#E9D7B3"
-COLOR_CONNECTED = "#4CAF50"
 COLOR_DISCONNECTED = "#F24976"
 
 FONT_FAMILY = "Poppins"
@@ -43,10 +44,39 @@ class DesktopMainWindow(QWidget):
         self.setFixedSize(self.CANVAS_WIDTH, self.CANVAS_HEIGHT)
         self.setStyleSheet(f"background-color: {COLOR_BACKGROUND};")
 
+        self._build_background_decorations()
         self._build_header(dispositivo_identificador, sede_nombre)
         self._build_left_panel()
         self._build_qr_panel()
         self._build_footer()
+
+    def _image_label(
+        self,
+        parent: QWidget,
+        filename: str,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        mirror: bool = False,
+    ) -> QLabel:
+        pixmap = QPixmap(str(image_path(filename)))
+        if mirror:
+            pixmap = pixmap.transformed(QTransform().scale(-1, 1))
+        pixmap = pixmap.scaled(
+            w, h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+        )
+        label = QLabel(parent)
+        label.setPixmap(pixmap)
+        label.setGeometry(x, y, w, h)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        return label
+
+    def _build_background_decorations(self) -> None:
+        # Solo se entrego un asset de mazorca; se reutiliza en ambos costados
+        # (el derecho reflejado) para aproximar la composicion original de Figma.
+        self._image_label(self, "mazorca1.png", -140, 160, 374, 618).lower()
+        self._image_label(self, "mazorca1.png", 1494, 340, 374, 618, mirror=True).lower()
 
     def _build_header(self, dispositivo_identificador: str, sede_nombre: str) -> None:
         header = QWidget(self)
@@ -54,12 +84,7 @@ class DesktopMainWindow(QWidget):
         header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         header.setStyleSheet(f"background-color: {COLOR_HEADER};")
 
-        marca = QLabel("FamiliaPuess", header)
-        marca.setGeometry(40, 19, 484, 95)
-        marca.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
-        marca.setStyleSheet(
-            f"color: #FFFFFF; font-size: 40px; font-weight: 800; font-family: '{FONT_FAMILY}';"
-        )
+        self._image_label(header, "marca.png", 0, 19, 484, 95)
 
         titulo = QLabel("SISTEMA DE CONTROL DE ASISTENCIA", header)
         titulo.setGeometry(573, 48, 582, 38)
@@ -72,8 +97,7 @@ class DesktopMainWindow(QWidget):
         badge.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         badge.setStyleSheet(f"background-color: {COLOR_BADGE}; border-radius: 15px;")
 
-        pin = LocationPinIcon(parent=badge)
-        pin.move(11, 18)
+        location_pin_icon(badge).move(11, 18)
 
         masked_identificador = "*" * len(dispositivo_identificador)
         sede_label = QLabel(f"{sede_nombre}\nDispositivo: {masked_identificador}", badge)
@@ -96,6 +120,8 @@ class DesktopMainWindow(QWidget):
             f"color: {COLOR_TEXT_DARK}; font-size: 20px; font-weight: 600; "
             f"font-family: '{FONT_FAMILY}';"
         )
+
+        self._image_label(self, "logos.png", 60, 395, 560, 210)
 
         codigo_titulo = QLabel("Código de validación", self)
         codigo_titulo.setGeometry(65, 630, 400, 34)
@@ -131,15 +157,15 @@ class DesktopMainWindow(QWidget):
         pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         pill.setStyleSheet(f"background-color: {COLOR_ACCENT_PINK}; border-radius: 15px;")
 
-        ClockIcon(parent=pill).move(1111 - 1081, 266 - 247)
+        clock_icon(pill).move(1111 - 1081, 266 - 247)
 
         self._timer_label = QLabel("VALIDO POR\n-- SEGUNDOS", pill)
-        self._timer_label.setGeometry(1167 - 1081, 261 - 247, 188, 57)
+        self._timer_label.setGeometry(1167 - 1081, 258 - 247, 188, 73)
         self._timer_label.setAlignment(
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
         )
         self._timer_label.setStyleSheet(
-            f"color: #FFFFFF; font-size: 20px; font-weight: 700; font-family: '{FONT_FAMILY}';"
+            f"color: #FFFFFF; font-size: 18px; font-weight: 700; font-family: '{FONT_FAMILY}';"
         )
 
         qr_size = 380
@@ -163,7 +189,7 @@ class DesktopMainWindow(QWidget):
         footer.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         footer.setStyleSheet(f"background-color: {COLOR_HEADER};")
 
-        ClockIcon(parent=footer).move(30, 16)
+        clock_icon(footer).move(30, 16)
 
         self._datetime_label = QLabel(footer)
         self._datetime_label.setGeometry(90, 8, 500, 60)
@@ -171,12 +197,16 @@ class DesktopMainWindow(QWidget):
             f"color: #FFFFFF; font-size: 15px; font-family: '{FONT_FAMILY}';"
         )
 
+        self._wifi_icon = wifi_icon(footer, size=28)
+        self._wifi_icon.move(self.CANVAS_WIDTH - 370, 16)
+        self._wifi_icon.setVisible(False)
+
         self._connection_label = QLabel("Conectando...", footer)
-        self._connection_label.setGeometry(self.CANVAS_WIDTH - 340, 12, 220, 30)
+        self._connection_label.setGeometry(self.CANVAS_WIDTH - 330, 12, 220, 30)
         self._connection_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         version_label = QLabel("Version: 1.0.0", footer)
-        version_label.setGeometry(self.CANVAS_WIDTH - 340, 42, 220, 24)
+        version_label.setGeometry(self.CANVAS_WIDTH - 330, 42, 220, 24)
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         version_label.setStyleSheet(
             f"color: #FFFFFF; font-size: 13px; font-family: '{FONT_FAMILY}';"
@@ -206,10 +236,11 @@ class DesktopMainWindow(QWidget):
         self._timer_label.setText(f"VALIDO POR\n{validez_segundos} SEGUNDOS")
 
     def set_connection_status(self, connected: bool) -> None:
+        self._wifi_icon.setVisible(connected)
         if connected:
             self._connection_label.setText("Connected")
             self._connection_label.setStyleSheet(
-                f"color: {COLOR_CONNECTED}; font-size: 16px; font-weight: 700; "
+                f"color: #FFFFFF; font-size: 16px; font-weight: 700; "
                 f"font-family: '{FONT_FAMILY}';"
             )
         else:
