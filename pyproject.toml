@@ -1,0 +1,25 @@
+[project]
+name = "familia-puess-api"
+version = "0.1.0"
+description = "Sistema de Control de Asistencia - Familia Puess (API)"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic-settings>=2.5",
+    "tzdata>=2024.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["apps*"]
