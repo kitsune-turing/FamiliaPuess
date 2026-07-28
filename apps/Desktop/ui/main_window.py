@@ -259,11 +259,7 @@ class DesktopMainWindow(QWidget):
         box = QWidget(self)
         box.setGeometry(self._x(966), self._y(207), box_w, box_h)
         box.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        box.setStyleSheet(
-            f"background-color: rgba(217, 217, 217, 0); "
-            f"border: {self._s(12)}px solid {COLOR_ACCENT_PINK}; "
-            f"border-radius: {self._s(30)}px;"
-        )
+        box.setStyleSheet("background-color: transparent;")
 
         pill_w = self._x(358)
         pill_h = self._y(85)
@@ -271,7 +267,7 @@ class DesktopMainWindow(QWidget):
         pill.setGeometry(self._x(115), self._y(40), pill_w, pill_h)
         pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         pill.setStyleSheet(
-            f"background-color: {COLOR_PILL_GREEN}; border-radius: {self._s(15)}px;"
+            f"background-color: {COLOR_ACCENT_PINK}; border-radius: {self._s(15)}px;"
         )
 
         clock_icon(pill).move(self._x(30), self._y(19))
@@ -314,14 +310,14 @@ class DesktopMainWindow(QWidget):
         )
         caption_pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         caption_pill.setStyleSheet(
-            f"background-color: {COLOR_BADGE}; border-radius: {self._s(14)}px;"
+            f"background-color: #F2DDB6; border-radius: {self._s(14)}px;"
         )
 
         caption = QLabel("Código único y seguro\nNo compartas este código", caption_pill)
         caption.setGeometry(0, 0, caption_pill_w, caption_pill_h)
         caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
         caption.setStyleSheet(
-            f"color: #FFFFFF; font-size: {self._s(14)}px; font-weight: 600; "
+            f"color: {COLOR_TEXT_DARK}; font-size: {self._s(14)}px; font-weight: 600; "
             f"font-family: '{FONT_FAMILY}';"
         )
 
