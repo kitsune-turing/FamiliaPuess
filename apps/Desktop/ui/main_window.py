@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPixmap, QTransform
+from PySide6.QtCore import Qt, QPointF, QTimer
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPixmap, QTransform
 from PySide6.QtWidgets import QLabel, QWidget
 
 from apps.Desktop.api.token_client import TokenRecibido
@@ -10,15 +10,88 @@ from apps.Desktop.ui.icons import clock_icon, location_pin_icon, wifi_icon
 from apps.Desktop.utils.assets import image_path
 from apps.Desktop.utils.formatting import format_datetime_es
 
-COLOR_BACKGROUND = "#FBEFDE"
-COLOR_HEADER = "#401801"
-COLOR_BADGE = "#4C3523"
+COLOR_BACKGROUND = "#F9EAD8"
+COLOR_HEADER = "#4C1F06"
+COLOR_BADGE = "#6A3F26"
 COLOR_ACCENT_PINK = "#F24976"
+COLOR_PILL_GREEN = "#6DB144"
 COLOR_TEXT_DARK = "#3B2415"
-COLOR_CODE_BOX = "#E9D7B3"
+COLOR_CODE_BOX = "#F0E0C8"
 COLOR_DISCONNECTED = "#F24976"
+COLOR_WAVE_PINK = "#F24976"
+COLOR_WAVE_YELLOW = "#F2A20C"
+COLOR_WAVE_ORANGE = "#E8792B"
 
 FONT_FAMILY = "Poppins"
+
+
+class _WaveBandsWidget(QWidget):
+    """Decorative wave bands painted above the footer."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        w = self.width()
+        h = self.height()
+
+        bands = [
+            (COLOR_WAVE_PINK, 0.0),
+            (COLOR_WAVE_YELLOW, 0.30),
+            (COLOR_WAVE_ORANGE, 0.55),
+        ]
+        band_height = h * 0.35
+
+        for color_hex, y_ratio in bands:
+            y_start = h * y_ratio
+            path = QPainterPath()
+            path.moveTo(0, y_start + band_height * 0.6)
+            path.cubicTo(
+                QPointF(w * 0.25, y_start),
+                QPointF(w * 0.75, y_start + band_height * 0.4),
+                QPointF(w, y_start - band_height * 0.1),
+            )
+            path.lineTo(w, y_start + band_height)
+            path.cubicTo(
+                QPointF(w * 0.75, y_start + band_height * 1.4),
+                QPointF(w * 0.25, y_start + band_height * 0.7),
+                QPointF(0, y_start + band_height * 1.2),
+            )
+            path.closeSubpath()
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(color_hex))
+            painter.drawPath(path)
+
+        painter.end()
+
+
+class _HeartWidget(QWidget):
+    """Small decorative heart shape."""
+
+    def __init__(self, color: str, size: int, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._color = color
+        self.setFixedSize(size, size)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(self._color))
+        w = self.width()
+        h = self.height()
+        path = QPainterPath()
+        path.moveTo(w * 0.5, h * 0.85)
+        path.cubicTo(QPointF(0, h * 0.55), QPointF(0, h * 0.1), QPointF(w * 0.5, h * 0.3))
+        path.cubicTo(QPointF(w, h * 0.1), QPointF(w, h * 0.55), QPointF(w * 0.5, h * 0.85))
+        painter.drawPath(path)
+        painter.end()
 
 
 class DesktopMainWindow(QWidget):
@@ -48,6 +121,7 @@ class DesktopMainWindow(QWidget):
         self._build_header(dispositivo_identificador, sede_nombre)
         self._build_left_panel()
         self._build_qr_panel()
+        self._build_decorative_waves()
         self._build_footer()
 
     def _image_label(
@@ -73,8 +147,6 @@ class DesktopMainWindow(QWidget):
         return label
 
     def _build_background_decorations(self) -> None:
-        # Solo se entrego un asset de mazorca; se reutiliza en ambos costados
-        # (el derecho reflejado) para aproximar la composicion original de Figma.
         self._image_label(self, "mazorca1.png", -140, 160, 374, 618).lower()
         self._image_label(self, "mazorca1.png", 1494, 340, 374, 618, mirror=True).lower()
 
@@ -149,13 +221,13 @@ class DesktopMainWindow(QWidget):
         box.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         box.setStyleSheet(
             f"background-color: rgba(217, 217, 217, 0); "
-            f"border: 10px solid {COLOR_ACCENT_PINK}; border-radius: 30px;"
+            f"border: 12px solid {COLOR_ACCENT_PINK}; border-radius: 30px;"
         )
 
         pill = QWidget(box)
         pill.setGeometry(1081 - 966, 247 - 207, 358, 85)
         pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        pill.setStyleSheet(f"background-color: {COLOR_ACCENT_PINK}; border-radius: 15px;")
+        pill.setStyleSheet(f"background-color: {COLOR_PILL_GREEN}; border-radius: 15px;")
 
         clock_icon(pill).move(1111 - 1081, 266 - 247)
 
@@ -169,18 +241,50 @@ class DesktopMainWindow(QWidget):
         )
 
         qr_size = 380
-        qr_x = (590 - qr_size) // 2
-        self._qr_label = QLabel(box)
-        self._qr_label.setGeometry(qr_x, 247 - 207 + 85 + 40, qr_size, qr_size)
+        inner = QWidget(box)
+        inner_w = qr_size + 40
+        inner_h = qr_size + 40
+        inner_x = (590 - inner_w) // 2
+        inner_y = 247 - 207 + 85 + 30
+        inner.setGeometry(inner_x, inner_y, inner_w, inner_h)
+        inner.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        inner.setStyleSheet("background-color: #FFFFFF; border-radius: 18px;")
+
+        self._qr_label = QLabel(inner)
+        self._qr_label.setGeometry(20, 20, qr_size, qr_size)
         self._qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        caption = QLabel("Código único y seguro\nNo compartas este código", box)
-        caption.setGeometry(45, 683 - 95, 500, 60)
-        caption.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        caption_pill = QWidget(box)
+        caption_pill_w = 380
+        caption_pill_h = 60
+        caption_pill_x = (590 - caption_pill_w) // 2
+        caption_pill_y = 683 - 90
+        caption_pill.setGeometry(caption_pill_x, caption_pill_y, caption_pill_w, caption_pill_h)
+        caption_pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        caption_pill.setStyleSheet(
+            f"background-color: {COLOR_BADGE}; border-radius: 14px;"
+        )
+
+        caption = QLabel("Código único y seguro\nNo compartas este código", caption_pill)
+        caption.setGeometry(0, 0, caption_pill_w, caption_pill_h)
+        caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
         caption.setStyleSheet(
-            f"color: {COLOR_BADGE}; font-size: 16px; font-weight: 600; "
+            f"color: #FFFFFF; font-size: 14px; font-weight: 600; "
             f"font-family: '{FONT_FAMILY}';"
         )
+
+    def _build_decorative_waves(self) -> None:
+        wave_height = 120
+        footer_height = 80
+        wave_y = self.CANVAS_HEIGHT - footer_height - wave_height
+
+        waves = _WaveBandsWidget(self)
+        waves.setGeometry(0, wave_y, self.CANVAS_WIDTH, wave_height)
+        waves.lower()
+
+        _HeartWidget(COLOR_ACCENT_PINK, 28, self).move(1520, wave_y + 10)
+        _HeartWidget(COLOR_ACCENT_PINK, 18, self).move(1560, wave_y + 45)
+        _HeartWidget(COLOR_WAVE_YELLOW, 22, self).move(750, wave_y + 20)
 
     def _build_footer(self) -> None:
         footer = QWidget(self)
@@ -198,12 +302,15 @@ class DesktopMainWindow(QWidget):
         )
 
         self._wifi_icon = wifi_icon(footer, size=28)
-        self._wifi_icon.move(self.CANVAS_WIDTH - 370, 16)
+        self._wifi_icon.move(self.CANVAS_WIDTH - 380, 16)
         self._wifi_icon.setVisible(False)
 
         self._connection_label = QLabel("Conectando...", footer)
-        self._connection_label.setGeometry(self.CANVAS_WIDTH - 330, 12, 220, 30)
+        self._connection_label.setGeometry(self.CANVAS_WIDTH - 330, 12, 260, 30)
         self._connection_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self._connection_label.setStyleSheet(
+            f"color: #FFFFFF; font-size: 16px; font-weight: 700; font-family: '{FONT_FAMILY}';"
+        )
 
         version_label = QLabel("Version: 1.0.0", footer)
         version_label.setGeometry(self.CANVAS_WIDTH - 330, 42, 220, 24)
