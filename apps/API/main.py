@@ -2,9 +2,21 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from apps.API.routers.auth import router as auth_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.registro import router as registro_router
 from shared.exceptions.attendance import AsistenciaDuplicadaError
+from shared.exceptions.auth import (
+    CambioContrasenaRequeridoError,
+    CredencialesInvalidasError,
+    CuentaBloqueadaError,
+    PermisoInsuficienteError,
+    RefreshTokenInvalidoError,
+    SesionExistenteError,
+    SesionNoEncontradaError,
+    TokenInvalidoError,
+    UsuarioInactivoError,
+)
 from shared.exceptions.catalog import EstadoNoEncontradoError
 from shared.exceptions.configuration import ConfiguracionNoEncontradaError
 from shared.exceptions.device import DispositivoNoAutorizadoError, DispositivoNoEncontradoError
@@ -29,6 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(desktop_router)
 app.include_router(registro_router)
 
@@ -105,3 +118,66 @@ async def handle_asistencia_duplicada(
     request: Request, exc: AsistenciaDuplicadaError
 ) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(CredencialesInvalidasError)
+async def handle_credenciales_invalidas(
+    request: Request, exc: CredencialesInvalidasError
+) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+@app.exception_handler(UsuarioInactivoError)
+async def handle_usuario_inactivo(
+    request: Request, exc: UsuarioInactivoError
+) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(CuentaBloqueadaError)
+async def handle_cuenta_bloqueada(
+    request: Request, exc: CuentaBloqueadaError
+) -> JSONResponse:
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+
+@app.exception_handler(SesionExistenteError)
+async def handle_sesion_existente(
+    request: Request, exc: SesionExistenteError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(TokenInvalidoError)
+async def handle_auth_token_invalido(
+    request: Request, exc: TokenInvalidoError
+) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+@app.exception_handler(RefreshTokenInvalidoError)
+async def handle_refresh_token_invalido(
+    request: Request, exc: RefreshTokenInvalidoError
+) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+
+@app.exception_handler(SesionNoEncontradaError)
+async def handle_sesion_no_encontrada(
+    request: Request, exc: SesionNoEncontradaError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(PermisoInsuficienteError)
+async def handle_permiso_insuficiente(
+    request: Request, exc: PermisoInsuficienteError
+) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(CambioContrasenaRequeridoError)
+async def handle_cambio_contrasena(
+    request: Request, exc: CambioContrasenaRequeridoError
+) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})

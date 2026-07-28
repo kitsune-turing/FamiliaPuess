@@ -11,6 +11,13 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://postgres:postgres@localhost:5432/familia_puess"
     )
 
+    jwt_secret_key: str = "CHANGE-ME-IN-PRODUCTION"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_minutes: int = 1440
+    max_login_attempts: int = 5
+    lockout_duration_minutes: int = 15
+
 
 @lru_cache
 def get_settings() -> Settings:
