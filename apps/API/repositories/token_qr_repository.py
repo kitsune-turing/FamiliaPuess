@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.models.token_qr import TokenQR
@@ -28,3 +29,24 @@ async def create(
     session.add(token_qr)
     await session.flush()
     return token_qr
+
+
+async def get_by_token(session: AsyncSession, token_value: str) -> TokenQR | None:
+    stmt = select(TokenQR).where(TokenQR.token == token_value)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def mark_consumed(
+    session: AsyncSession,
+    *,
+    token_id: int,
+    id_estado_consumido: int,
+    consumido_en: datetime,
+) -> None:
+    stmt = (
+        update(TokenQR)
+        .where(TokenQR.id == token_id)
+        .values(id_estado_token=id_estado_consumido, consumido_en=consumido_en)
+    )
+    await session.execute(stmt)
