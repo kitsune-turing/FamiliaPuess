@@ -2,11 +2,13 @@ from datetime import datetime
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import INET
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from sqlalchemy.types import DateTime
 
 from apps.API.models.base import Base
+from apps.API.models.dispositivo import Dispositivo
+from apps.API.models.sede import Sede
 
 
 class TokenQR(Base):
@@ -26,3 +28,6 @@ class TokenQR(Base):
     expira_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumido_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ip_generacion: Mapped[str | None] = mapped_column(INET)
+
+    sede: Mapped[Sede] = relationship(lazy="joined")
+    dispositivo: Mapped[Dispositivo] = relationship(lazy="joined")
