@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.services import usuarios_service
 from shared.exceptions.roles import RolNoEncontradoError
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.usuarios import (
     CorreoDuplicadoError,
     RolInactivoError,
@@ -288,7 +289,7 @@ async def test_update_usuario_success():
         patches["now"],
     ):
         result = await usuarios_service.update_usuario(
-            session, 10, nombre="Nuevo Nombre", user_id=1
+            session, 10, nombre="Nuevo Nombre", updated_at=FIXED_NOW, user_id=1
         )
 
     assert result.id == 10
@@ -305,7 +306,7 @@ async def test_update_usuario_not_found():
     with patches["get_by_id"]:
         with pytest.raises(UsuarioNoEncontradoError):
             await usuarios_service.update_usuario(
-                session, 999, nombre="Test", user_id=1
+                session, 999, nombre="Test", updated_at=FIXED_NOW, user_id=1
             )
 
 
@@ -324,7 +325,7 @@ async def test_update_usuario_duplicate_correo():
     ):
         with pytest.raises(CorreoDuplicadoError):
             await usuarios_service.update_usuario(
-                session, 10, correo="other@test.com", user_id=1
+                session, 10, correo="other@test.com", updated_at=FIXED_NOW, user_id=1
             )
 
 
@@ -343,7 +344,7 @@ async def test_update_usuario_duplicate_username():
     ):
         with pytest.raises(UsernameDuplicadoError):
             await usuarios_service.update_usuario(
-                session, 10, username="other", user_id=1
+                session, 10, username="other", updated_at=FIXED_NOW, user_id=1
             )
 
 
@@ -361,7 +362,7 @@ async def test_update_usuario_rol_not_found():
     ):
         with pytest.raises(RolNoEncontradoError):
             await usuarios_service.update_usuario(
-                session, 10, id_rol=999, user_id=1
+                session, 10, id_rol=999, updated_at=FIXED_NOW, user_id=1
             )
 
 
@@ -381,7 +382,19 @@ async def test_update_usuario_rol_inactivo():
     ):
         with pytest.raises(RolInactivoError):
             await usuarios_service.update_usuario(
-                session, 10, id_rol=5, user_id=1
+                session, 10, id_rol=5, updated_at=FIXED_NOW, user_id=1
+            )
+
+
+async def test_update_usuario_concurrency_conflict():
+    patches = _base_patches()
+    session = AsyncMock(spec=AsyncSession)
+    stale_time = datetime(2026, 7, 27, 8, 0, 0, tzinfo=timezone.utc)
+
+    with patches["get_by_id"]:
+        with pytest.raises(ConflictoConcurrenciaError):
+            await usuarios_service.update_usuario(
+                session, 10, nombre="Test", updated_at=stale_time, user_id=1
             )
 
 

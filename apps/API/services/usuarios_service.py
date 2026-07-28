@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,7 @@ from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.constants.rol import RolCodigo
 from shared.exceptions.roles import RolNoEncontradoError
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.usuarios import (
     AutoDesactivacionError,
     CorreoDuplicadoError,
@@ -125,12 +127,16 @@ async def update_usuario(
     correo: str | None = None,
     username: str | None = None,
     id_rol: int | None = None,
+    updated_at: datetime,
     user_id: int,
     ip_address: str | None = None,
 ) -> Usuario:
     usuario = await usuario_repository.get_by_id(session, usuario_id)
     if usuario is None:
         raise UsuarioNoEncontradoError(usuario_id)
+
+    if usuario.updated_at != updated_at:
+        raise ConflictoConcurrenciaError("usuario", usuario_id)
 
     valor_anterior = {
         "nombre": usuario.nombre,

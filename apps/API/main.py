@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from apps.API.routers.auth import router as auth_router
+from apps.API.routers.configuracion import router as configuracion_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.registro import router as registro_router
 from apps.API.routers.permisos import router as permisos_router
@@ -40,7 +41,8 @@ from shared.exceptions.usuarios import (
     UsernameDuplicadoError,
     UsuarioNoEncontradoError,
 )
-from shared.exceptions.configuration import ConfiguracionNoEncontradaError
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
+from shared.exceptions.configuration import ConfiguracionNoEncontradaError, SetupIncompletoError
 from shared.exceptions.device import DispositivoNoAutorizadoError, DispositivoNoEncontradoError
 from shared.exceptions.employee import EmpleadoInactivoError, EmpleadoNoRegistradoError
 from shared.exceptions.registration import (
@@ -64,11 +66,19 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(configuracion_router)
 app.include_router(desktop_router)
 app.include_router(registro_router)
 app.include_router(roles_router)
 app.include_router(permisos_router)
 app.include_router(usuarios_router)
+
+
+@app.exception_handler(ConflictoConcurrenciaError)
+async def handle_conflicto_concurrencia(
+    request: Request, exc: ConflictoConcurrenciaError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(DispositivoNoEncontradoError)
@@ -83,6 +93,13 @@ async def handle_dispositivo_no_autorizado(
     request: Request, exc: DispositivoNoAutorizadoError
 ) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(SetupIncompletoError)
+async def handle_setup_incompleto(
+    request: Request, exc: SetupIncompletoError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.exception_handler(EstadoNoEncontradoError)

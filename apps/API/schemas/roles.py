@@ -14,6 +14,7 @@ class CreateRolRequest(BaseModel):
 class UpdateRolRequest(BaseModel):
     nombre: str | None = Field(None, min_length=1, max_length=50)
     descripcion: str | None = Field(None, max_length=255)
+    updated_at: datetime = Field(...)
 
 
 class RolResponse(BaseModel):

@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.services import roles_service
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.roles import (
     RolCodigoDuplicadoError,
     RolNoEncontradoError,
@@ -182,6 +183,7 @@ async def test_update_rol_success():
             session,
             5,
             nombre="Operador Actualizado",
+            updated_at=FIXED_NOW,
             user_id=1,
         )
 
@@ -197,7 +199,19 @@ async def test_update_rol_raises_when_not_found():
     with p["get_by_id"]:
         with pytest.raises(RolNoEncontradoError):
             await roles_service.update_rol(
-                session, 999, nombre="test", user_id=1
+                session, 999, nombre="test", updated_at=FIXED_NOW, user_id=1
+            )
+
+
+async def test_update_rol_concurrency_conflict():
+    p = _patches()
+    session = AsyncMock(spec=AsyncSession)
+    stale_time = datetime(2026, 7, 26, 10, 0, 0, tzinfo=timezone.utc)
+
+    with p["get_by_id"]:
+        with pytest.raises(ConflictoConcurrenciaError):
+            await roles_service.update_rol(
+                session, 5, nombre="Conflicto", updated_at=stale_time, user_id=1
             )
 
 
