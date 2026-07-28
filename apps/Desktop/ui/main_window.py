@@ -2,7 +2,7 @@ from datetime import datetime
 
 from PySide6.QtCore import Qt, QPointF, QTimer
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPixmap, QTransform
-from PySide6.QtWidgets import QLabel, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 from apps.Desktop.api.token_client import TokenRecibido
 from apps.Desktop.services.qr_service import build_qr_pixmap
@@ -24,9 +24,11 @@ COLOR_WAVE_ORANGE = "#E8792B"
 
 FONT_FAMILY = "Poppins"
 
+DESIGN_W = 1728
+DESIGN_H = 1117
+
 
 class _WaveBandsWidget(QWidget):
-    """Decorative wave bands painted above the footer."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -70,7 +72,6 @@ class _WaveBandsWidget(QWidget):
 
 
 class _HeartWidget(QWidget):
-    """Small decorative heart shape."""
 
     def __init__(self, color: str, size: int, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -99,10 +100,11 @@ class DesktopMainWindow(QWidget):
 
     Es un QWidget puro (no QMainWindow): nunca existira menuBar, toolbar,
     statusBar ni dock widgets, porque esas capacidades no existen en QWidget.
-    """
 
-    CANVAS_WIDTH = 1728
-    CANVAS_HEIGHT = 1117
+    La ventana ocupa el 80 % de la pantalla (10 % de margen en cada lado)
+    y escala todos los elementos proporcionalmente desde el diseno de
+    referencia 1728 x 1117.
+    """
 
     def __init__(
         self,
@@ -113,8 +115,20 @@ class DesktopMainWindow(QWidget):
     ) -> None:
         super().__init__(parent)
         self._registro_publico_url = registro_publico_url
+
+        screen = QApplication.primaryScreen().availableGeometry()
+        self._cw = int(screen.width() * 0.8)
+        self._ch = int(screen.height() * 0.8)
+        self._kx = self._cw / DESIGN_W
+        self._ky = self._ch / DESIGN_H
+        self._ks = min(self._kx, self._ky)
+
         self.setWindowTitle("Familia Puess - Control de Asistencia")
-        self.setFixedSize(self.CANVAS_WIDTH, self.CANVAS_HEIGHT)
+        self.setFixedSize(self._cw, self._ch)
+        self.move(
+            screen.x() + (screen.width() - self._cw) // 2,
+            screen.y() + (screen.height() - self._ch) // 2,
+        )
         self.setStyleSheet(f"background-color: {COLOR_BACKGROUND};")
 
         self._build_background_decorations()
@@ -123,6 +137,15 @@ class DesktopMainWindow(QWidget):
         self._build_qr_panel()
         self._build_decorative_waves()
         self._build_footer()
+
+    def _x(self, v: float) -> int:
+        return int(v * self._kx)
+
+    def _y(self, v: float) -> int:
+        return int(v * self._ky)
+
+    def _s(self, v: float) -> int:
+        return max(1, int(v * self._ks))
 
     def _image_label(
         self,
@@ -147,176 +170,216 @@ class DesktopMainWindow(QWidget):
         return label
 
     def _build_background_decorations(self) -> None:
-        self._image_label(self, "mazorca1.png", -140, 160, 374, 618).lower()
-        self._image_label(self, "mazorca1.png", 1494, 340, 374, 618, mirror=True).lower()
+        self._image_label(
+            self, "mazorca1.png", self._x(-140), self._y(160), self._x(374), self._y(618)
+        ).lower()
+        self._image_label(
+            self, "mazorca1.png", self._x(1494), self._y(340), self._x(374), self._y(618),
+            mirror=True,
+        ).lower()
 
     def _build_header(self, dispositivo_identificador: str, sede_nombre: str) -> None:
         header = QWidget(self)
-        header.setGeometry(0, 0, self.CANVAS_WIDTH, 133)
+        header.setGeometry(0, 0, self._cw, self._y(133))
         header.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         header.setStyleSheet(f"background-color: {COLOR_HEADER};")
 
-        self._image_label(header, "marca.png", 0, 19, 484, 95)
+        self._image_label(header, "marca.png", 0, self._y(19), self._x(484), self._y(95))
 
         titulo = QLabel("SISTEMA DE CONTROL DE ASISTENCIA", header)
-        titulo.setGeometry(573, 48, 582, 38)
+        titulo.setGeometry(self._x(573), self._y(48), self._x(582), self._y(38))
         titulo.setStyleSheet(
-            f"color: #FFFFFF; font-size: 27px; font-family: '{FONT_FAMILY}'; letter-spacing: 1px;"
+            f"color: #FFFFFF; font-size: {self._s(27)}px; "
+            f"font-family: '{FONT_FAMILY}'; letter-spacing: {self._s(1)}px;"
         )
 
         badge = QWidget(header)
-        badge.setGeometry(1354, 24, 259, 84)
+        badge.setGeometry(self._x(1354), self._y(24), self._x(259), self._y(84))
         badge.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        badge.setStyleSheet(f"background-color: {COLOR_BADGE}; border-radius: 15px;")
+        badge.setStyleSheet(
+            f"background-color: {COLOR_BADGE}; border-radius: {self._s(15)}px;"
+        )
 
-        location_pin_icon(badge).move(11, 18)
+        location_pin_icon(badge).move(self._x(11), self._y(18))
 
         masked_identificador = "*" * len(dispositivo_identificador)
         sede_label = QLabel(f"{sede_nombre}\nDispositivo: {masked_identificador}", badge)
-        sede_label.setGeometry(59, 15, 193, 55)
+        sede_label.setGeometry(self._x(59), self._y(15), self._x(193), self._y(55))
         sede_label.setStyleSheet(
-            f"color: #FFFFFF; font-size: 15px; font-family: '{FONT_FAMILY}';"
+            f"color: #FFFFFF; font-size: {self._s(15)}px; font-family: '{FONT_FAMILY}';"
         )
 
     def _build_left_panel(self) -> None:
         greeting = QLabel("¡Hola!", self)
-        greeting.setGeometry(60, 190, 500, 90)
+        greeting.setGeometry(self._x(60), self._y(190), self._x(500), self._y(90))
         greeting.setStyleSheet(
-            f"color: {COLOR_TEXT_DARK}; font-size: 64px; font-weight: 800; "
+            f"color: {COLOR_TEXT_DARK}; font-size: {self._s(64)}px; font-weight: 800; "
             f"font-family: '{FONT_FAMILY}';"
         )
 
         subtitle = QLabel("Marca tu asistencia\nEscanea el QR o ingresa el código", self)
-        subtitle.setGeometry(65, 300, 620, 70)
+        subtitle.setGeometry(self._x(65), self._y(300), self._x(620), self._y(70))
         subtitle.setStyleSheet(
-            f"color: {COLOR_TEXT_DARK}; font-size: 20px; font-weight: 600; "
+            f"color: {COLOR_TEXT_DARK}; font-size: {self._s(20)}px; font-weight: 600; "
             f"font-family: '{FONT_FAMILY}';"
         )
 
-        self._image_label(self, "logos.png", 60, 395, 560, 210)
+        self._image_label(
+            self, "logos.png", self._x(60), self._y(395), self._x(560), self._y(210)
+        )
 
         codigo_titulo = QLabel("Código de validación", self)
-        codigo_titulo.setGeometry(65, 630, 400, 34)
+        codigo_titulo.setGeometry(self._x(65), self._y(630), self._x(400), self._y(34))
         codigo_titulo.setStyleSheet(
-            f"color: {COLOR_TEXT_DARK}; font-size: 20px; font-weight: 700; "
+            f"color: {COLOR_TEXT_DARK}; font-size: {self._s(20)}px; font-weight: 700; "
             f"font-family: '{FONT_FAMILY}';"
         )
 
         codigo_box = QWidget(self)
-        codigo_box.setGeometry(65, 675, 560, 130)
+        box_w = self._x(560)
+        box_h = self._y(130)
+        codigo_box.setGeometry(self._x(65), self._y(675), box_w, box_h)
         codigo_box.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        codigo_box.setStyleSheet(f"background-color: {COLOR_CODE_BOX}; border-radius: 20px;")
+        codigo_box.setStyleSheet(
+            f"background-color: {COLOR_CODE_BOX}; border-radius: {self._s(20)}px;"
+        )
 
         self._codigo_label = QLabel("--------", codigo_box)
-        self._codigo_label.setGeometry(0, 0, 560, 130)
+        self._codigo_label.setGeometry(0, 0, box_w, box_h)
         self._codigo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._codigo_label.setStyleSheet(
-            f"color: {COLOR_TEXT_DARK}; font-size: 48px; font-weight: 800; "
-            f"letter-spacing: 6px; font-family: '{FONT_FAMILY}';"
+            f"color: {COLOR_TEXT_DARK}; font-size: {self._s(48)}px; font-weight: 800; "
+            f"letter-spacing: {self._s(6)}px; font-family: '{FONT_FAMILY}';"
         )
 
     def _build_qr_panel(self) -> None:
+        box_w = self._x(590)
+        box_h = self._y(683)
+
         box = QWidget(self)
-        box.setGeometry(966, 207, 590, 683)
+        box.setGeometry(self._x(966), self._y(207), box_w, box_h)
         box.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         box.setStyleSheet(
             f"background-color: rgba(217, 217, 217, 0); "
-            f"border: 12px solid {COLOR_ACCENT_PINK}; border-radius: 30px;"
+            f"border: {self._s(12)}px solid {COLOR_ACCENT_PINK}; "
+            f"border-radius: {self._s(30)}px;"
         )
 
+        pill_w = self._x(358)
+        pill_h = self._y(85)
         pill = QWidget(box)
-        pill.setGeometry(1081 - 966, 247 - 207, 358, 85)
+        pill.setGeometry(self._x(115), self._y(40), pill_w, pill_h)
         pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        pill.setStyleSheet(f"background-color: {COLOR_PILL_GREEN}; border-radius: 15px;")
+        pill.setStyleSheet(
+            f"background-color: {COLOR_PILL_GREEN}; border-radius: {self._s(15)}px;"
+        )
 
-        clock_icon(pill).move(1111 - 1081, 266 - 247)
+        clock_icon(pill).move(self._x(30), self._y(19))
 
         self._timer_label = QLabel("VALIDO POR\n-- SEGUNDOS", pill)
-        self._timer_label.setGeometry(1167 - 1081, 258 - 247, 188, 73)
+        self._timer_label.setGeometry(self._x(86), self._y(11), self._x(188), self._y(73))
         self._timer_label.setAlignment(
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
         )
         self._timer_label.setStyleSheet(
-            f"color: #FFFFFF; font-size: 18px; font-weight: 700; font-family: '{FONT_FAMILY}';"
+            f"color: #FFFFFF; font-size: {self._s(18)}px; font-weight: 700; "
+            f"font-family: '{FONT_FAMILY}';"
         )
 
-        qr_size = 380
+        qr_size = self._s(380)
+        pad = self._s(20)
+        inner_side = qr_size + pad * 2
+
         inner = QWidget(box)
-        inner_w = qr_size + 40
-        inner_h = qr_size + 40
-        inner_x = (590 - inner_w) // 2
-        inner_y = 247 - 207 + 85 + 30
-        inner.setGeometry(inner_x, inner_y, inner_w, inner_h)
+        inner_x = (box_w - inner_side) // 2
+        inner_y = self._y(40) + pill_h + self._y(30)
+        inner.setGeometry(inner_x, inner_y, inner_side, inner_side)
         inner.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        inner.setStyleSheet("background-color: #FFFFFF; border-radius: 18px;")
+        inner.setStyleSheet(
+            f"background-color: #FFFFFF; border-radius: {self._s(18)}px;"
+        )
 
         self._qr_label = QLabel(inner)
-        self._qr_label.setGeometry(20, 20, qr_size, qr_size)
+        self._qr_label.setGeometry(pad, pad, qr_size, qr_size)
         self._qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        caption_pill_w = self._x(380)
+        caption_pill_h = self._y(60)
         caption_pill = QWidget(box)
-        caption_pill_w = 380
-        caption_pill_h = 60
-        caption_pill_x = (590 - caption_pill_w) // 2
-        caption_pill_y = 683 - 90
-        caption_pill.setGeometry(caption_pill_x, caption_pill_y, caption_pill_w, caption_pill_h)
+        caption_pill.setGeometry(
+            (box_w - caption_pill_w) // 2,
+            box_h - self._y(90),
+            caption_pill_w,
+            caption_pill_h,
+        )
         caption_pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         caption_pill.setStyleSheet(
-            f"background-color: {COLOR_BADGE}; border-radius: 14px;"
+            f"background-color: {COLOR_BADGE}; border-radius: {self._s(14)}px;"
         )
 
         caption = QLabel("Código único y seguro\nNo compartas este código", caption_pill)
         caption.setGeometry(0, 0, caption_pill_w, caption_pill_h)
         caption.setAlignment(Qt.AlignmentFlag.AlignCenter)
         caption.setStyleSheet(
-            f"color: #FFFFFF; font-size: 14px; font-weight: 600; "
+            f"color: #FFFFFF; font-size: {self._s(14)}px; font-weight: 600; "
             f"font-family: '{FONT_FAMILY}';"
         )
 
     def _build_decorative_waves(self) -> None:
-        wave_height = 120
-        footer_height = 80
-        wave_y = self.CANVAS_HEIGHT - footer_height - wave_height
+        wave_height = self._y(120)
+        footer_height = self._y(80)
+        wave_y = self._ch - footer_height - wave_height
 
         waves = _WaveBandsWidget(self)
-        waves.setGeometry(0, wave_y, self.CANVAS_WIDTH, wave_height)
+        waves.setGeometry(0, wave_y, self._cw, wave_height)
         waves.lower()
 
-        _HeartWidget(COLOR_ACCENT_PINK, 28, self).move(1520, wave_y + 10)
-        _HeartWidget(COLOR_ACCENT_PINK, 18, self).move(1560, wave_y + 45)
-        _HeartWidget(COLOR_WAVE_YELLOW, 22, self).move(750, wave_y + 20)
+        _HeartWidget(COLOR_ACCENT_PINK, self._s(28), self).move(
+            self._x(1520), wave_y + self._y(10)
+        )
+        _HeartWidget(COLOR_ACCENT_PINK, self._s(18), self).move(
+            self._x(1560), wave_y + self._y(45)
+        )
+        _HeartWidget(COLOR_WAVE_YELLOW, self._s(22), self).move(
+            self._x(750), wave_y + self._y(20)
+        )
 
     def _build_footer(self) -> None:
         footer = QWidget(self)
-        footer_height = 80
-        footer.setGeometry(0, self.CANVAS_HEIGHT - footer_height, self.CANVAS_WIDTH, footer_height)
+        footer_h = self._y(80)
+        footer.setGeometry(0, self._ch - footer_h, self._cw, footer_h)
         footer.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         footer.setStyleSheet(f"background-color: {COLOR_HEADER};")
 
-        clock_icon(footer).move(30, 16)
+        clock_icon(footer).move(self._x(30), self._y(16))
 
         self._datetime_label = QLabel(footer)
-        self._datetime_label.setGeometry(90, 8, 500, 60)
+        self._datetime_label.setGeometry(self._x(90), self._y(8), self._x(500), self._y(60))
         self._datetime_label.setStyleSheet(
-            f"color: #FFFFFF; font-size: 15px; font-family: '{FONT_FAMILY}';"
+            f"color: #FFFFFF; font-size: {self._s(15)}px; font-family: '{FONT_FAMILY}';"
         )
 
-        self._wifi_icon = wifi_icon(footer, size=28)
-        self._wifi_icon.move(self.CANVAS_WIDTH - 380, 16)
+        self._wifi_icon = wifi_icon(footer, size=self._s(28))
+        self._wifi_icon.move(self._cw - self._x(380), self._y(16))
         self._wifi_icon.setVisible(False)
 
         self._connection_label = QLabel("Conectando...", footer)
-        self._connection_label.setGeometry(self.CANVAS_WIDTH - 330, 12, 260, 30)
+        self._connection_label.setGeometry(
+            self._cw - self._x(330), self._y(12), self._x(260), self._y(30)
+        )
         self._connection_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._connection_label.setStyleSheet(
-            f"color: #FFFFFF; font-size: 16px; font-weight: 700; font-family: '{FONT_FAMILY}';"
+            f"color: #FFFFFF; font-size: {self._s(16)}px; font-weight: 700; "
+            f"font-family: '{FONT_FAMILY}';"
         )
 
         version_label = QLabel("Version: 1.0.0", footer)
-        version_label.setGeometry(self.CANVAS_WIDTH - 330, 42, 220, 24)
+        version_label.setGeometry(
+            self._cw - self._x(330), self._y(42), self._x(220), self._y(24)
+        )
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         version_label.setStyleSheet(
-            f"color: #FFFFFF; font-size: 13px; font-family: '{FONT_FAMILY}';"
+            f"color: #FFFFFF; font-size: {self._s(13)}px; font-family: '{FONT_FAMILY}';"
         )
 
         self._clock_timer = QTimer(self)
@@ -347,12 +410,12 @@ class DesktopMainWindow(QWidget):
         if connected:
             self._connection_label.setText("Connected")
             self._connection_label.setStyleSheet(
-                f"color: #FFFFFF; font-size: 16px; font-weight: 700; "
+                f"color: #FFFFFF; font-size: {self._s(16)}px; font-weight: 700; "
                 f"font-family: '{FONT_FAMILY}';"
             )
         else:
             self._connection_label.setText("Sin conexión")
             self._connection_label.setStyleSheet(
-                f"color: {COLOR_DISCONNECTED}; font-size: 16px; font-weight: 700; "
+                f"color: {COLOR_DISCONNECTED}; font-size: {self._s(16)}px; font-weight: 700; "
                 f"font-family: '{FONT_FAMILY}';"
             )
