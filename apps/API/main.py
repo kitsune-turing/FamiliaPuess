@@ -7,6 +7,7 @@ from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.registro import router as registro_router
 from apps.API.routers.permisos import router as permisos_router
 from apps.API.routers.roles import router as roles_router
+from apps.API.routers.usuarios import router as usuarios_router
 from shared.exceptions.attendance import AsistenciaDuplicadaError
 from shared.exceptions.auth import (
     CambioContrasenaRequeridoError,
@@ -30,6 +31,14 @@ from shared.exceptions.roles import (
     RolNoEncontradoError,
     RolProtegidoError,
     RolTieneUsuariosError,
+)
+from shared.exceptions.usuarios import (
+    AutoDesactivacionError,
+    CorreoDuplicadoError,
+    RolInactivoError,
+    UltimoSuperAdminError,
+    UsernameDuplicadoError,
+    UsuarioNoEncontradoError,
 )
 from shared.exceptions.configuration import ConfiguracionNoEncontradaError
 from shared.exceptions.device import DispositivoNoAutorizadoError, DispositivoNoEncontradoError
@@ -59,6 +68,7 @@ app.include_router(desktop_router)
 app.include_router(registro_router)
 app.include_router(roles_router)
 app.include_router(permisos_router)
+app.include_router(usuarios_router)
 
 
 @app.exception_handler(DispositivoNoEncontradoError)
@@ -245,3 +255,45 @@ async def handle_modulo_no_encontrado(
     request: Request, exc: ModuloNoEncontradoError
 ) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(UsuarioNoEncontradoError)
+async def handle_usuario_no_encontrado(
+    request: Request, exc: UsuarioNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(CorreoDuplicadoError)
+async def handle_correo_duplicado(
+    request: Request, exc: CorreoDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(UsernameDuplicadoError)
+async def handle_username_duplicado(
+    request: Request, exc: UsernameDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(UltimoSuperAdminError)
+async def handle_ultimo_super_admin(
+    request: Request, exc: UltimoSuperAdminError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(AutoDesactivacionError)
+async def handle_auto_desactivacion(
+    request: Request, exc: AutoDesactivacionError
+) -> JSONResponse:
+    return JSONResponse(status_code=200, content={"detail": str(exc)})
+
+
+@app.exception_handler(RolInactivoError)
+async def handle_rol_inactivo(
+    request: Request, exc: RolInactivoError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
