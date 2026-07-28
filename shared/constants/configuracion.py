@@ -1,0 +1,2 @@
+class ConfigClave:
+    SETUP_COMPLETADO = "SETUP_COMPLETADO"

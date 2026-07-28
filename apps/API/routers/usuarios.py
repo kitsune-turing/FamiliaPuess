@@ -96,6 +96,7 @@ async def update_usuario(
     current_user: dict = Depends(require_permission("USUARIOS", "escribir")),
 ) -> UsuarioResponse:
     kwargs: dict = {
+        "updated_at": payload.updated_at,
         "user_id": int(current_user["sub"]),
         "ip_address": _extract_ip(request),
     }

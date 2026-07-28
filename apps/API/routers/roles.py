@@ -83,6 +83,7 @@ async def update_rol(
     current_user: dict = Depends(require_permission("ROLES", "escribir")),
 ) -> RolResponse:
     kwargs: dict = {
+        "updated_at": payload.updated_at,
         "user_id": int(current_user["sub"]),
         "ip_address": _extract_ip(request),
     }

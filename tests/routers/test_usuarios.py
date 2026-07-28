@@ -9,6 +9,7 @@ from apps.API.database.session import get_session
 from apps.API.dependencies.auth import get_current_user
 from apps.API.main import app
 from shared.exceptions.roles import RolNoEncontradoError
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.usuarios import (
     AutoDesactivacionError,
     CorreoDuplicadoError,
@@ -370,7 +371,7 @@ def test_update_usuario_returns_200(client):
         response = client.put(
             "/usuarios/10",
             headers=_HEADERS,
-            json={"nombre": "Actualizado"},
+            json={"nombre": "Actualizado", "updated_at": FIXED_NOW.isoformat()},
         )
 
     assert response.status_code == 200
@@ -391,10 +392,44 @@ def test_update_usuario_returns_404(client):
         response = client.put(
             "/usuarios/999",
             headers=_HEADERS,
-            json={"nombre": "Test"},
+            json={"nombre": "Test", "updated_at": FIXED_NOW.isoformat()},
         )
 
     assert response.status_code == 404
+
+
+def test_update_usuario_returns_409_concurrency(client):
+    p_user, p_permisos = _permission_patches()
+
+    with (
+        p_user,
+        p_permisos,
+        patch(
+            "apps.API.routers.usuarios.usuarios_service.update_usuario",
+            new=AsyncMock(side_effect=ConflictoConcurrenciaError("usuario", 10)),
+        ),
+    ):
+        response = client.put(
+            "/usuarios/10",
+            headers=_HEADERS,
+            json={"nombre": "Test", "updated_at": FIXED_NOW.isoformat()},
+        )
+
+    assert response.status_code == 409
+    assert "modificado" in response.json()["detail"]
+
+
+def test_update_usuario_returns_422_missing_updated_at(client):
+    p_user, p_permisos = _permission_patches()
+
+    with p_user, p_permisos:
+        response = client.put(
+            "/usuarios/10",
+            headers=_HEADERS,
+            json={"nombre": "Test"},
+        )
+
+    assert response.status_code == 422
 
 
 # ── DELETE /usuarios/{id} ──

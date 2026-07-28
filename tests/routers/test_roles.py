@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from apps.API.database.session import get_session
 from apps.API.dependencies.auth import get_current_user
 from apps.API.main import app
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.roles import (
     RolCodigoDuplicadoError,
     RolNoEncontradoError,
@@ -213,11 +214,45 @@ def test_update_rol_returns_200(client):
     ):
         response = client.put(
             "/roles/5",
-            json={"nombre": "Operador Actualizado"},
+            json={"nombre": "Operador Actualizado", "updated_at": FIXED_NOW.isoformat()},
             headers={"Authorization": "Bearer valid.jwt"},
         )
 
     assert response.status_code == 200
+
+
+def test_update_rol_returns_409_concurrency(client):
+    p_user, p_permisos = _permission_patches()
+
+    with (
+        p_user,
+        p_permisos,
+        patch(
+            "apps.API.routers.roles.roles_service.update_rol",
+            new=AsyncMock(side_effect=ConflictoConcurrenciaError("rol", 5)),
+        ),
+    ):
+        response = client.put(
+            "/roles/5",
+            json={"nombre": "Conflicto", "updated_at": FIXED_NOW.isoformat()},
+            headers={"Authorization": "Bearer valid.jwt"},
+        )
+
+    assert response.status_code == 409
+    assert "modificado" in response.json()["detail"]
+
+
+def test_update_rol_returns_422_missing_updated_at(client):
+    p_user, p_permisos = _permission_patches()
+
+    with p_user, p_permisos:
+        response = client.put(
+            "/roles/5",
+            json={"nombre": "Test"},
+            headers={"Authorization": "Bearer valid.jwt"},
+        )
+
+    assert response.status_code == 422
 
 
 # ── DELETE /roles/{id} ──

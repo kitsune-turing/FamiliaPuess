@@ -16,6 +16,7 @@ class UpdateUsuarioRequest(BaseModel):
     correo: EmailStr | None = Field(None, max_length=255)
     username: str | None = Field(None, min_length=1, max_length=50)
     id_rol: int | None = Field(None, gt=0)
+    updated_at: datetime = Field(...)
 
 
 class UsuarioResponse(BaseModel):

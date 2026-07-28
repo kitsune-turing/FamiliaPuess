@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,7 @@ from shared.constants.estado import EstadoCodigo
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.constants.rol import RolCodigo
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.roles import (
     RolCodigoDuplicadoError,
     RolNoEncontradoError,
@@ -85,12 +87,16 @@ async def update_rol(
     *,
     nombre: str | None = None,
     descripcion: str | None = ...,
+    updated_at: datetime,
     user_id: int,
     ip_address: str | None = None,
 ) -> CatRol:
     rol = await cat_rol_repository.get_by_id(session, rol_id)
     if rol is None:
         raise RolNoEncontradoError(rol_id)
+
+    if rol.updated_at != updated_at:
+        raise ConflictoConcurrenciaError("rol", rol_id)
 
     valor_anterior = {
         "nombre": rol.nombre,
