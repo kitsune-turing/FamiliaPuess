@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 from apps.API.routers.auth import router as auth_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.registro import router as registro_router
+from apps.API.routers.permisos import router as permisos_router
+from apps.API.routers.roles import router as roles_router
 from shared.exceptions.attendance import AsistenciaDuplicadaError
 from shared.exceptions.auth import (
     CambioContrasenaRequeridoError,
@@ -18,6 +20,17 @@ from shared.exceptions.auth import (
     UsuarioInactivoError,
 )
 from shared.exceptions.catalog import EstadoNoEncontradoError
+from shared.exceptions.permisos import (
+    ModuloNoEncontradoError,
+    PermisoDuplicadoError,
+    PermisoNoEncontradoError,
+)
+from shared.exceptions.roles import (
+    RolCodigoDuplicadoError,
+    RolNoEncontradoError,
+    RolProtegidoError,
+    RolTieneUsuariosError,
+)
 from shared.exceptions.configuration import ConfiguracionNoEncontradaError
 from shared.exceptions.device import DispositivoNoAutorizadoError, DispositivoNoEncontradoError
 from shared.exceptions.employee import EmpleadoInactivoError, EmpleadoNoRegistradoError
@@ -44,6 +57,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(desktop_router)
 app.include_router(registro_router)
+app.include_router(roles_router)
+app.include_router(permisos_router)
 
 
 @app.exception_handler(DispositivoNoEncontradoError)
@@ -181,3 +196,52 @@ async def handle_cambio_contrasena(
     request: Request, exc: CambioContrasenaRequeridoError
 ) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(RolNoEncontradoError)
+async def handle_rol_no_encontrado(
+    request: Request, exc: RolNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(RolCodigoDuplicadoError)
+async def handle_rol_codigo_duplicado(
+    request: Request, exc: RolCodigoDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(RolProtegidoError)
+async def handle_rol_protegido(
+    request: Request, exc: RolProtegidoError
+) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(RolTieneUsuariosError)
+async def handle_rol_tiene_usuarios(
+    request: Request, exc: RolTieneUsuariosError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(PermisoNoEncontradoError)
+async def handle_permiso_no_encontrado(
+    request: Request, exc: PermisoNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(PermisoDuplicadoError)
+async def handle_permiso_duplicado(
+    request: Request, exc: PermisoDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ModuloNoEncontradoError)
+async def handle_modulo_no_encontrado(
+    request: Request, exc: ModuloNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
