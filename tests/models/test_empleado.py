@@ -13,6 +13,7 @@ def test_empleado_columns_match_database_sql_schema():
         "documento",
         "nombre",
         "apellido",
+        "cargo",
         "id_estado",
         "id_sede",
         "created_at",
@@ -30,5 +31,6 @@ def test_empleado_documento_is_unique():
 def test_empleado_required_fields():
     assert Empleado.__table__.columns["nombre"].nullable is False
     assert Empleado.__table__.columns["apellido"].nullable is False
+    assert Empleado.__table__.columns["cargo"].nullable is False
     assert Empleado.__table__.columns["id_estado"].nullable is False
     assert Empleado.__table__.columns["id_sede"].nullable is False

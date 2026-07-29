@@ -16,6 +16,7 @@ class Empleado(Base):
     documento: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
+    cargo: Mapped[str] = mapped_column(String(100), nullable=False)
     id_estado: Mapped[int] = mapped_column(ForeignKey("cat_estado.id"), nullable=False)
     id_sede: Mapped[int] = mapped_column(ForeignKey("sede.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from apps.API.routers.auth import router as auth_router
 from apps.API.routers.configuracion import router as configuracion_router
 from apps.API.routers.desktop import router as desktop_router
+from apps.API.routers.empleados import router as empleados_router
 from apps.API.routers.registro import router as registro_router
 from apps.API.routers.permisos import router as permisos_router
 from apps.API.routers.roles import router as roles_router
@@ -44,6 +45,14 @@ from shared.exceptions.usuarios import (
 from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.configuration import ConfiguracionNoEncontradaError, SetupIncompletoError
 from shared.exceptions.device import DispositivoNoAutorizadoError, DispositivoNoEncontradoError
+from shared.exceptions.empleados import (
+    DocumentoDuplicadoError,
+    DocumentoFormatoInvalidoError,
+    EmpleadoNoEncontradoError,
+    NombreInvalidoError,
+    SedeInactivaError,
+    SedeNoEncontradaError,
+)
 from shared.exceptions.employee import EmpleadoInactivoError, EmpleadoNoRegistradoError
 from shared.exceptions.registration import (
     CodigoAlfaInvalidoError,
@@ -68,6 +77,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(configuracion_router)
 app.include_router(desktop_router)
+app.include_router(empleados_router)
 app.include_router(registro_router)
 app.include_router(roles_router)
 app.include_router(permisos_router)
@@ -79,6 +89,42 @@ async def handle_conflicto_concurrencia(
     request: Request, exc: ConflictoConcurrenciaError
 ) -> JSONResponse:
     return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(EmpleadoNoEncontradoError)
+async def handle_empleado_no_encontrado_crud(
+    request: Request, exc: EmpleadoNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(DocumentoDuplicadoError)
+async def handle_documento_duplicado(
+    request: Request, exc: DocumentoDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(DocumentoFormatoInvalidoError)
+@app.exception_handler(NombreInvalidoError)
+async def handle_empleado_validacion(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(SedeNoEncontradaError)
+async def handle_sede_no_encontrada(
+    request: Request, exc: SedeNoEncontradaError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(SedeInactivaError)
+async def handle_sede_inactiva(
+    request: Request, exc: SedeInactivaError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.exception_handler(DispositivoNoEncontradoError)
