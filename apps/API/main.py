@@ -10,6 +10,7 @@ from apps.API.routers.empleados import router as empleados_router
 from apps.API.routers.horarios import router as horarios_router
 from apps.API.routers.novedades import router as novedades_router
 from apps.API.routers.registro import router as registro_router
+from apps.API.routers.reportes import router as reportes_router
 from apps.API.routers.sedes import router as sedes_router
 from apps.API.routers.permisos import router as permisos_router
 from apps.API.routers.roles import router as roles_router
@@ -82,6 +83,13 @@ from shared.exceptions.novedades import (
     SedesSinHorarioError,
     TipoNovedadNoEncontradoError,
 )
+from shared.exceptions.reportes import (
+    RangoFechasInvalidoError,
+    ReporteDuplicadoError,
+    ReporteGeneracionError,
+    ReporteNoEncontradoError,
+    ReporteSinDatosError,
+)
 from shared.exceptions.registration import (
     CodigoAlfaInvalidoError,
     DispositivoTokenNoAutorizadoError,
@@ -110,6 +118,7 @@ app.include_router(empleados_router)
 app.include_router(horarios_router)
 app.include_router(novedades_router)
 app.include_router(registro_router)
+app.include_router(reportes_router)
 app.include_router(sedes_router)
 app.include_router(roles_router)
 app.include_router(permisos_router)
@@ -485,3 +494,38 @@ async def handle_sedes_sin_horario(
     request: Request, exc: SedesSinHorarioError
 ) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(ReporteNoEncontradoError)
+async def handle_reporte_no_encontrado(
+    request: Request, exc: ReporteNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(RangoFechasInvalidoError)
+async def handle_rango_fechas_invalido(
+    request: Request, exc: RangoFechasInvalidoError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(ReporteDuplicadoError)
+async def handle_reporte_duplicado(
+    request: Request, exc: ReporteDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(ReporteGeneracionError)
+async def handle_reporte_generacion(
+    request: Request, exc: ReporteGeneracionError
+) -> JSONResponse:
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
+@app.exception_handler(ReporteSinDatosError)
+async def handle_reporte_sin_datos(
+    request: Request, exc: ReporteSinDatosError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
