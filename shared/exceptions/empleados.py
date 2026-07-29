@@ -29,13 +29,3 @@ class NombreInvalidoError(Exception):
         )
 
 
-class SedeNoEncontradaError(Exception):
-    def __init__(self, sede_id: int) -> None:
-        self.sede_id = sede_id
-        super().__init__(f"La sede con id {sede_id} no existe")
-
-
-class SedeInactivaError(Exception):
-    def __init__(self, sede_id: int) -> None:
-        self.sede_id = sede_id
-        super().__init__(f"La sede con id {sede_id} se encuentra inactiva")

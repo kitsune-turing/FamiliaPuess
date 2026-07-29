@@ -24,9 +24,8 @@ from shared.exceptions.empleados import (
     DocumentoFormatoInvalidoError,
     EmpleadoNoEncontradoError,
     NombreInvalidoError,
-    SedeInactivaError,
-    SedeNoEncontradaError,
 )
+from shared.exceptions.sedes import SedeInactivaError, SedeNoEncontradaError
 
 logger = logging.getLogger(__name__)
 

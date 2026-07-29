@@ -12,9 +12,8 @@ from shared.exceptions.empleados import (
     DocumentoFormatoInvalidoError,
     EmpleadoNoEncontradoError,
     NombreInvalidoError,
-    SedeInactivaError,
-    SedeNoEncontradaError,
 )
+from shared.exceptions.sedes import SedeInactivaError, SedeNoEncontradaError
 
 ACTIVO_ID = 1
 INACTIVO_ID = 2
