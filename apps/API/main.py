@@ -7,6 +7,7 @@ from apps.API.routers.configuracion import router as configuracion_router
 from apps.API.routers.dispositivos import router as dispositivos_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.empleados import router as empleados_router
+from apps.API.routers.horarios import router as horarios_router
 from apps.API.routers.registro import router as registro_router
 from apps.API.routers.sedes import router as sedes_router
 from apps.API.routers.permisos import router as permisos_router
@@ -68,6 +69,13 @@ from shared.exceptions.sedes import (
     SedeNombreInvalidoError,
 )
 from shared.exceptions.employee import EmpleadoInactivoError, EmpleadoNoRegistradoError
+from shared.exceptions.horarios import (
+    HorarioInmutableError,
+    HorarioNoEncontradoError,
+    HorarioSolapamientoError,
+    HorarioToleranciaInvalidaError,
+    HorarioVigenciaInvalidaError,
+)
 from shared.exceptions.registration import (
     CodigoAlfaInvalidoError,
     DispositivoTokenNoAutorizadoError,
@@ -93,6 +101,7 @@ app.include_router(configuracion_router)
 app.include_router(desktop_router)
 app.include_router(dispositivos_router)
 app.include_router(empleados_router)
+app.include_router(horarios_router)
 app.include_router(registro_router)
 app.include_router(sedes_router)
 app.include_router(roles_router)
@@ -417,5 +426,34 @@ async def handle_auto_desactivacion(
 @app.exception_handler(RolInactivoError)
 async def handle_rol_inactivo(
     request: Request, exc: RolInactivoError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(HorarioNoEncontradoError)
+async def handle_horario_no_encontrado(
+    request: Request, exc: HorarioNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(HorarioSolapamientoError)
+async def handle_horario_solapamiento(
+    request: Request, exc: HorarioSolapamientoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(HorarioInmutableError)
+async def handle_horario_inmutable(
+    request: Request, exc: HorarioInmutableError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(HorarioVigenciaInvalidaError)
+@app.exception_handler(HorarioToleranciaInvalidaError)
+async def handle_horario_validacion(
+    request: Request, exc: Exception
 ) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
