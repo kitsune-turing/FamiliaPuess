@@ -8,6 +8,7 @@ from apps.API.routers.dispositivos import router as dispositivos_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.empleados import router as empleados_router
 from apps.API.routers.horarios import router as horarios_router
+from apps.API.routers.novedades import router as novedades_router
 from apps.API.routers.registro import router as registro_router
 from apps.API.routers.sedes import router as sedes_router
 from apps.API.routers.permisos import router as permisos_router
@@ -76,6 +77,11 @@ from shared.exceptions.horarios import (
     HorarioToleranciaInvalidaError,
     HorarioVigenciaInvalidaError,
 )
+from shared.exceptions.novedades import (
+    NovedadNoEncontradaError,
+    SedesSinHorarioError,
+    TipoNovedadNoEncontradoError,
+)
 from shared.exceptions.registration import (
     CodigoAlfaInvalidoError,
     DispositivoTokenNoAutorizadoError,
@@ -102,6 +108,7 @@ app.include_router(desktop_router)
 app.include_router(dispositivos_router)
 app.include_router(empleados_router)
 app.include_router(horarios_router)
+app.include_router(novedades_router)
 app.include_router(registro_router)
 app.include_router(sedes_router)
 app.include_router(roles_router)
@@ -455,5 +462,26 @@ async def handle_horario_inmutable(
 @app.exception_handler(HorarioToleranciaInvalidaError)
 async def handle_horario_validacion(
     request: Request, exc: Exception
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(NovedadNoEncontradaError)
+async def handle_novedad_no_encontrada(
+    request: Request, exc: NovedadNoEncontradaError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(TipoNovedadNoEncontradoError)
+async def handle_tipo_novedad_no_encontrado(
+    request: Request, exc: TipoNovedadNoEncontradoError
+) -> JSONResponse:
+    return JSONResponse(status_code=500, content={"detail": "Error de configuracion interna"})
+
+
+@app.exception_handler(SedesSinHorarioError)
+async def handle_sedes_sin_horario(
+    request: Request, exc: SedesSinHorarioError
 ) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
