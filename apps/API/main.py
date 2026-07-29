@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 
 from apps.API.routers.auth import router as auth_router
 from apps.API.routers.configuracion import router as configuracion_router
+from apps.API.routers.dispositivos import router as dispositivos_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.empleados import router as empleados_router
 from apps.API.routers.registro import router as registro_router
@@ -45,7 +46,14 @@ from shared.exceptions.usuarios import (
 )
 from shared.exceptions.concurrencia import ConflictoConcurrenciaError
 from shared.exceptions.configuration import ConfiguracionNoEncontradaError, SetupIncompletoError
-from shared.exceptions.device import DispositivoNoAutorizadoError, DispositivoNoEncontradoError
+from shared.exceptions.device import (
+    DispositivoNoAutorizadoError,
+    DispositivoNoEncontradoError,
+    DispositivoNoEncontradoPorIdError,
+    IdentificadorDuplicadoError,
+    IdentificadorFormatoInvalidoError,
+    SedeYaTieneDispositivoError,
+)
 from shared.exceptions.empleados import (
     DocumentoDuplicadoError,
     DocumentoFormatoInvalidoError,
@@ -83,6 +91,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(configuracion_router)
 app.include_router(desktop_router)
+app.include_router(dispositivos_router)
 app.include_router(empleados_router)
 app.include_router(registro_router)
 app.include_router(sedes_router)
@@ -161,6 +170,34 @@ async def handle_dispositivo_no_autorizado(
     request: Request, exc: DispositivoNoAutorizadoError
 ) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(DispositivoNoEncontradoPorIdError)
+async def handle_dispositivo_no_encontrado_por_id(
+    request: Request, exc: DispositivoNoEncontradoPorIdError
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(IdentificadorDuplicadoError)
+async def handle_identificador_duplicado(
+    request: Request, exc: IdentificadorDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(IdentificadorFormatoInvalidoError)
+async def handle_identificador_formato_invalido(
+    request: Request, exc: IdentificadorFormatoInvalidoError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(SedeYaTieneDispositivoError)
+async def handle_sede_ya_tiene_dispositivo(
+    request: Request, exc: SedeYaTieneDispositivoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.exception_handler(SetupIncompletoError)
