@@ -1,0 +1,303 @@
+from __future__ import annotations
+
+import logging
+import re
+from collections.abc import Sequence
+from datetime import datetime
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from apps.API.core.timezone import now as tz_now
+from apps.API.models.empleado import Empleado
+from apps.API.repositories import (
+    auditoria_repository,
+    cat_estado_repository,
+    empleado_repository,
+    sede_repository,
+)
+from shared.constants.estado import EstadoCodigo
+from shared.constants.operacion_auditoria import OperacionAuditoria
+from shared.constants.recurso_auditoria import RecursoAuditoria
+from shared.exceptions.concurrencia import ConflictoConcurrenciaError
+from shared.exceptions.empleados import (
+    DocumentoDuplicadoError,
+    DocumentoFormatoInvalidoError,
+    EmpleadoNoEncontradoError,
+    NombreInvalidoError,
+    SedeInactivaError,
+    SedeNoEncontradaError,
+)
+
+logger = logging.getLogger(__name__)
+
+_DOCUMENTO_RE = re.compile(r"^\d{6,20}$")
+_NOMBRE_RE = re.compile(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-]+$")
+
+
+def _validar_documento(documento: str) -> None:
+    if not _DOCUMENTO_RE.match(documento):
+        raise DocumentoFormatoInvalidoError()
+
+
+def _validar_nombre(valor: str, campo: str) -> None:
+    if not _NOMBRE_RE.match(valor):
+        raise NombreInvalidoError(campo)
+
+
+async def list_empleados(
+    session: AsyncSession,
+    *,
+    nombre: str | None = None,
+    documento: str | None = None,
+    cargo: str | None = None,
+    id_estado: int | None = None,
+    id_sede: int | None = None,
+) -> Sequence[Empleado]:
+    return await empleado_repository.get_all(
+        session,
+        nombre=nombre,
+        documento=documento,
+        cargo=cargo,
+        id_estado=id_estado,
+        id_sede=id_sede,
+    )
+
+
+async def get_empleado(session: AsyncSession, empleado_id: int) -> Empleado:
+    empleado = await empleado_repository.get_by_id(session, empleado_id)
+    if empleado is None:
+        raise EmpleadoNoEncontradoError(empleado_id)
+    return empleado
+
+
+async def create_empleado(
+    session: AsyncSession,
+    *,
+    documento: str,
+    nombre: str,
+    apellido: str,
+    cargo: str,
+    id_sede: int,
+    user_id: int,
+    ip_address: str | None = None,
+) -> Empleado:
+    _validar_documento(documento)
+    _validar_nombre(nombre, "nombre")
+    _validar_nombre(apellido, "apellido")
+
+    existing = await empleado_repository.get_by_documento(session, documento)
+    if existing is not None:
+        raise DocumentoDuplicadoError(documento)
+
+    sede = await sede_repository.get_by_id(session, id_sede)
+    if sede is None:
+        raise SedeNoEncontradaError(id_sede)
+
+    activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
+    if sede.id_estado != activo_id:
+        raise SedeInactivaError(id_sede)
+
+    timestamp = tz_now()
+
+    empleado = await empleado_repository.create(
+        session,
+        documento=documento,
+        nombre=nombre,
+        apellido=apellido,
+        cargo=cargo,
+        id_estado=activo_id,
+        id_sede=id_sede,
+        now=timestamp,
+    )
+
+    await auditoria_repository.create(
+        session,
+        id_usuario=user_id,
+        recurso=RecursoAuditoria.EMPLEADO,
+        id_recurso=str(empleado.id),
+        operacion=OperacionAuditoria.INSERT,
+        valor_nuevo={
+            "documento": documento,
+            "nombre": nombre,
+            "apellido": apellido,
+            "cargo": cargo,
+            "id_sede": id_sede,
+        },
+        ip_address=ip_address,
+        timestamp_accion=timestamp,
+    )
+
+    logger.info("Empleado creado: documento=%s, id=%d", documento, empleado.id)
+    return empleado
+
+
+async def update_empleado(
+    session: AsyncSession,
+    empleado_id: int,
+    *,
+    documento: str | None = None,
+    nombre: str | None = None,
+    apellido: str | None = None,
+    cargo: str | None = None,
+    id_sede: int | None = None,
+    updated_at: datetime,
+    user_id: int,
+    ip_address: str | None = None,
+) -> Empleado:
+    empleado = await empleado_repository.get_by_id(session, empleado_id)
+    if empleado is None:
+        raise EmpleadoNoEncontradoError(empleado_id)
+
+    if empleado.updated_at != updated_at:
+        raise ConflictoConcurrenciaError("empleado", empleado_id)
+
+    valor_anterior = {
+        "documento": empleado.documento,
+        "nombre": empleado.nombre,
+        "apellido": empleado.apellido,
+        "cargo": empleado.cargo,
+        "id_sede": empleado.id_sede,
+    }
+
+    if documento is not None:
+        _validar_documento(documento)
+        if documento != empleado.documento:
+            existing = await empleado_repository.get_by_documento(session, documento)
+            if existing is not None:
+                raise DocumentoDuplicadoError(documento)
+
+    if nombre is not None:
+        _validar_nombre(nombre, "nombre")
+
+    if apellido is not None:
+        _validar_nombre(apellido, "apellido")
+
+    if id_sede is not None and id_sede != empleado.id_sede:
+        sede = await sede_repository.get_by_id(session, id_sede)
+        if sede is None:
+            raise SedeNoEncontradaError(id_sede)
+        activo_id = await cat_estado_repository.get_estado_id(
+            session, EstadoCodigo.ACTIVO
+        )
+        if sede.id_estado != activo_id:
+            raise SedeInactivaError(id_sede)
+
+    timestamp = tz_now()
+    await empleado_repository.update_empleado(
+        session,
+        empleado_id,
+        documento=documento,
+        nombre=nombre,
+        apellido=apellido,
+        cargo=cargo,
+        id_sede=id_sede,
+        now=timestamp,
+    )
+
+    valor_nuevo: dict = {}
+    if documento is not None:
+        valor_nuevo["documento"] = documento
+    if nombre is not None:
+        valor_nuevo["nombre"] = nombre
+    if apellido is not None:
+        valor_nuevo["apellido"] = apellido
+    if cargo is not None:
+        valor_nuevo["cargo"] = cargo
+    if id_sede is not None:
+        valor_nuevo["id_sede"] = id_sede
+
+    await auditoria_repository.create(
+        session,
+        id_usuario=user_id,
+        recurso=RecursoAuditoria.EMPLEADO,
+        id_recurso=str(empleado_id),
+        operacion=OperacionAuditoria.UPDATE,
+        valor_anterior=valor_anterior,
+        valor_nuevo=valor_nuevo,
+        ip_address=ip_address,
+        timestamp_accion=timestamp,
+    )
+
+    logger.info("Empleado actualizado: id=%d", empleado_id)
+    updated = await empleado_repository.get_by_id(session, empleado_id)
+    return updated
+
+
+async def deactivate_empleado(
+    session: AsyncSession,
+    empleado_id: int,
+    *,
+    user_id: int,
+    ip_address: str | None = None,
+) -> None:
+    empleado = await empleado_repository.get_by_id(session, empleado_id)
+    if empleado is None:
+        raise EmpleadoNoEncontradoError(empleado_id)
+
+    inactivo_id = await cat_estado_repository.get_estado_id(
+        session, EstadoCodigo.INACTIVO
+    )
+    timestamp = tz_now()
+
+    await empleado_repository.update_empleado(
+        session, empleado_id, id_estado=inactivo_id, now=timestamp
+    )
+
+    await auditoria_repository.create(
+        session,
+        id_usuario=user_id,
+        recurso=RecursoAuditoria.EMPLEADO,
+        id_recurso=str(empleado_id),
+        operacion=OperacionAuditoria.DELETE,
+        valor_anterior={
+            "documento": empleado.documento,
+            "nombre": empleado.nombre,
+            "id_estado": empleado.id_estado,
+        },
+        ip_address=ip_address,
+        timestamp_accion=timestamp,
+    )
+
+    logger.info(
+        "Empleado desactivado: id=%d, documento=%s",
+        empleado_id,
+        empleado.documento,
+    )
+
+
+async def activate_empleado(
+    session: AsyncSession,
+    empleado_id: int,
+    *,
+    user_id: int,
+    ip_address: str | None = None,
+) -> Empleado:
+    empleado = await empleado_repository.get_by_id(session, empleado_id)
+    if empleado is None:
+        raise EmpleadoNoEncontradoError(empleado_id)
+
+    activo_id = await cat_estado_repository.get_estado_id(
+        session, EstadoCodigo.ACTIVO
+    )
+    timestamp = tz_now()
+
+    await empleado_repository.update_empleado(
+        session, empleado_id, id_estado=activo_id, now=timestamp
+    )
+
+    await auditoria_repository.create(
+        session,
+        id_usuario=user_id,
+        recurso=RecursoAuditoria.EMPLEADO,
+        id_recurso=str(empleado_id),
+        operacion=OperacionAuditoria.UPDATE,
+        valor_anterior={"id_estado": empleado.id_estado},
+        valor_nuevo={"id_estado": activo_id},
+        detalle="Reactivacion de empleado",
+        ip_address=ip_address,
+        timestamp_accion=timestamp,
+    )
+
+    logger.info("Empleado reactivado: id=%d", empleado_id)
+    updated = await empleado_repository.get_by_id(session, empleado_id)
+    return updated
