@@ -6,6 +6,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.types import DateTime
 
 from apps.API.models.base import Base
+from apps.API.models.cat_tipo_registro import CatTipoRegistro
 from apps.API.models.empleado import Empleado
 from apps.API.models.sede import Sede
 
@@ -33,3 +34,4 @@ class Asistencia(Base):
 
     empleado: Mapped[Empleado] = relationship(lazy="joined")
     sede: Mapped[Sede] = relationship(lazy="joined")
+    tipo_registro: Mapped[CatTipoRegistro] = relationship(lazy="joined")

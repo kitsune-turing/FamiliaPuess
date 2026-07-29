@@ -10,3 +10,4 @@ class RecursoAuditoria:
     ROL = "ROL"
     ASISTENCIA = "ASISTENCIA"
     NOVEDAD = "NOVEDAD"
+    REPORTE = "REPORTE"
