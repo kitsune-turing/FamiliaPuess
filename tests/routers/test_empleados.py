@@ -14,9 +14,8 @@ from shared.exceptions.empleados import (
     DocumentoFormatoInvalidoError,
     EmpleadoNoEncontradoError,
     NombreInvalidoError,
-    SedeInactivaError,
-    SedeNoEncontradaError,
 )
+from shared.exceptions.sedes import SedeInactivaError, SedeNoEncontradaError
 
 FIXED_NOW = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
 

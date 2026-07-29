@@ -7,6 +7,7 @@ from apps.API.routers.configuracion import router as configuracion_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.empleados import router as empleados_router
 from apps.API.routers.registro import router as registro_router
+from apps.API.routers.sedes import router as sedes_router
 from apps.API.routers.permisos import router as permisos_router
 from apps.API.routers.roles import router as roles_router
 from apps.API.routers.usuarios import router as usuarios_router
@@ -50,8 +51,13 @@ from shared.exceptions.empleados import (
     DocumentoFormatoInvalidoError,
     EmpleadoNoEncontradoError,
     NombreInvalidoError,
+)
+from shared.exceptions.sedes import (
+    SedeDireccionInvalidaError,
     SedeInactivaError,
     SedeNoEncontradaError,
+    SedeNombreDuplicadoError,
+    SedeNombreInvalidoError,
 )
 from shared.exceptions.employee import EmpleadoInactivoError, EmpleadoNoRegistradoError
 from shared.exceptions.registration import (
@@ -79,6 +85,7 @@ app.include_router(configuracion_router)
 app.include_router(desktop_router)
 app.include_router(empleados_router)
 app.include_router(registro_router)
+app.include_router(sedes_router)
 app.include_router(roles_router)
 app.include_router(permisos_router)
 app.include_router(usuarios_router)
@@ -123,6 +130,21 @@ async def handle_sede_no_encontrada(
 @app.exception_handler(SedeInactivaError)
 async def handle_sede_inactiva(
     request: Request, exc: SedeInactivaError
+) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(SedeNombreDuplicadoError)
+async def handle_sede_nombre_duplicado(
+    request: Request, exc: SedeNombreDuplicadoError
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(SedeDireccionInvalidaError)
+@app.exception_handler(SedeNombreInvalidoError)
+async def handle_sede_validacion(
+    request: Request, exc: Exception
 ) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
 
