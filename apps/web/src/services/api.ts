@@ -1,3 +1,4 @@
+import type { LoginRequest, LoginResponse } from "../types/auth";
 import type {
   ApiError,
   RegistroRequest,
@@ -13,6 +14,15 @@ async function handleResponse<T>(response: Response): Promise<T> {
     throw new Error(body?.detail ?? "Error inesperado del servidor");
   }
   return response.json() as Promise<T>;
+}
+
+export async function login(payload: LoginRequest): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<LoginResponse>(response);
 }
 
 export async function validarToken(
