@@ -497,7 +497,8 @@ INSERT INTO modulo (codigo, nombre, descripcion) VALUES
     ('REPORTES',      'Reportes y Exportacion',   'Consulta y descarga de reportes'),
     ('AUDITORIA',     'Auditoria',                'Consulta del log de auditoria'),
     ('CONFIGURACION', 'Configuracion General',    'Parametros globales del sistema'),
-    ('CALENDARIO',    'Calendario Laboral',       'Festivos y dias no laborales');
+    ('CALENDARIO',    'Calendario Laboral',       'Festivos y dias no laborales'),
+    ('NOVEDADES',     'Deteccion de Novedades',   'Consulta de novedades de asistencia');
 
 -- 7.7 Permisos (Super Usuario: todo con administrar)
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_escribir, puede_eliminar, puede_administrar)

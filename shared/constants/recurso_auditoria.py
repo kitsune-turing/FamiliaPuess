@@ -9,3 +9,4 @@ class RecursoAuditoria:
     PERMISO = "PERMISO"
     ROL = "ROL"
     ASISTENCIA = "ASISTENCIA"
+    NOVEDAD = "NOVEDAD"
