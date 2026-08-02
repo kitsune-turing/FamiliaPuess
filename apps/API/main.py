@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 
 from apps.API.routers.auth import router as auth_router
 from apps.API.routers.configuracion import router as configuracion_router
+from apps.API.routers.dashboard import router as dashboard_router
 from apps.API.routers.dispositivos import router as dispositivos_router
 from apps.API.routers.desktop import router as desktop_router
 from apps.API.routers.empleados import router as empleados_router
@@ -112,6 +113,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(configuracion_router)
+app.include_router(dashboard_router)
 app.include_router(desktop_router)
 app.include_router(dispositivos_router)
 app.include_router(empleados_router)

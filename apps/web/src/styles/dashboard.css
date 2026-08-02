@@ -1,0 +1,263 @@
+.dashboard-page {
+  display: flex;
+  min-height: 100vh;
+  background-color: #fdf8f3;
+}
+
+/* ---------- Sidebar ---------- */
+
+.dashboard-sidebar {
+  width: 280px;
+  background-color: #401801;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  flex-shrink: 0;
+}
+
+.dashboard-sidebar__marca {
+  width: 220px;
+  height: auto;
+  margin: 0 auto 4px;
+}
+
+.dashboard-sidebar__subtitle {
+  font-size: 11px;
+  color: #fff;
+  letter-spacing: 1.2px;
+  margin-bottom: 24px;
+  padding-left: 8px;
+}
+
+.dashboard-sidebar__section-title {
+  font-size: 14px;
+  color: #fff;
+  letter-spacing: 1.6px;
+  margin-bottom: 12px;
+  padding-left: 8px;
+}
+
+.dashboard-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  letter-spacing: 1.2px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.dashboard-sidebar__item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-sidebar__item--active {
+  background-color: #f24976;
+}
+
+.dashboard-sidebar__item-icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.dashboard-sidebar__brands {
+  margin-top: auto;
+  text-align: center;
+}
+
+.dashboard-sidebar__brands-title {
+  font-size: 14px;
+  color: #fff;
+  letter-spacing: 1.6px;
+  margin-bottom: 8px;
+}
+
+.dashboard-sidebar__brands-img {
+  width: 100%;
+  height: auto;
+}
+
+/* ---------- Main content ---------- */
+
+.dashboard-main {
+  flex: 1;
+  padding: 32px 40px;
+  overflow-y: auto;
+}
+
+/* ---------- Header ---------- */
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.dashboard-header__left h1 {
+  font-family: "Poppins", sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: #000;
+}
+
+.dashboard-header__left p {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  color: #000;
+  margin-top: 2px;
+}
+
+.dashboard-header__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard-header__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Poppins", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: #000;
+}
+
+.dashboard-header__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ddd;
+}
+
+/* ---------- Indicator cards ---------- */
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.dashboard-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.dashboard-card__icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.dashboard-card__icon--pink {
+  background-color: #f24976;
+}
+
+.dashboard-card__icon--gold {
+  background-color: #f2a20c;
+}
+
+.dashboard-card__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-card__label {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  color: #000;
+}
+
+.dashboard-card__value {
+  font-family: "Poppins", sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: #000;
+  line-height: 1.2;
+}
+
+/* ---------- Loading / Error ---------- */
+
+.dashboard-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  font-family: "Poppins", sans-serif;
+  font-size: 16px;
+  color: #666;
+}
+
+.dashboard-error {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  color: #d32f2f;
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+}
+
+.dashboard-error__retry {
+  margin-top: 12px;
+  padding: 8px 20px;
+  background-color: #f24976;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dashboard-error__retry:hover {
+  background-color: #d93d66;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1200px) {
+  .dashboard-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-sidebar {
+    display: none;
+  }
+
+  .dashboard-main {
+    padding: 20px;
+  }
+
+  .dashboard-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
