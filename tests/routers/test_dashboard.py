@@ -169,6 +169,10 @@ async def test_dashboard_without_permission_returns_403(client):
             "apps.API.dependencies.auth.permiso_rol_repository.get_permisos_by_rol",
             new=AsyncMock(return_value=[no_perm]),
         ),
+        patch(
+            "apps.API.dependencies.auth.auditoria_repository.create",
+            new=AsyncMock(),
+        ),
     ):
         resp = client.get("/dashboard", headers=_HEADERS)
     assert resp.status_code == 403

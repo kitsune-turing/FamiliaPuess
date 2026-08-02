@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from apps.API.routers.auditoria import router as auditoria_router
 from apps.API.routers.auth import router as auth_router
 from apps.API.routers.configuracion import router as configuracion_router
 from apps.API.routers.dashboard import router as dashboard_router
@@ -111,6 +112,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auditoria_router)
 app.include_router(auth_router)
 app.include_router(configuracion_router)
 app.include_router(dashboard_router)
