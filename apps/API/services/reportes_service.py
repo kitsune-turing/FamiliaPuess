@@ -120,13 +120,15 @@ async def generar_reporte_semanal(
         session,
         id_usuario=id_usuario,
         recurso=RecursoAuditoria.REPORTE,
-        id_recurso=reporte.id,
+        id_recurso=str(reporte.id),
         operacion=OperacionAuditoria.INSERT,
-        valor_nuevo=(
-            f"Reporte semanal {lunes_anterior} - {domingo_anterior}: "
-            f"{reporte.total_registros} registros, {reporte.total_novedades} novedades"
-        ),
-        now=timestamp,
+        valor_nuevo={
+            "periodo_inicio": str(lunes_anterior),
+            "periodo_fin": str(domingo_anterior),
+            "total_registros": reporte.total_registros,
+            "total_novedades": reporte.total_novedades,
+        },
+        timestamp_accion=timestamp,
     )
 
     logger.info(

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,12 @@ class _FakeUsuario:
     id_rol: int = 1
 
 
+def _fake_request(ip: str = "192.168.1.1"):
+    request = MagicMock()
+    request.client.host = ip
+    return request
+
+
 async def test_require_permission_allows_authorized_user():
     current_user = {"sub": "1", "type": "access"}
     session = AsyncMock(spec=AsyncSession)
@@ -47,7 +53,11 @@ async def test_require_permission_allows_authorized_user():
             new=AsyncMock(return_value=[_FakePermiso()]),
         ),
     ):
-        result = await checker(current_user=current_user, session=session)
+        result = await checker(
+            request=_fake_request(),
+            current_user=current_user,
+            session=session,
+        )
 
     assert result["sub"] == "1"
 
@@ -56,6 +66,7 @@ async def test_require_permission_denies_unauthorized_user():
     current_user = {"sub": "1", "type": "access"}
     session = AsyncMock(spec=AsyncSession)
     checker = require_permission("DASHBOARD", "escribir")
+    audit_mock = AsyncMock()
 
     with (
         patch(
@@ -66,15 +77,24 @@ async def test_require_permission_denies_unauthorized_user():
             "apps.API.dependencies.auth.permiso_rol_repository.get_permisos_by_rol",
             new=AsyncMock(return_value=[_FakePermiso()]),
         ),
+        patch(
+            "apps.API.dependencies.auth.auditoria_repository.create",
+            new=audit_mock,
+        ),
     ):
         with pytest.raises(PermisoInsuficienteError):
-            await checker(current_user=current_user, session=session)
+            await checker(
+                request=_fake_request(),
+                current_user=current_user,
+                session=session,
+            )
 
 
 async def test_require_permission_denies_wrong_module():
     current_user = {"sub": "1", "type": "access"}
     session = AsyncMock(spec=AsyncSession)
     checker = require_permission("USUARIOS", "leer")
+    audit_mock = AsyncMock()
 
     with (
         patch(
@@ -85,9 +105,17 @@ async def test_require_permission_denies_wrong_module():
             "apps.API.dependencies.auth.permiso_rol_repository.get_permisos_by_rol",
             new=AsyncMock(return_value=[_FakePermiso()]),
         ),
+        patch(
+            "apps.API.dependencies.auth.auditoria_repository.create",
+            new=audit_mock,
+        ),
     ):
         with pytest.raises(PermisoInsuficienteError):
-            await checker(current_user=current_user, session=session)
+            await checker(
+                request=_fake_request(),
+                current_user=current_user,
+                session=session,
+            )
 
 
 async def test_require_permission_raises_when_user_not_found():
@@ -100,7 +128,11 @@ async def test_require_permission_raises_when_user_not_found():
         new=AsyncMock(return_value=None),
     ):
         with pytest.raises(TokenInvalidoError):
-            await checker(current_user=current_user, session=session)
+            await checker(
+                request=_fake_request(),
+                current_user=current_user,
+                session=session,
+            )
 
 
 async def test_require_permission_allows_administrar():
@@ -119,6 +151,46 @@ async def test_require_permission_allows_administrar():
             new=AsyncMock(return_value=[permiso]),
         ),
     ):
-        result = await checker(current_user=current_user, session=session)
+        result = await checker(
+            request=_fake_request(),
+            current_user=current_user,
+            session=session,
+        )
 
     assert result["sub"] == "1"
+
+
+async def test_require_permission_logs_unauthorized_access():
+    current_user = {"sub": "1", "type": "access"}
+    session = AsyncMock(spec=AsyncSession)
+    checker = require_permission("USUARIOS", "eliminar")
+    audit_mock = AsyncMock()
+
+    with (
+        patch(
+            "apps.API.dependencies.auth.usuario_repository.get_by_id",
+            new=AsyncMock(return_value=_FakeUsuario()),
+        ),
+        patch(
+            "apps.API.dependencies.auth.permiso_rol_repository.get_permisos_by_rol",
+            new=AsyncMock(return_value=[_FakePermiso()]),
+        ),
+        patch(
+            "apps.API.dependencies.auth.auditoria_repository.create",
+            new=audit_mock,
+        ),
+    ):
+        with pytest.raises(PermisoInsuficienteError):
+            await checker(
+                request=_fake_request("10.0.0.5"),
+                current_user=current_user,
+                session=session,
+            )
+
+    audit_mock.assert_awaited_once()
+    call_kwargs = audit_mock.call_args[1]
+    assert call_kwargs["id_usuario"] == 1
+    assert call_kwargs["recurso"] == "SEGURIDAD"
+    assert call_kwargs["operacion"] == "ACCESO_NO_AUTORIZADO"
+    assert call_kwargs["ip_address"] == "10.0.0.5"
+    assert "USUARIOS/eliminar" in call_kwargs["detalle"]

@@ -11,3 +11,4 @@ class RecursoAuditoria:
     ASISTENCIA = "ASISTENCIA"
     NOVEDAD = "NOVEDAD"
     REPORTE = "REPORTE"
+    SEGURIDAD = "SEGURIDAD"
