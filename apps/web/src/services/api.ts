@@ -1,4 +1,5 @@
 import type { LoginRequest, LoginResponse } from "../types/auth";
+import type { DashboardIndicadores } from "../types/dashboard";
 import type {
   ApiError,
   RegistroRequest,
@@ -41,4 +42,11 @@ export async function registrarAsistencia(
     body: JSON.stringify(payload),
   });
   return handleResponse<RegistroResponse>(response);
+}
+
+export async function fetchDashboard(token: string): Promise<DashboardIndicadores> {
+  const response = await fetch(`${API_BASE}/dashboard`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return handleResponse<DashboardIndicadores>(response);
 }
