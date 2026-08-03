@@ -252,11 +252,12 @@ async def deactivate_usuario(
         timestamp_accion=timestamp,
     )
 
+    await sesion_usuario_repository.deactivate_all_for_user(
+        session, usuario_id, timestamp
+    )
+
     is_self = user_id == usuario_id
     if is_self:
-        await sesion_usuario_repository.deactivate_all_for_user(
-            session, usuario_id, timestamp
-        )
         logger.info("Usuario desactivo su propia cuenta: id=%d", usuario_id)
 
     logger.info("Usuario desactivado: id=%d, username=%s", usuario_id, usuario.username)

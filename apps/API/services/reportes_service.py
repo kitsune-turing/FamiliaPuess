@@ -29,6 +29,17 @@ from shared.exceptions.reportes import (
 
 logger = logging.getLogger(__name__)
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe_cell(value: str | None) -> str:
+    if value is None:
+        return ""
+    text = str(value)
+    if text and text[0] in _FORMULA_PREFIXES:
+        return "'" + text
+    return text
+
 _EXCEL_HEADERS = [
     "Documento",
     "Empleado",
@@ -113,8 +124,8 @@ async def generar_reporte_semanal(
     except ReporteDuplicadoError:
         raise
     except Exception as exc:
-        logger.error("Error generando reporte semanal: %s", exc)
-        raise ReporteGeneracionError(str(exc)) from exc
+        logger.error("Error generando reporte semanal: %s", exc, exc_info=True)
+        raise ReporteGeneracionError("Error interno al generar el reporte") from exc
 
     await auditoria_repository.create(
         session,
@@ -182,14 +193,14 @@ def generar_excel(
     for row_idx, asistencia in enumerate(asistencias, start=2):
         novedad = novedades_map.get(asistencia.id)
 
-        ws.cell(row=row_idx, column=1, value=asistencia.empleado.documento)
+        ws.cell(row=row_idx, column=1, value=_safe_cell(asistencia.empleado.documento))
         ws.cell(
             row=row_idx,
             column=2,
-            value=f"{asistencia.empleado.nombre} {asistencia.empleado.apellido}",
+            value=_safe_cell(f"{asistencia.empleado.nombre} {asistencia.empleado.apellido}"),
         )
-        ws.cell(row=row_idx, column=3, value=asistencia.sede.nombre)
-        ws.cell(row=row_idx, column=4, value=asistencia.tipo_registro.nombre)
+        ws.cell(row=row_idx, column=3, value=_safe_cell(asistencia.sede.nombre))
+        ws.cell(row=row_idx, column=4, value=_safe_cell(asistencia.tipo_registro.nombre))
         ws.cell(row=row_idx, column=5, value=asistencia.fecha_registro.isoformat())
         ws.cell(
             row=row_idx,
@@ -198,7 +209,7 @@ def generar_excel(
         )
 
         if novedad is not None:
-            ws.cell(row=row_idx, column=7, value=novedad.tipo_novedad.nombre)
+            ws.cell(row=row_idx, column=7, value=_safe_cell(novedad.tipo_novedad.nombre))
             color_hex = (novedad.tipo_novedad.color or "").lstrip("#")
             if len(color_hex) == 6:
                 fill = PatternFill(
