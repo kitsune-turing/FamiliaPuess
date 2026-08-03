@@ -208,6 +208,14 @@ async def refresh(
         await sesion_usuario_repository.deactivate(session, sesion_activa.id, tz_now())
         raise RefreshTokenInvalidoError()
 
+    usuario = await usuario_repository.get_by_id(session, user_id)
+    if usuario is None:
+        raise RefreshTokenInvalidoError()
+    activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
+    if usuario.id_estado != activo_id:
+        await sesion_usuario_repository.deactivate(session, sesion_activa.id, tz_now())
+        raise RefreshTokenInvalidoError()
+
     settings = get_settings()
     new_access = create_access_token(user_id, str(sesion_activa.id))
     new_refresh = create_refresh_token(user_id, str(sesion_activa.id))
@@ -270,6 +278,15 @@ async def validate_token(
     if sesion_activa.fecha_expira < tz_now():
         await sesion_usuario_repository.deactivate(session, sesion_activa.id, tz_now())
         raise TokenInvalidoError()
+
+    usuario = await usuario_repository.get_by_id(session, int(payload["sub"]))
+    if usuario is None:
+        raise TokenInvalidoError()
+    activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
+    if usuario.id_estado != activo_id:
+        await sesion_usuario_repository.deactivate(session, sesion_activa.id, tz_now())
+        raise UsuarioInactivoError()
+
     return payload
 
 

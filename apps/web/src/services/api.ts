@@ -29,7 +29,11 @@ export async function login(payload: LoginRequest): Promise<LoginResponse> {
 export async function validarToken(
   token: string,
 ): Promise<TokenValidarResponse> {
-  const response = await fetch(`${API_BASE}/registro/validar/${encodeURIComponent(token)}`);
+  const response = await fetch(`${API_BASE}/registro/validar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
   return handleResponse<TokenValidarResponse>(response);
 }
 
