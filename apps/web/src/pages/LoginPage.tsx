@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { login } from "../services/api";
 import marcaImg from "../assets/images/marca.png";
@@ -9,7 +9,7 @@ import userIcon from "../assets/icons/user.png";
 import "../styles/login.css";
 
 export function LoginPage() {
-  const { login: authLogin } = useAuth();
+  const { login: authLogin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState("");
@@ -29,7 +29,7 @@ export function LoginPage() {
       login({ username, password })
         .then((response) => {
           authLogin(response);
-          navigate("/admin", { replace: true });
+          navigate("/dashboard", { replace: true });
         })
         .catch((err: Error) => {
           setError(err.message);
@@ -40,6 +40,10 @@ export function LoginPage() {
   );
 
   const canSubmit = username.trim().length > 0 && password.length > 0;
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="login-page">

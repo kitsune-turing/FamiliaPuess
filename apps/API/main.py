@@ -1,3 +1,6 @@
+import logging
+import sys
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -102,14 +105,34 @@ from shared.exceptions.registration import (
     TokenNoEncontradoError,
 )
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Familia Puess - Sistema de Control de Asistencia")
+
+
+@app.on_event("startup")
+async def _validate_settings() -> None:
+    from apps.API.core.config import get_settings
+
+    settings = get_settings()
+    if not settings.jwt_secret_key:
+        logger.critical("JWT_SECRET_KEY is not configured. Set it via environment variable.")
+        sys.exit(1)
+    if settings.jwt_secret_key == "CHANGE-ME-IN-PRODUCTION":
+        logger.warning("JWT_SECRET_KEY is using an insecure placeholder. Change it for production.")
+    if "postgres:postgres@localhost" in settings.database_url:
+        logger.warning("DATABASE_URL is using default credentials. Change for production.")
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(auditoria_router)
@@ -133,7 +156,7 @@ app.include_router(usuarios_router)
 async def handle_conflicto_concurrencia(
     request: Request, exc: ConflictoConcurrenciaError
 ) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
+    return JSONResponse(status_code=409, content={"detail": "El recurso fue modificado por otro usuario"})
 
 
 @app.exception_handler(EmpleadoNoEncontradoError)
@@ -525,7 +548,7 @@ async def handle_reporte_duplicado(
 async def handle_reporte_generacion(
     request: Request, exc: ReporteGeneracionError
 ) -> JSONResponse:
-    return JSONResponse(status_code=500, content={"detail": str(exc)})
+    return JSONResponse(status_code=500, content={"detail": "Error interno al generar el reporte"})
 
 
 @app.exception_handler(ReporteSinDatosError)
