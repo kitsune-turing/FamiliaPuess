@@ -48,3 +48,8 @@ class PermisoInsuficienteError(Exception):
 class CambioContrasenaRequeridoError(Exception):
     def __init__(self) -> None:
         super().__init__("Debe cambiar su contrasena antes de continuar")
+
+
+class ContrasenaIgualError(Exception):
+    def __init__(self) -> None:
+        super().__init__("La nueva contrasena debe ser diferente a la actual")

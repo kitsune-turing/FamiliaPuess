@@ -9,12 +9,36 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
+export class SessionExpiredError extends Error {
+  constructor() {
+    super("La sesión ha expirado. Inicie sesión nuevamente.");
+    this.name = "SessionExpiredError";
+  }
+}
+
+let onSessionExpired: (() => void) | null = null;
+
+export function setSessionExpiredHandler(handler: () => void): void {
+  onSessionExpired = handler;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    onSessionExpired?.();
+    throw new SessionExpiredError();
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ApiError | null;
     throw new Error(body?.detail ?? "Error inesperado del servidor");
   }
   return response.json() as Promise<T>;
+}
+
+function authHeaders(token: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
 }
 
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
@@ -50,7 +74,7 @@ export async function registrarAsistencia(
 
 export async function fetchDashboard(token: string): Promise<DashboardIndicadores> {
   const response = await fetch(`${API_BASE}/dashboard`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
   });
   return handleResponse<DashboardIndicadores>(response);
 }

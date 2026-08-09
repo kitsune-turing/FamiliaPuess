@@ -1,14 +1,28 @@
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class CreateUsuarioRequest(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=150)
     correo: EmailStr = Field(..., max_length=255)
     username: str = Field(..., min_length=1, max_length=50)
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=12, max_length=128)
     id_rol: int = Field(..., gt=0)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra mayúscula")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra minúscula")
+        if not re.search(r"\d", v):
+            raise ValueError("La contraseña debe contener al menos un número")
+        if not re.search(r"[^A-Za-z0-9]", v):
+            raise ValueError("La contraseña debe contener al menos un carácter especial")
+        return v
 
 
 class UpdateUsuarioRequest(BaseModel):

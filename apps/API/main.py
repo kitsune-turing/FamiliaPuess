@@ -23,6 +23,7 @@ from apps.API.routers.usuarios import router as usuarios_router
 from shared.exceptions.attendance import AsistenciaDuplicadaError
 from shared.exceptions.auth import (
     CambioContrasenaRequeridoError,
+    ContrasenaIgualError,
     CredencialesInvalidasError,
     CuentaBloqueadaError,
     PermisoInsuficienteError,
@@ -115,12 +116,20 @@ async def _validate_settings() -> None:
     from apps.API.core.config import get_settings
 
     settings = get_settings()
-    if not settings.jwt_secret_key:
-        logger.critical("JWT_SECRET_KEY is not configured. Set it via environment variable.")
+    _INSECURE_SECRETS = {
+        "",
+        "CHANGE-ME-IN-PRODUCTION",
+        "docker-dev-secret-change-in-production",
+        "secret",
+        "changeme",
+    }
+    if settings.jwt_secret_key in _INSECURE_SECRETS:
+        logger.critical("JWT_SECRET_KEY is missing or uses a known insecure value. Aborting.")
         sys.exit(1)
-    if settings.jwt_secret_key == "CHANGE-ME-IN-PRODUCTION":
-        logger.warning("JWT_SECRET_KEY is using an insecure placeholder. Change it for production.")
-    if "postgres:postgres@localhost" in settings.database_url:
+    if len(settings.jwt_secret_key) < 32:
+        logger.critical("JWT_SECRET_KEY must be at least 32 characters. Aborting.")
+        sys.exit(1)
+    if "postgres:postgres@" in settings.database_url:
         logger.warning("DATABASE_URL is using default credentials. Change for production.")
 
 
@@ -380,6 +389,13 @@ async def handle_cambio_contrasena(
     request: Request, exc: CambioContrasenaRequeridoError
 ) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(ContrasenaIgualError)
+async def handle_contrasena_igual(
+    request: Request, exc: ContrasenaIgualError
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.exception_handler(RolNoEncontradoError)

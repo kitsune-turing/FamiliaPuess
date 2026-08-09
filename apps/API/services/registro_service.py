@@ -115,6 +115,20 @@ async def registrar_asistencia(
     if token_qr.dispositivo.id_sede != token_qr.id_sede:
         raise DispositivoTokenNoAutorizadoError()
 
+    activo_token_id = await cat_estado_token_repository.get_estado_token_id(
+        session, EstadoTokenCodigo.ACTIVO
+    )
+    consumed = await token_qr_repository.try_consume_atomically(
+        session,
+        token_id=token_qr.id,
+        id_estado_activo=activo_token_id,
+        id_estado_consumido=consumido_id,
+        consumido_en=ahora,
+        expira_en_min=ahora,
+    )
+    if not consumed:
+        raise TokenConsumidoError()
+
     tipo_entrada_id = await cat_tipo_registro_repository.get_tipo_registro_id(
         session, TipoRegistroCodigo.ENTRADA
     )
@@ -148,13 +162,6 @@ async def registrar_asistencia(
             hora_anterior=ahora,
             sede_anterior=token_qr.sede.nombre,
         )
-
-    await token_qr_repository.mark_consumed(
-        session,
-        token_id=token_qr.id,
-        id_estado_consumido=consumido_id,
-        consumido_en=ahora,
-    )
 
     return RegistroExitoso(
         empleado_nombre=f"{empleado.nombre} {empleado.apellido}",

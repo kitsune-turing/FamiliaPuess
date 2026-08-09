@@ -3,9 +3,11 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
+import { setSessionExpiredHandler } from "../services/api";
 import type { AuthUser, LoginResponse } from "../types/auth";
 
 interface AuthContextValue {
@@ -22,23 +24,47 @@ const STORAGE_KEY_TOKEN = "fp_access_token";
 const STORAGE_KEY_REFRESH = "fp_refresh_token";
 const STORAGE_KEY_USER = "fp_user";
 
-function loadStoredUser(): AuthUser | null {
+function isTokenExpired(token: string): boolean {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_USER);
-    if (!raw) return null;
-    return JSON.parse(raw) as AuthUser;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if (!payload.exp) return true;
+    return Date.now() >= payload.exp * 1000;
   } catch {
-    return null;
+    return true;
   }
 }
 
-function loadStoredToken(): string | null {
-  return localStorage.getItem(STORAGE_KEY_TOKEN);
+function loadStoredAuth(): { user: AuthUser | null; token: string | null } {
+  try {
+    const token = localStorage.getItem(STORAGE_KEY_TOKEN);
+    const raw = localStorage.getItem(STORAGE_KEY_USER);
+
+    if (!token || !raw || isTokenExpired(token)) {
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+      localStorage.removeItem(STORAGE_KEY_REFRESH);
+      localStorage.removeItem(STORAGE_KEY_USER);
+      return { user: null, token: null };
+    }
+
+    return { user: JSON.parse(raw) as AuthUser, token };
+  } catch {
+    return { user: null, token: null };
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
-  const [token, setToken] = useState<string | null>(loadStoredToken);
+  const [{ user, token }, setAuth] = useState(loadStoredAuth);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+    localStorage.removeItem(STORAGE_KEY_REFRESH);
+    localStorage.removeItem(STORAGE_KEY_USER);
+    setAuth({ user: null, token: null });
+  }, []);
+
+  useEffect(() => {
+    setSessionExpiredHandler(logout);
+  }, [logout]);
 
   const login = useCallback((response: LoginResponse) => {
     const authUser: AuthUser = {
@@ -54,16 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY_REFRESH, response.refresh_token);
     localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(authUser));
 
-    setToken(response.access_token);
-    setUser(authUser);
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY_TOKEN);
-    localStorage.removeItem(STORAGE_KEY_REFRESH);
-    localStorage.removeItem(STORAGE_KEY_USER);
-    setToken(null);
-    setUser(null);
+    setAuth({ user: authUser, token: response.access_token });
   }, []);
 
   const value = useMemo<AuthContextValue>(

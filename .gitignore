@@ -99,3 +99,7 @@ temp/
 CLAUDE.md
 claude.md
 git-flow-team.md
+
+docker-compose.yml
+.dockerignore
+docker

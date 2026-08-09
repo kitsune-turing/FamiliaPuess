@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.API.database.session import get_session
 from apps.API.dependencies.auth import get_current_user
 from apps.API.schemas.auth import (
+    ChangePasswordRequest,
+    ChangePasswordResponse,
     LoginRequest,
     LoginResponse,
     MeResponse,
@@ -101,6 +103,28 @@ async def logout(
         access_token=token,
         ip_address=_extract_ip(request),
     )
+
+
+@router.post(
+    "/change-password",
+    response_model=ChangePasswordResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def change_password(
+    payload: ChangePasswordRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: dict = Depends(get_current_user),
+) -> ChangePasswordResponse:
+    user_id = int(current_user["sub"])
+    await auth_service.change_password(
+        session,
+        user_id=user_id,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+        ip_address=_extract_ip(request),
+    )
+    return ChangePasswordResponse(message="Contrasena actualizada exitosamente")
 
 
 @router.get(
