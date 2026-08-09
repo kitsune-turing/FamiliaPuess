@@ -208,7 +208,7 @@ def test_create_usuario_returns_201(client):
                 "nombre": "Nuevo",
                 "correo": "nuevo@test.com",
                 "username": "nuevo",
-                "password": "password123",
+                "password": "Str0ng!Pass99",
                 "id_rol": 1,
             },
         )
@@ -236,7 +236,7 @@ def test_create_usuario_returns_409_duplicate_correo(client):
                 "nombre": "Nuevo",
                 "correo": "admin@test.com",
                 "username": "nuevo",
-                "password": "password123",
+                "password": "Str0ng!Pass99",
                 "id_rol": 1,
             },
         )
@@ -262,7 +262,7 @@ def test_create_usuario_returns_409_duplicate_username(client):
                 "nombre": "Nuevo",
                 "correo": "nuevo@test.com",
                 "username": "admin",
-                "password": "password123",
+                "password": "Str0ng!Pass99",
                 "id_rol": 1,
             },
         )
@@ -288,7 +288,7 @@ def test_create_usuario_returns_404_rol_not_found(client):
                 "nombre": "Nuevo",
                 "correo": "nuevo@test.com",
                 "username": "nuevo",
-                "password": "password123",
+                "password": "Str0ng!Pass99",
                 "id_rol": 999,
             },
         )
@@ -307,7 +307,7 @@ def test_create_usuario_returns_422_invalid_email(client):
                 "nombre": "Nuevo",
                 "correo": "not-an-email",
                 "username": "nuevo",
-                "password": "password123",
+                "password": "Str0ng!Pass99",
                 "id_rol": 1,
             },
         )
@@ -346,7 +346,7 @@ def test_create_usuario_returns_422_rol_inactivo(client):
                 "nombre": "Nuevo",
                 "correo": "nuevo@test.com",
                 "username": "nuevo",
-                "password": "password123",
+                "password": "Str0ng!Pass99",
                 "id_rol": 5,
             },
         )

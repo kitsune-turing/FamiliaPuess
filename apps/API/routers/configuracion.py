@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.database.session import get_session
-from apps.API.dependencies.auth import get_current_user
+from apps.API.dependencies.auth import get_current_user_enforce_pw
 from apps.API.schemas.configuracion import EstadoInicialResponse, PasoSetup
 from apps.API.services import configuracion_service
 
@@ -22,7 +22,7 @@ def _extract_ip(request: Request) -> str | None:
 )
 async def get_estado_inicial(
     session: AsyncSession = Depends(get_session),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user_enforce_pw),
 ) -> EstadoInicialResponse:
     result = await configuracion_service.get_setup_status(
         session, user_id=int(current_user["sub"])
@@ -40,7 +40,7 @@ async def get_estado_inicial(
 async def completar_setup(
     request: Request,
     session: AsyncSession = Depends(get_session),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user_enforce_pw),
 ) -> dict:
     await configuracion_service.completar_setup(
         session,

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.database.session import get_session
-from apps.API.dependencies.auth import get_current_user
+from apps.API.dependencies.auth import get_current_user, get_current_user_enforce_pw
 from apps.API.schemas.auth import (
     ChangePasswordRequest,
     ChangePasswordResponse,
@@ -134,7 +134,7 @@ async def change_password(
 )
 async def me(
     session: AsyncSession = Depends(get_session),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user_enforce_pw),
 ) -> MeResponse:
     from apps.API.repositories import usuario_repository
 

@@ -34,7 +34,7 @@ def client():
     app.dependency_overrides.clear()
 
 
-# ── GET /registro/validar/{token} ──
+# ── POST /registro/validar ──
 
 
 def test_validar_token_returns_200_with_sede(client):
@@ -44,7 +44,7 @@ def test_validar_token_returns_200_with_sede(client):
         "apps.API.routers.registro.registro_service.validar_token",
         new=AsyncMock(return_value=resultado),
     ):
-        response = client.get("/registro/validar/tok-abc")
+        response = client.post("/registro/validar", json={"token": "tok-abc"})
 
     assert response.status_code == 200
     body = response.json()
@@ -57,7 +57,7 @@ def test_validar_token_returns_404_when_not_found(client):
         "apps.API.routers.registro.registro_service.validar_token",
         new=AsyncMock(side_effect=TokenNoEncontradoError()),
     ):
-        response = client.get("/registro/validar/invalid-token")
+        response = client.post("/registro/validar", json={"token": "invalid-token"})
 
     assert response.status_code == 404
 
@@ -67,7 +67,7 @@ def test_validar_token_returns_404_when_format_invalid(client):
         "apps.API.routers.registro.registro_service.validar_token",
         new=AsyncMock(side_effect=TokenFormatoInvalidoError()),
     ):
-        response = client.get("/registro/validar/x")
+        response = client.post("/registro/validar", json={"token": "x"})
 
     assert response.status_code == 404
 
@@ -77,7 +77,7 @@ def test_validar_token_returns_410_when_expired(client):
         "apps.API.routers.registro.registro_service.validar_token",
         new=AsyncMock(side_effect=TokenExpiradoError()),
     ):
-        response = client.get("/registro/validar/expired-token")
+        response = client.post("/registro/validar", json={"token": "expired-token"})
 
     assert response.status_code == 410
 
@@ -87,7 +87,7 @@ def test_validar_token_returns_410_when_consumed(client):
         "apps.API.routers.registro.registro_service.validar_token",
         new=AsyncMock(side_effect=TokenConsumidoError()),
     ):
-        response = client.get("/registro/validar/consumed-token")
+        response = client.post("/registro/validar", json={"token": "consumed-token"})
 
     assert response.status_code == 410
 
@@ -97,7 +97,7 @@ def test_validar_token_returns_403_when_sede_unavailable(client):
         "apps.API.routers.registro.registro_service.validar_token",
         new=AsyncMock(side_effect=SedeNoDisponibleError()),
     ):
-        response = client.get("/registro/validar/some-token")
+        response = client.post("/registro/validar", json={"token": "some-token"})
 
     assert response.status_code == 403
 
