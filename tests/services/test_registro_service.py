@@ -94,7 +94,7 @@ def _base_patches(
         ),
         "get_estado_token_id": patch(
             "apps.API.repositories.cat_estado_token_repository.get_estado_token_id",
-            new=AsyncMock(return_value=CONSUMIDO_ID),
+            new=AsyncMock(side_effect=[CONSUMIDO_ID, ACTIVO_TOKEN_ID]),
         ),
         "get_estado_id": patch(
             "apps.API.repositories.cat_estado_repository.get_estado_id",
@@ -120,9 +120,9 @@ def _base_patches(
             "apps.API.repositories.asistencia_repository.create",
             new=AsyncMock(),
         ),
-        "mark_consumed": patch(
-            "apps.API.repositories.token_qr_repository.mark_consumed",
-            new=AsyncMock(),
+        "try_consume_atomically": patch(
+            "apps.API.repositories.token_qr_repository.try_consume_atomically",
+            new=AsyncMock(return_value=True),
         ),
     }
 
@@ -221,7 +221,7 @@ async def test_registrar_asistencia_happy_path():
         patches["get_tipo_registro_id"],
         patches["get_duplicado"],
         patches["create_asistencia"] as mock_create,
-        patches["mark_consumed"] as mock_consumed,
+        patches["try_consume_atomically"] as mock_consume,
     ):
         result = await registro_service.registrar_asistencia(
             session,
@@ -234,7 +234,7 @@ async def test_registrar_asistencia_happy_path():
     assert result.sede_nombre == "Sede Central"
     assert result.registrado_en == FIXED_NOW
     mock_create.assert_awaited_once()
-    mock_consumed.assert_awaited_once()
+    mock_consume.assert_awaited_once()
 
 
 async def test_registrar_raises_on_short_token():
@@ -411,6 +411,7 @@ async def test_registrar_raises_when_duplicate_attendance_found():
         patches["get_tipo_registro_id"],
         patches["get_duplicado"],
         patches["create_asistencia"] as mock_create,
+        patches["try_consume_atomically"],
     ):
         with pytest.raises(AsistenciaDuplicadaError):
             await registro_service.registrar_asistencia(
@@ -438,17 +439,15 @@ async def test_registrar_raises_on_integrity_error_safety_net():
         patches["get_tipo_registro_id"],
         patches["get_duplicado"],
         patches["create_asistencia"],
-        patches["mark_consumed"] as mock_consumed,
+        patches["try_consume_atomically"],
     ):
         with pytest.raises(AsistenciaDuplicadaError):
             await registro_service.registrar_asistencia(
                 session, token_value=VALID_TOKEN, documento="123456", codigo_alfa="A1B2C3"
             )
 
-    mock_consumed.assert_not_awaited()
 
-
-async def test_registrar_marks_token_consumed_after_success():
+async def test_registrar_consumes_token_atomically_before_insert():
     empleado = _FakeEmpleado()
     patches = _base_patches(empleado=empleado)
     session = AsyncMock(spec=AsyncSession)
@@ -462,15 +461,13 @@ async def test_registrar_marks_token_consumed_after_success():
         patches["get_tipo_registro_id"],
         patches["get_duplicado"],
         patches["create_asistencia"],
-        patches["mark_consumed"] as mock_consumed,
+        patches["try_consume_atomically"] as mock_consume,
     ):
         await registro_service.registrar_asistencia(
             session, token_value=VALID_TOKEN, documento="123456", codigo_alfa="A1B2C3"
         )
 
-    mock_consumed.assert_awaited_once_with(
-        session,
-        token_id=100,
-        id_estado_consumido=CONSUMIDO_ID,
-        consumido_en=FIXED_NOW,
-    )
+    mock_consume.assert_awaited_once()
+    call_kwargs = mock_consume.call_args.kwargs
+    assert call_kwargs["token_id"] == 100
+    assert call_kwargs["id_estado_consumido"] == CONSUMIDO_ID

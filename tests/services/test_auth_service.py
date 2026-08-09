@@ -359,6 +359,7 @@ async def test_logout_raises_when_session_not_found():
 
 async def test_validate_token_success():
     sesion = _FakeSesion()
+    usuario = _FakeUsuario()
     session = AsyncMock(spec=AsyncSession)
 
     with (
@@ -374,10 +375,20 @@ async def test_validate_token_success():
             "apps.API.services.auth_service.tz_now",
             return_value=FIXED_NOW,
         ),
+        patch(
+            "apps.API.repositories.usuario_repository.get_by_id",
+            new=AsyncMock(return_value=usuario),
+        ),
+        patch(
+            "apps.API.repositories.cat_estado_repository.get_estado_id",
+            new=AsyncMock(return_value=ACTIVO_ID),
+        ),
     ):
         payload = await auth_service.validate_token(session, "valid.jwt")
 
     assert payload["sub"] == "10"
+    assert payload["debe_cambiar_pw"] == False
+    assert payload["id_rol"] == 1
 
 
 async def test_validate_token_raises_when_session_not_found():
@@ -432,6 +443,7 @@ async def test_validate_token_raises_when_session_expired():
 
 async def test_refresh_success():
     sesion = _FakeSesion()
+    usuario = _FakeUsuario()
     session = AsyncMock(spec=AsyncSession)
 
     with (
@@ -450,6 +462,14 @@ async def test_refresh_success():
         patch(
             "apps.API.services.auth_service.tz_now",
             return_value=FIXED_NOW,
+        ),
+        patch(
+            "apps.API.repositories.usuario_repository.get_by_id",
+            new=AsyncMock(return_value=usuario),
+        ),
+        patch(
+            "apps.API.repositories.cat_estado_repository.get_estado_id",
+            new=AsyncMock(return_value=ACTIVO_ID),
         ),
     ):
         result = await auth_service.refresh(

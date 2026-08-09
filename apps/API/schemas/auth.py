@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -50,6 +52,19 @@ class MeResponse(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=12, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra mayúscula")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra minúscula")
+        if not re.search(r"\d", v):
+            raise ValueError("La contraseña debe contener al menos un número")
+        if not re.search(r"[^A-Za-z0-9]", v):
+            raise ValueError("La contraseña debe contener al menos un carácter especial")
+        return v
 
 
 class ChangePasswordResponse(BaseModel):

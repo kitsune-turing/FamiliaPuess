@@ -287,6 +287,8 @@ async def validate_token(
         await sesion_usuario_repository.deactivate(session, sesion_activa.id, tz_now())
         raise UsuarioInactivoError()
 
+    payload["debe_cambiar_pw"] = usuario.debe_cambiar_pw
+    payload["id_rol"] = usuario.id_rol
     return payload
 
 

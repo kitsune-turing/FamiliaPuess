@@ -14,7 +14,11 @@ from apps.API.repositories import (
 from apps.API.services import auth_service
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
-from shared.exceptions.auth import PermisoInsuficienteError, TokenInvalidoError
+from shared.exceptions.auth import (
+    CambioContrasenaRequeridoError,
+    PermisoInsuficienteError,
+    TokenInvalidoError,
+)
 
 _bearer_scheme = HTTPBearer()
 
@@ -26,10 +30,21 @@ async def get_current_user(
     return await auth_service.validate_token(session, credentials.credentials)
 
 
+async def get_current_user_enforce_pw(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    if current_user.get("debe_cambiar_pw"):
+        path = request.url.path
+        if path not in ("/auth/change-password", "/auth/logout"):
+            raise CambioContrasenaRequeridoError()
+    return current_user
+
+
 def require_permission(modulo_codigo: str, operacion: str) -> Callable:
     async def _check(
         request: Request,
-        current_user: dict = Depends(get_current_user),
+        current_user: dict = Depends(get_current_user_enforce_pw),
         session: AsyncSession = Depends(get_session),
     ) -> dict:
         user_id = int(current_user["sub"])
