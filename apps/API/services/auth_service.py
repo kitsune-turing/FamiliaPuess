@@ -22,7 +22,7 @@ from apps.API.security.jwt import (
     decode_refresh_token,
     hash_token,
 )
-from apps.API.security.password import verify_password
+from apps.API.security.password import hash_password, verify_password
 from shared.constants.estado import EstadoCodigo
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
@@ -305,6 +305,44 @@ async def get_permisos_usuario(
         )
         for p in permisos_db
     ]
+
+
+async def change_password(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    current_password: str,
+    new_password: str,
+    ip_address: str | None = None,
+) -> None:
+    usuario = await usuario_repository.get_by_id(session, user_id)
+    if usuario is None:
+        raise TokenInvalidoError()
+
+    if not verify_password(current_password, usuario.password_hash):
+        raise CredencialesInvalidasError()
+
+    if current_password == new_password:
+        from shared.exceptions.auth import ContrasenaIgualError
+        raise ContrasenaIgualError()
+
+    new_hash = hash_password(new_password)
+    ahora = tz_now()
+    await usuario_repository.update_password(session, user_id, new_hash, ahora)
+
+    await sesion_usuario_repository.deactivate_all_for_user(session, user_id, ahora)
+
+    await auditoria_repository.create(
+        session,
+        id_usuario=user_id,
+        recurso=RecursoAuditoria.USUARIO,
+        id_recurso=str(user_id),
+        operacion=OperacionAuditoria.CAMBIO_CONTRASENA,
+        ip_address=ip_address,
+        timestamp_accion=ahora,
+    )
+
+    logger.info("Cambio de contraseña exitoso: usuario_id=%d", user_id)
 
 
 async def _audit_failed_login(

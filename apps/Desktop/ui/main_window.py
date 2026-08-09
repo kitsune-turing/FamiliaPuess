@@ -124,7 +124,7 @@ class DesktopMainWindow(QWidget):
         self._ks = min(self._kx, self._ky)
 
         self.setWindowTitle("Familia Puess - Control de Asistencia")
-        self.setFixedSize(self._cw, self._ch)
+        self.setFixedSize(1556, 980)
         self.move(
             screen.x() + (screen.width() - self._cw) // 2,
             screen.y() + (screen.height() - self._ch) // 2,

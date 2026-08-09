@@ -45,3 +45,12 @@ class MeResponse(BaseModel):
     rol_codigo: str
     rol_nombre: str
     permisos: list[PermisoResponse]
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=12, max_length=128)
+
+
+class ChangePasswordResponse(BaseModel):
+    message: str
