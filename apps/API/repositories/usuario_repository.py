@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from apps.API.models.usuario import Usuario
+from shared.utils.sql import escape_like
 
 
 async def get_by_username(session: AsyncSession, username: str) -> Usuario | None:
@@ -36,9 +37,11 @@ async def get_all(
 ) -> Sequence[Usuario]:
     stmt = select(Usuario).options(joinedload(Usuario.rol)).order_by(Usuario.nombre)
     if nombre is not None:
-        stmt = stmt.where(Usuario.nombre.ilike(f"%{nombre}%"))
+        safe = escape_like(nombre)
+        stmt = stmt.where(Usuario.nombre.ilike(f"%{safe}%", escape="\\"))
     if username is not None:
-        stmt = stmt.where(Usuario.username.ilike(f"%{username}%"))
+        safe = escape_like(username)
+        stmt = stmt.where(Usuario.username.ilike(f"%{safe}%", escape="\\"))
     if id_rol is not None:
         stmt = stmt.where(Usuario.id_rol == id_rol)
     if id_estado is not None:

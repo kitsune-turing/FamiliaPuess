@@ -10,7 +10,7 @@ from apps.Desktop.utils.fonts import register_application_fonts
 from apps.Desktop.workers.token_rotation_worker import TokenRotationWorker
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def main() -> int:
 
     logger.info("API URL: %s", settings.api_base_url)
     logger.info("Dispositivo: %s", settings.dispositivo_identificador)
-    logger.info("Username: %s", settings.api_username)
+    logger.debug("Username: %s", settings.api_username)
 
     app = QApplication(sys.argv)
     register_application_fonts()

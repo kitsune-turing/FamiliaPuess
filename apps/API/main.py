@@ -5,6 +5,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from apps.API.core.config import get_settings
+from apps.API.core.security_headers import SecurityHeadersMiddleware
+
 from apps.API.routers.auditoria import router as auditoria_router
 from apps.API.routers.auth import router as auth_router
 from apps.API.routers.configuracion import router as configuracion_router
@@ -113,8 +116,6 @@ app = FastAPI(title="Familia Puess - Sistema de Control de Asistencia")
 
 @app.on_event("startup")
 async def _validate_settings() -> None:
-    from apps.API.core.config import get_settings
-
     settings = get_settings()
     _INSECURE_SECRETS = {
         "",
@@ -133,12 +134,12 @@ async def _validate_settings() -> None:
         logger.warning("DATABASE_URL is using default credentials. Change for production.")
 
 
+app.add_middleware(SecurityHeadersMiddleware)
+
+_settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
+    allow_origins=_settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],

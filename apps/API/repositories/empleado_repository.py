@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from apps.API.models.empleado import Empleado
+from shared.utils.sql import escape_like
 
 
 async def get_by_id(session: AsyncSession, empleado_id: int) -> Empleado | None:
@@ -39,14 +40,17 @@ async def get_all(
         .order_by(Empleado.nombre, Empleado.apellido)
     )
     if nombre is not None:
+        safe = escape_like(nombre)
         stmt = stmt.where(
-            (Empleado.nombre.ilike(f"%{nombre}%"))
-            | (Empleado.apellido.ilike(f"%{nombre}%"))
+            (Empleado.nombre.ilike(f"%{safe}%", escape="\\"))
+            | (Empleado.apellido.ilike(f"%{safe}%", escape="\\"))
         )
     if documento is not None:
-        stmt = stmt.where(Empleado.documento.ilike(f"%{documento}%"))
+        safe = escape_like(documento)
+        stmt = stmt.where(Empleado.documento.ilike(f"%{safe}%", escape="\\"))
     if cargo is not None:
-        stmt = stmt.where(Empleado.cargo.ilike(f"%{cargo}%"))
+        safe = escape_like(cargo)
+        stmt = stmt.where(Empleado.cargo.ilike(f"%{safe}%", escape="\\"))
     if id_estado is not None:
         stmt = stmt.where(Empleado.id_estado == id_estado)
     if id_sede is not None:

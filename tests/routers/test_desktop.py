@@ -41,7 +41,7 @@ def _auth_patches():
                 type("P", (), {
                     "modulo": type("M", (), {"codigo": "DISPOSITIVOS"})(),
                     "puede_leer": True,
-                    "puede_escribir": False,
+                    "puede_escribir": True,
                     "puede_eliminar": False,
                     "puede_administrar": False,
                 })()
