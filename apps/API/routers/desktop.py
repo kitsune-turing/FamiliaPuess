@@ -15,7 +15,7 @@ router = APIRouter(prefix="/desktop", tags=["desktop"])
 async def generar_token(
     payload: TokenGenerarRequest,
     session: AsyncSession = Depends(get_session),
-    _current_user: dict = Depends(require_permission("DISPOSITIVOS", "leer")),
+    _current_user: dict = Depends(require_permission("DISPOSITIVOS", "escribir")),
 ) -> TokenGenerarResponse:
     generado = await token_service.generate_token(session, payload.dispositivo_identificador)
     return TokenGenerarResponse(

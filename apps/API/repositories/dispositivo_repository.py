@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from apps.API.models.dispositivo import Dispositivo
+from shared.utils.sql import escape_like
 
 
 async def get_by_id(session: AsyncSession, dispositivo_id: int) -> Dispositivo | None:
@@ -49,7 +50,8 @@ async def get_all(
         .order_by(Dispositivo.id_sede)
     )
     if identificador is not None:
-        stmt = stmt.where(Dispositivo.identificador.ilike(f"%{identificador}%"))
+        safe = escape_like(identificador)
+        stmt = stmt.where(Dispositivo.identificador.ilike(f"%{safe}%", escape="\\"))
     if id_sede is not None:
         stmt = stmt.where(Dispositivo.id_sede == id_sede)
     if id_estado is not None:

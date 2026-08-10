@@ -5,6 +5,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.models.sede import Sede
+from shared.utils.sql import escape_like
 
 
 async def get_by_id(session: AsyncSession, sede_id: int) -> Sede | None:
@@ -28,9 +29,11 @@ async def get_all(
 ) -> Sequence[Sede]:
     stmt = select(Sede).order_by(Sede.nombre)
     if nombre is not None:
-        stmt = stmt.where(Sede.nombre.ilike(f"%{nombre}%"))
+        safe = escape_like(nombre)
+        stmt = stmt.where(Sede.nombre.ilike(f"%{safe}%", escape="\\"))
     if direccion is not None:
-        stmt = stmt.where(Sede.direccion.ilike(f"%{direccion}%"))
+        safe = escape_like(direccion)
+        stmt = stmt.where(Sede.direccion.ilike(f"%{safe}%", escape="\\"))
     if id_estado is not None:
         stmt = stmt.where(Sede.id_estado == id_estado)
     result = await session.execute(stmt)

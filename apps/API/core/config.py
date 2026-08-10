@@ -11,6 +11,11 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://postgres:postgres@localhost:5432/familia_puess"
     )
 
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
+
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
