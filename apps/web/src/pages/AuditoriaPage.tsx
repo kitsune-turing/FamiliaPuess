@@ -1,160 +1,225 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { AdminLayout } from "../components/AdminLayout";
+import { useMemo, useState } from "react";
+import {
+  Badge,
+  Card,
+  DateRangeField,
+  EmptyRow,
+  Pagination,
+  SelectField,
+  StatCard,
+  type RangoFechas,
+} from "../components/ui";
+import {
+  CursorClickIcon,
+  DownloadIcon,
+  GridIcon,
+  ListChecksIcon,
+  RefreshIcon,
+  UserCheckIcon,
+} from "../components/ui/Icons";
+import { useDatos } from "../context/DataProvider";
+import { useToast } from "../context/ToastProvider";
+import { ACCIONES_AUDITORIA, MODULOS_AUDITORIA } from "../data/initial";
+import { usePaginacion } from "../hooks";
+import { descargarArchivo, generarCsv, numero } from "../lib/format";
+import type { AccionAuditoria, ModuloAuditoria } from "../types/admin";
 
-interface AuditoriaItem {
-  id: number;
-  fechaHora: string;
-  usuario: string;
-  modulo: string;
-  accion: string;
-  sede: string;
-  ip: string;
-  dispositivo: string;
-}
+const POR_PAGINA = 6;
 
-const CARDS = [
-  { label: "Total actividades", value: 1248, iconClass: "admin-card__icon--pink" },
-  { label: "Hoy", value: 34, iconClass: "admin-card__icon--gold" },
-  { label: "Usuarios activos", value: 8, iconClass: "admin-card__icon--green" },
-  { label: "Alertas", value: 2, iconClass: "admin-card__icon--orange" },
-];
+const TONO_MODULO: Record<ModuloAuditoria, "pink" | "orange" | "purple" | "green" | "yellow" | "grey"> = {
+  Trabajadores: "pink",
+  Seguridad: "orange",
+  Sedes: "purple",
+  Dispositivos: "green",
+  Reportes: "yellow",
+  Usuarios: "grey",
+};
 
-const MOCK_DATA: AuditoriaItem[] = [
-  { id: 1, fechaHora: "01/08/2026 08:15:23", usuario: "Admin Principal", modulo: "Trabajadores", accion: "Crear", sede: "Sede Principal", ip: "192.168.1.10", dispositivo: "Chrome / Windows" },
-  { id: 2, fechaHora: "01/08/2026 08:10:05", usuario: "Carlos Supervisor", modulo: "Seguridad", accion: "Actualizar", sede: "Sede Norte", ip: "192.168.1.25", dispositivo: "Chrome / macOS" },
-  { id: 3, fechaHora: "01/08/2026 07:55:42", usuario: "Admin Principal", modulo: "Sedes", accion: "Crear", sede: "Sede Principal", ip: "192.168.1.10", dispositivo: "Chrome / Windows" },
-  { id: 4, fechaHora: "01/08/2026 07:45:18", usuario: "María Admin", modulo: "Dispositivos", accion: "Actualizar", sede: "Sede Sur", ip: "192.168.1.30", dispositivo: "Firefox / Linux" },
-  { id: 5, fechaHora: "31/07/2026 17:30:00", usuario: "Admin Principal", modulo: "Usuarios", accion: "Crear", sede: "Sede Principal", ip: "192.168.1.10", dispositivo: "Chrome / Windows" },
-  { id: 6, fechaHora: "31/07/2026 16:20:15", usuario: "Carlos Supervisor", modulo: "Horarios", accion: "Actualizar", sede: "Sede Norte", ip: "192.168.1.25", dispositivo: "Chrome / macOS" },
-];
-
-function moduloBadgeClass(modulo: string): string {
-  if (modulo === "Trabajadores") return "admin-badge--pink";
-  if (modulo === "Seguridad") return "admin-badge--orange";
-  if (modulo === "Sedes") return "admin-badge--gold";
-  if (modulo === "Dispositivos") return "admin-badge--blue";
-  if (modulo === "Usuarios") return "admin-badge--pink";
-  return "admin-badge--green";
-}
-
-function accionBadgeClass(accion: string): string {
-  if (accion === "Crear") return "admin-badge--green";
-  if (accion === "Actualizar") return "admin-badge--blue";
-  if (accion === "Eliminar") return "admin-badge--red";
-  return "admin-badge--gold";
-}
+const TONO_ACCION: Record<AccionAuditoria, "green" | "purple" | "pink" | "grey"> = {
+  Crear: "green",
+  Actualizar: "purple",
+  Eliminar: "pink",
+  Consultar: "grey",
+};
 
 export function AuditoriaPage() {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [fechaDesde, setFechaDesde] = useState("");
-  const [fechaHasta, setFechaHasta] = useState("");
-  const [usuarioFilter, setUsuarioFilter] = useState("");
-  const [moduloFilter, setModuloFilter] = useState("");
-  const [accionFilter, setAccionFilter] = useState("");
+  const { auditorias, usuarios } = useDatos();
+  const { mostrar } = useToast();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login", { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+  const [rango, setRango] = useState<RangoFechas>({ desde: "2026-05-01", hasta: "2026-05-12" });
+  const [filtroUsuario, setFiltroUsuario] = useState("todos");
+  const [filtroModulo, setFiltroModulo] = useState("todos");
+  const [filtroAccion, setFiltroAccion] = useState("todas");
 
-  const filtered = MOCK_DATA.filter((a) => {
-    if (usuarioFilter && a.usuario !== usuarioFilter) return false;
-    if (moduloFilter && a.modulo !== moduloFilter) return false;
-    if (accionFilter && a.accion !== accionFilter) return false;
-    return true;
-  });
+  const filtradas = useMemo(
+    () =>
+      auditorias.filter((entrada) => {
+        const porUsuario = filtroUsuario === "todos" || entrada.usuario === filtroUsuario;
+        const porModulo = filtroModulo === "todos" || entrada.modulo === filtroModulo;
+        const porAccion = filtroAccion === "todas" || entrada.accion === filtroAccion;
+        return porUsuario && porModulo && porAccion;
+      }),
+    [auditorias, filtroUsuario, filtroModulo, filtroAccion],
+  );
 
-  const clearFilters = () => {
-    setFechaDesde("");
-    setFechaHasta("");
-    setUsuarioFilter("");
-    setModuloFilter("");
-    setAccionFilter("");
+  const metricas = useMemo(
+    () => ({
+      total: filtradas.length,
+      usuarios: new Set(filtradas.map((a) => a.usuario)).size,
+      modulos: new Set(filtradas.map((a) => a.modulo)).size,
+      acciones: new Set(filtradas.map((a) => a.accion)).size,
+    }),
+    [filtradas],
+  );
+
+  const paginacion = usePaginacion(filtradas, POR_PAGINA);
+
+  const limpiarFiltros = () => {
+    setFiltroUsuario("todos");
+    setFiltroModulo("todos");
+    setFiltroAccion("todas");
+    mostrar("Filtros restablecidos.", "info");
   };
 
+  const exportar = () => {
+    const csv = generarCsv(
+      ["Fecha / Hora", "Usuario", "Módulo", "Acción", "Detalle", "IP", "Dispositivo"],
+      filtradas.map((a) => [a.fechaHora, a.usuario, a.modulo, a.accion, a.detalle, a.ip, a.dispositivo]),
+    );
+    descargarArchivo("auditoria.csv", csv);
+    mostrar("Historial exportado en CSV.");
+  };
+
+  const nombresUsuario = Array.from(new Set(usuarios.map((u) => u.nombre)));
+
   return (
-    <AdminLayout title="Auditoría" subtitle="Registro de actividades del sistema">
-      <section className="admin-cards">
-        {CARDS.map((card) => (
-          <div key={card.label} className="admin-card">
-            <div className={`admin-card__icon ${card.iconClass}`} />
-            <div className="admin-card__info">
-              <span className="admin-card__label">{card.label}</span>
-              <span className="admin-card__value">{card.value}</span>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <div className="admin-filters">
-        <input type="date" className="admin-filters__date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
-        <input type="date" className="admin-filters__date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
-        <select className="admin-filters__select" value={usuarioFilter} onChange={(e) => setUsuarioFilter(e.target.value)}>
-          <option value="">Todos los usuarios</option>
-          <option value="Admin Principal">Admin Principal</option>
-          <option value="Carlos Supervisor">Carlos Supervisor</option>
-          <option value="María Admin">María Admin</option>
-        </select>
-        <select className="admin-filters__select" value={moduloFilter} onChange={(e) => setModuloFilter(e.target.value)}>
-          <option value="">Todos los módulos</option>
-          <option value="Trabajadores">Trabajadores</option>
-          <option value="Seguridad">Seguridad</option>
-          <option value="Sedes">Sedes</option>
-          <option value="Dispositivos">Dispositivos</option>
-          <option value="Usuarios">Usuarios</option>
-          <option value="Horarios">Horarios</option>
-        </select>
-        <select className="admin-filters__select" value={accionFilter} onChange={(e) => setAccionFilter(e.target.value)}>
-          <option value="">Todas las acciones</option>
-          <option value="Crear">Crear</option>
-          <option value="Actualizar">Actualizar</option>
-          <option value="Eliminar">Eliminar</option>
-        </select>
-        <button type="button" className="admin-filters__clear" onClick={clearFilters}>Limpiar filtros</button>
-      </div>
-
-      <div className="admin-table-container">
-        <h2 className="admin-table-container__title">Historial de actividades</h2>
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Fecha/Hora</th>
-              <th>Usuario</th>
-              <th>Módulo</th>
-              <th>Acción</th>
-              <th>Sede</th>
-              <th>IP</th>
-              <th>Dispositivo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((a) => (
-              <tr key={a.id}>
-                <td>{a.fechaHora}</td>
-                <td>{a.usuario}</td>
-                <td><span className={`admin-badge ${moduloBadgeClass(a.modulo)}`}>{a.modulo}</span></td>
-                <td><span className={`admin-badge ${accionBadgeClass(a.accion)}`}>{a.accion}</span></td>
-                <td>{a.sede}</td>
-                <td>{a.ip}</td>
-                <td>{a.dispositivo}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="admin-pagination">
-          <span className="admin-pagination__info">Mostrando 1 a {filtered.length} de {filtered.length} registros</span>
-          <div className="admin-pagination__controls">
-            <button type="button" className="admin-pagination__btn">&laquo;</button>
-            <button type="button" className="admin-pagination__btn admin-pagination__btn--active">1</button>
-            <button type="button" className="admin-pagination__btn">&raquo;</button>
-          </div>
+    <>
+      {/* ------------------------------------------------------- Filtros - */}
+      <Card>
+        <div className="filters">
+          <DateRangeField etiqueta="Rango de fechas" rango={rango} alCambiar={setRango} />
+          <SelectField
+            etiqueta="Usuario"
+            valor={filtroUsuario}
+            alCambiar={setFiltroUsuario}
+            opciones={[
+              { valor: "todos", etiqueta: "Todos los usuarios" },
+              ...nombresUsuario.map((n) => ({ valor: n, etiqueta: n })),
+            ]}
+          />
+          <SelectField
+            etiqueta="Módulo"
+            valor={filtroModulo}
+            alCambiar={setFiltroModulo}
+            opciones={[
+              { valor: "todos", etiqueta: "Todos los módulos" },
+              ...MODULOS_AUDITORIA.map((m) => ({ valor: m, etiqueta: m })),
+            ]}
+          />
+          <SelectField
+            etiqueta="Acción"
+            valor={filtroAccion}
+            alCambiar={setFiltroAccion}
+            opciones={[
+              { valor: "todas", etiqueta: "Todas las acciones" },
+              ...ACCIONES_AUDITORIA.map((a) => ({ valor: a, etiqueta: a })),
+            ]}
+          />
+          <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
+            <RefreshIcon size={20} /> Limpiar filtros
+          </button>
         </div>
+      </Card>
+
+      {/* ------------------------------------------------------ Métricas - */}
+      <div className="stat-grid">
+        <StatCard
+          icono={<ListChecksIcon size={26} />}
+          color="yellow"
+          etiqueta="Total actividades"
+          valor={numero(metricas.total)}
+          pista="En el periodo seleccionado"
+        />
+        <StatCard
+          icono={<UserCheckIcon size={26} />}
+          color="yellow"
+          etiqueta="Usuarios únicos"
+          valor={metricas.usuarios}
+          pista="En el periodo seleccionado"
+        />
+        <StatCard
+          icono={<GridIcon size={26} />}
+          color="yellow"
+          etiqueta="Módulos utilizados"
+          valor={metricas.modulos}
+          pista="En el periodo seleccionado"
+        />
+        <StatCard
+          icono={<CursorClickIcon size={26} />}
+          color="yellow"
+          etiqueta="Acciones realizadas"
+          valor={metricas.acciones}
+          pista="Tipos diferentes"
+        />
       </div>
-    </AdminLayout>
+
+      {/* -------------------------------------------- Historial de acciones */}
+      <Card>
+        <div className="card__head">
+          <h2 className="card__title">Historial de actividades</h2>
+          <button type="button" className="btn btn--ghost" onClick={exportar}>
+            <DownloadIcon size={19} /> Exportar
+          </button>
+        </div>
+
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Fecha / Hora</th>
+                <th>Usuario</th>
+                <th>Módulo</th>
+                <th>Acción</th>
+                <th>Detalle</th>
+                <th>IP</th>
+                <th>Dispositivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginacion.visibles.length === 0 ? (
+                <EmptyRow columnas={7} mensaje={
+                  auditorias.length === 0
+                    ? "Aún no hay actividad registrada en el sistema."
+                    : "No hay actividades que coincidan con los filtros."
+                } />
+              ) : (
+                paginacion.visibles.map((entrada) => (
+                  <tr key={entrada.id}>
+                    <td>{entrada.fechaHora}</td>
+                    <td>{entrada.usuario}</td>
+                    <td>
+                      <Badge tono={TONO_MODULO[entrada.modulo]}>{entrada.modulo}</Badge>
+                    </td>
+                    <td>
+                      <Badge tono={TONO_ACCION[entrada.accion]}>{entrada.accion}</Badge>
+                    </td>
+                    <td style={{ maxWidth: 280 }}>{entrada.detalle}</td>
+                    <td>{entrada.ip}</td>
+                    <td>{entrada.dispositivo}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          pagina={paginacion.pagina}
+          totalPaginas={paginacion.totalPaginas}
+          info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} actividades`}
+          irA={paginacion.irA}
+        />
+      </Card>
+    </>
   );
 }

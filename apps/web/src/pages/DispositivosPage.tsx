@@ -1,89 +1,199 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { AdminLayout } from "../components/AdminLayout";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  BadgeOutline,
+  Card,
+  ConfirmDialog,
+  EmptyRow,
+  Modal,
+  Pagination,
+  SearchInput,
+  SelectField,
+  Switch,
+  TextField,
+} from "../components/ui";
+import {
+  BoxIcon,
+  EditIcon,
+  MonitorIcon,
+  MonitorOffIcon,
+  RefreshIcon,
+  TrashIcon,
+  WifiOffIcon,
+} from "../components/ui/Icons";
+import { useDatos } from "../context/DataProvider";
+import { useToast } from "../context/ToastProvider";
+import { usePaginacion } from "../hooks";
+import { coincide } from "../lib/format";
+import type { Dispositivo, EstadoDispositivo } from "../types/admin";
 
-interface Dispositivo {
-  id: number;
-  nombre: string;
-  codigo: string;
-  sede: string;
-  ultimaConexion: string;
-  estado: string;
-  version: string;
-}
+const POR_PAGINA = 5;
 
-const CARDS = [
-  { label: "Total dispositivos", value: 12, iconClass: "admin-card__icon--pink" },
-  { label: "En línea", value: 8, iconClass: "admin-card__icon--green" },
-  { label: "Con problemas", value: 2, iconClass: "admin-card__icon--orange" },
-  { label: "Fuera de línea", value: 2, iconClass: "admin-card__icon--gold" },
-];
+const ETIQUETA_ESTADO: Record<EstadoDispositivo, string> = {
+  en_linea: "En línea",
+  problemas: "Problemas",
+  fuera_de_linea: "Fuera de línea",
+};
 
-const MOCK_DATA: Dispositivo[] = [
-  { id: 1, nombre: "Desktop Principal", codigo: "DSK-001", sede: "Sede Principal", ultimaConexion: "Hace 2 min", estado: "En línea", version: "2.1.0" },
-  { id: 2, nombre: "Desktop Recepción", codigo: "DSK-002", sede: "Sede Norte", ultimaConexion: "Hace 5 min", estado: "En línea", version: "2.1.0" },
-  { id: 3, nombre: "Desktop Almacén", codigo: "DSK-003", sede: "Sede Sur", ultimaConexion: "Hace 1 hora", estado: "Problemas", version: "2.0.8" },
-  { id: 4, nombre: "Desktop Entrada", codigo: "DSK-004", sede: "Sede Principal", ultimaConexion: "Hace 3 días", estado: "Fuera de línea", version: "2.0.5" },
-  { id: 5, nombre: "Desktop Cafetería", codigo: "DSK-005", sede: "Sede Norte", ultimaConexion: "Hace 1 min", estado: "En línea", version: "2.1.0" },
-];
+const TONO_ESTADO: Record<EstadoDispositivo, "green" | "pink" | "yellow"> = {
+  en_linea: "green",
+  problemas: "pink",
+  fuera_de_linea: "yellow",
+};
 
-function badgeClass(estado: string): string {
-  if (estado === "En línea") return "admin-badge--green";
-  if (estado === "Problemas") return "admin-badge--pink";
-  return "admin-badge--gold";
-}
+const VACIO: Dispositivo = {
+  id: "",
+  nombre: "",
+  codigo: "",
+  sede: "",
+  ultimaConexion: "Sin conexión previa",
+  estado: "fuera_de_linea",
+  version: "v2.4.1",
+  activo: true,
+};
 
 export function DispositivosPage() {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [sedeFilter, setSedeFilter] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState("");
+  const { dispositivos, sedes, guardarDispositivo, eliminarDispositivo } = useDatos();
+  const { mostrar } = useToast();
+  const [parametros, setParametros] = useSearchParams();
+
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroSede, setFiltroSede] = useState("todas");
+  const [filtroEstado, setFiltroEstado] = useState("todos");
+  const [filtroConexion, setFiltroConexion] = useState("todas");
+  const [editando, setEditando] = useState<Dispositivo | null>(null);
+  const [aEliminar, setAEliminar] = useState<Dispositivo | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login", { replace: true });
+    if (parametros.get("nuevo")) {
+      setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" });
+      parametros.delete("nuevo");
+      setParametros(parametros, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [parametros, setParametros, sedes]);
 
-  const filtered = MOCK_DATA.filter((d) => {
-    if (sedeFilter && d.sede !== sedeFilter) return false;
-    if (estadoFilter && d.estado !== estadoFilter) return false;
-    return true;
-  });
+  const metricas = useMemo(
+    () => ({
+      total: dispositivos.length,
+      activos: dispositivos.filter((d) => d.activo).length,
+      inactivos: dispositivos.filter((d) => !d.activo).length,
+      sinConexion: dispositivos.filter((d) => d.estado === "fuera_de_linea").length,
+    }),
+    [dispositivos],
+  );
+
+  const filtrados = useMemo(
+    () =>
+      dispositivos.filter((dispositivo) => {
+        const porTexto =
+          coincide(dispositivo.nombre, busqueda) ||
+          coincide(dispositivo.codigo, busqueda) ||
+          coincide(dispositivo.sede, busqueda);
+        const porSede = filtroSede === "todas" || dispositivo.sede === filtroSede;
+        const porEstado =
+          filtroEstado === "todos" ||
+          (filtroEstado === "activo" ? dispositivo.activo : !dispositivo.activo);
+        const porConexion = filtroConexion === "todas" || dispositivo.estado === filtroConexion;
+        return porTexto && porSede && porEstado && porConexion;
+      }),
+    [dispositivos, busqueda, filtroSede, filtroEstado, filtroConexion],
+  );
+
+  const paginacion = usePaginacion(filtrados, POR_PAGINA);
+
+  const guardar = () => {
+    if (!editando) return;
+    if (!editando.nombre.trim() || !editando.codigo.trim()) {
+      mostrar("El nombre y el código del dispositivo son obligatorios.", "error");
+      return;
+    }
+    const esNuevo = !editando.id;
+    guardarDispositivo({ ...editando, id: editando.id || `disp-${Date.now()}` });
+    setEditando(null);
+    mostrar(esNuevo ? "Dispositivo agregado." : "Dispositivo actualizado.");
+  };
 
   return (
-    <AdminLayout title="Dispositivos" subtitle="Gestión de dispositivos del sistema">
-      <section className="admin-cards">
-        {CARDS.map((card) => (
-          <div key={card.label} className="admin-card">
-            <div className={`admin-card__icon ${card.iconClass}`} />
-            <div className="admin-card__info">
-              <span className="admin-card__label">{card.label}</span>
-              <span className="admin-card__value">{card.value}</span>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <div className="admin-filters">
-        <select className="admin-filters__select" value={sedeFilter} onChange={(e) => setSedeFilter(e.target.value)}>
-          <option value="">Todas las sedes</option>
-          <option value="Sede Principal">Sede Principal</option>
-          <option value="Sede Norte">Sede Norte</option>
-          <option value="Sede Sur">Sede Sur</option>
-        </select>
-        <select className="admin-filters__select" value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)}>
-          <option value="">Todos los estados</option>
-          <option value="En línea">En línea</option>
-          <option value="Problemas">Problemas</option>
-          <option value="Fuera de línea">Fuera de línea</option>
-        </select>
-        <button type="button" className="admin-btn admin-btn--primary">Agregar dispositivo</button>
+    <Card>
+      {/* -------------------------------------------- Búsqueda y creación */}
+      <div
+        style={{
+          display: "flex",
+          gap: 18,
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          marginBottom: 22,
+        }}
+      >
+        <div style={{ display: "flex", flex: "0 1 360px", minWidth: 240 }}>
+          <SearchInput
+            valor={busqueda}
+            alCambiar={setBusqueda}
+            placeholder="Buscar dispositivo"
+            etiquetaAccesible="Buscar dispositivo por nombre, código o sede"
+          />
+        </div>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" })}
+        >
+          Agregar dispositivo
+        </button>
       </div>
 
-      <div className="admin-table-container">
-        <table className="admin-table">
+      {/* ------------------------------------------------------ Métricas - */}
+      <div className="stat-grid" style={{ marginBottom: 22 }}>
+        <StatBox icono={<MonitorIcon size={26} />} color="pink" etiqueta="Total dispositivos" valor={metricas.total} />
+        <StatBox icono={<BoxIcon size={26} />} color="pink" etiqueta="Dispositivos activos" valor={metricas.activos} />
+        <StatBox
+          icono={<MonitorOffIcon size={26} />}
+          color="yellow"
+          etiqueta="Dispositivos inactivos"
+          valor={metricas.inactivos}
+        />
+        <StatBox icono={<WifiOffIcon size={26} />} color="yellow" etiqueta="Sin conexión" valor={metricas.sinConexion} />
+      </div>
+
+      {/* ------------------------------------------------------- Filtros - */}
+      <div className="filters" style={{ marginBottom: 22 }}>
+        <SelectField
+          etiqueta="Sede"
+          valor={filtroSede}
+          alCambiar={setFiltroSede}
+          opciones={[
+            { valor: "todas", etiqueta: "Todas las sedes" },
+            ...sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre })),
+          ]}
+        />
+        <SelectField
+          etiqueta="Estado"
+          valor={filtroEstado}
+          alCambiar={setFiltroEstado}
+          opciones={[
+            { valor: "todos", etiqueta: "Todos los estados" },
+            { valor: "activo", etiqueta: "Activos" },
+            { valor: "inactivo", etiqueta: "Inactivos" },
+          ]}
+        />
+        <SelectField
+          etiqueta="Conexión"
+          valor={filtroConexion}
+          alCambiar={setFiltroConexion}
+          opciones={[
+            { valor: "todas", etiqueta: "Todas las conexiones" },
+            { valor: "en_linea", etiqueta: "En línea" },
+            { valor: "problemas", etiqueta: "Con problemas" },
+            { valor: "fuera_de_linea", etiqueta: "Fuera de línea" },
+          ]}
+        />
+        <div style={{ flex: "0 0 auto" }} />
+      </div>
+
+      {/* -------------------------------------------------------- Tabla -- */}
+      <div className="table-wrap">
+        <table className="table">
           <thead>
             <tr>
               <th>Dispositivo</th>
@@ -96,34 +206,171 @@ export function DispositivosPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((d) => (
-              <tr key={d.id}>
-                <td>{d.nombre}</td>
-                <td>{d.codigo}</td>
-                <td>{d.sede}</td>
-                <td>{d.ultimaConexion}</td>
-                <td><span className={`admin-badge ${badgeClass(d.estado)}`}>{d.estado}</span></td>
-                <td>{d.version}</td>
-                <td>
-                  <div className="admin-table__actions">
-                    <button type="button" className="admin-table__action-btn" title="Ver">&#128065;</button>
-                    <button type="button" className="admin-table__action-btn" title="Editar">&#9998;</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {paginacion.visibles.length === 0 ? (
+              <EmptyRow columnas={7} mensaje={
+                  dispositivos.length === 0
+                  ? "Aún no hay dispositivos registrados."
+                  : "No hay dispositivos que coincidan con los filtros."
+                } />
+            ) : (
+              paginacion.visibles.map((dispositivo) => (
+                <tr key={dispositivo.id}>
+                  <td>{dispositivo.nombre}</td>
+                  <td>{dispositivo.codigo}</td>
+                  <td>{dispositivo.sede}</td>
+                  <td>{dispositivo.ultimaConexion}</td>
+                  <td>
+                    <BadgeOutline tono={TONO_ESTADO[dispositivo.estado]}>
+                      {ETIQUETA_ESTADO[dispositivo.estado]}
+                    </BadgeOutline>
+                  </td>
+                  <td>{dispositivo.version}</td>
+                  <td>
+                    <div className="table__actions">
+                      <button
+                        type="button"
+                        className="btn btn--icon"
+                        aria-label={`Sincronizar ${dispositivo.nombre}`}
+                        onClick={() => mostrar(`${dispositivo.nombre} sincronizado.`)}
+                      >
+                        <RefreshIcon size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--icon"
+                        aria-label={`Editar ${dispositivo.nombre}`}
+                        onClick={() => setEditando(dispositivo)}
+                      >
+                        <EditIcon size={19} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--icon"
+                        aria-label={`Eliminar ${dispositivo.nombre}`}
+                        onClick={() => setAEliminar(dispositivo)}
+                      >
+                        <TrashIcon size={19} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-
-        <div className="admin-pagination">
-          <span className="admin-pagination__info">Mostrando 1 a {filtered.length} de {filtered.length} registros</span>
-          <div className="admin-pagination__controls">
-            <button type="button" className="admin-pagination__btn">&laquo;</button>
-            <button type="button" className="admin-pagination__btn admin-pagination__btn--active">1</button>
-            <button type="button" className="admin-pagination__btn">&raquo;</button>
-          </div>
-        </div>
       </div>
-    </AdminLayout>
+
+      <Pagination
+        pagina={paginacion.pagina}
+        totalPaginas={paginacion.totalPaginas}
+        info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} dispositivos`}
+        irA={paginacion.irA}
+      />
+
+      {/* ------------------------------------------------------- Modales - */}
+      <Modal
+        abierto={editando !== null}
+        titulo={editando?.id ? "Editar dispositivo" : "Agregar dispositivo"}
+        subtitulo="Cada dispositivo genera los códigos QR de una sede."
+        ancho="ancho"
+        alCerrar={() => setEditando(null)}
+        pie={
+          <>
+            <button type="button" className="btn btn--neutral" onClick={() => setEditando(null)}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn--primary" onClick={guardar}>
+              Guardar dispositivo
+            </button>
+          </>
+        }
+      >
+        {editando ? (
+          <>
+            <div className="modal__grid">
+              <TextField
+                etiqueta="Nombre"
+                requerido
+                placeholder="PV-01"
+                valor={editando.nombre}
+                alCambiar={(v) => setEditando({ ...editando, nombre: v })}
+              />
+              <TextField
+                etiqueta="Código"
+                requerido
+                placeholder="DHI-001J"
+                valor={editando.codigo}
+                alCambiar={(v) => setEditando({ ...editando, codigo: v.toUpperCase() })}
+              />
+              <SelectField
+                etiqueta="Sede"
+                valor={editando.sede}
+                opciones={sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre }))}
+                alCambiar={(v) => setEditando({ ...editando, sede: v })}
+              />
+              <TextField
+                etiqueta="Versión"
+                valor={editando.version}
+                alCambiar={(v) => setEditando({ ...editando, version: v })}
+              />
+            </div>
+            <div className="setting-row">
+              <div>
+                <p className="setting-row__label">Dispositivo activo</p>
+                <p className="setting-row__hint">
+                  Un dispositivo inactivo deja de emitir códigos QR válidos de inmediato.
+                </p>
+              </div>
+              <Switch
+                marcado={editando.activo}
+                etiqueta="Dispositivo activo"
+                alCambiar={(v) => setEditando({ ...editando, activo: v })}
+              />
+            </div>
+          </>
+        ) : null}
+      </Modal>
+
+      <ConfirmDialog
+        abierto={aEliminar !== null}
+        titulo="Eliminar dispositivo"
+        mensaje={`Se eliminará ${aEliminar?.nombre ?? ""} (${aEliminar?.codigo ?? ""}). Los registros hechos desde este dispositivo se conservan.`}
+        alCerrar={() => setAEliminar(null)}
+        alConfirmar={() => {
+          if (aEliminar) {
+            eliminarDispositivo(aEliminar.id);
+            mostrar("Dispositivo eliminado.");
+          }
+          setAEliminar(null);
+        }}
+      />
+    </Card>
+  );
+}
+
+/** Variante de métrica con borde, usada dentro de la tarjeta de dispositivos. */
+function StatBox({
+  icono,
+  color,
+  etiqueta,
+  valor,
+}: {
+  icono: ReactNode;
+  color: "pink" | "yellow";
+  etiqueta: string;
+  valor: number;
+}) {
+  return (
+    <article
+      className="stat-card"
+      style={{ border: "1.5px solid var(--fp-brown)", boxShadow: "none" }}
+    >
+      <div className={`stat-card__icon stat-card__icon--${color}`}>{icono}</div>
+      <div className="stat-card__body">
+        <p className="stat-card__label">{etiqueta}</p>
+        <p className="stat-card__value">{valor}</p>
+        <p className="stat-card__hint">En total</p>
+      </div>
+    </article>
   );
 }
