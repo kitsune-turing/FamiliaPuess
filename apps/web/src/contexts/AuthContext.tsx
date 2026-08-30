@@ -16,6 +16,9 @@ interface AuthContextValue {
   login: (response: LoginResponse) => void;
   logout: () => void;
   isAuthenticated: boolean;
+  /** Sede seleccionada en la barra superior; filtra las pantallas del panel. */
+  sedeActiva: string;
+  cambiarSede: (sede: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -23,10 +26,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const STORAGE_KEY_TOKEN = "fp_access_token";
 const STORAGE_KEY_REFRESH = "fp_refresh_token";
 const STORAGE_KEY_USER = "fp_user";
+const STORAGE_KEY_SEDE = "fp_sede_activa";
 
 function isTokenExpired(token: string): boolean {
   try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
+    // Un JWT mal formado no tiene segunda parte: se trata como expirado.
+    const payloadSegment = token.split(".")[1];
+    if (!payloadSegment) return true;
+    const payload = JSON.parse(atob(payloadSegment)) as { exp?: number };
     if (!payload.exp) return true;
     return Date.now() >= payload.exp * 1000;
   } catch {
@@ -54,6 +61,14 @@ function loadStoredAuth(): { user: AuthUser | null; token: string | null } {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [{ user, token }, setAuth] = useState(loadStoredAuth);
+  const [sedeActiva, setSedeActiva] = useState(
+    () => localStorage.getItem(STORAGE_KEY_SEDE) ?? "Todas las sedes",
+  );
+
+  const cambiarSede = useCallback((sede: string) => {
+    setSedeActiva(sede);
+    localStorage.setItem(STORAGE_KEY_SEDE, sede);
+  }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY_TOKEN);
@@ -90,8 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       isAuthenticated: user !== null && token !== null,
+      sedeActiva,
+      cambiarSede,
     }),
-    [user, token, login, logout],
+    [user, token, login, logout, sedeActiva, cambiarSede],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

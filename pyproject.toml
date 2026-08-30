@@ -5,6 +5,7 @@ description = "Sistema de Control de Asistencia - Familia Puess (API)"
 requires-python = ">=3.13"
 dependencies = [
     "pydantic-settings>=2.5",
+    "pydantic[email]>=2.0",
     "tzdata>=2024.1",
     "sqlalchemy>=2.0",
     "asyncpg>=0.29",

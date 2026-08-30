@@ -1,142 +1,343 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { AdminLayout } from "../components/AdminLayout";
+import { useMemo, useState } from "react";
+import {
+  Badge,
+  Card,
+  ConfirmDialog,
+  EmptyRow,
+  Modal,
+  Pagination,
+  SearchInput,
+  SelectField,
+  Switch,
+  TextField,
+} from "../components/ui";
+import {
+  BuildingCheckIcon,
+  BuildingIcon,
+  BuildingOffIcon,
+  BuildingXIcon,
+  EditIcon,
+  PlusIcon,
+  RefreshIcon,
+  TrashIcon,
+} from "../components/ui/Icons";
+import { StatCard } from "../components/ui";
+import { useDatos } from "../context/DataProvider";
+import { useToast } from "../context/ToastProvider";
+import { usePaginacion } from "../hooks";
+import { coincide, porcentaje } from "../lib/format";
+import type { Sede } from "../types/admin";
 
-interface Sede {
-  id: number;
-  nombre: string;
-  direccion: string;
-  ciudad: string;
-  trabajadores: number;
-  dispositivos: number;
-  estado: string;
-}
+const POR_PAGINA = 5;
 
-const CARDS = [
-  { label: "Total sedes", value: 5, iconClass: "admin-card__icon--pink" },
-  { label: "Sedes activas", value: 4, iconClass: "admin-card__icon--green" },
-  { label: "Total trabajadores", value: 128, iconClass: "admin-card__icon--gold" },
-  { label: "Total dispositivos", value: 12, iconClass: "admin-card__icon--orange" },
-];
-
-const MOCK_DATA: Sede[] = [
-  { id: 1, nombre: "Sede Principal", direccion: "Calle 50 #30-20", ciudad: "Medellín", trabajadores: 45, dispositivos: 4, estado: "Activa" },
-  { id: 2, nombre: "Sede Norte", direccion: "Carrera 65 #48-12", ciudad: "Medellín", trabajadores: 32, dispositivos: 3, estado: "Activa" },
-  { id: 3, nombre: "Sede Sur", direccion: "Avenida 80 #15-40", ciudad: "Envigado", trabajadores: 28, dispositivos: 3, estado: "Activa" },
-  { id: 4, nombre: "Sede Centro", direccion: "Calle 10 #43-15", ciudad: "Medellín", trabajadores: 23, dispositivos: 2, estado: "Activa" },
-  { id: 5, nombre: "Sede Bodega", direccion: "Km 5 Vía Las Palmas", ciudad: "Rionegro", trabajadores: 0, dispositivos: 0, estado: "Inactiva" },
-];
+const VACIA: Sede = {
+  id: "",
+  nombre: "",
+  direccion: "",
+  ciudad: "",
+  trabajadores: 0,
+  dispositivos: 0,
+  activa: true,
+  telefono: "",
+  responsable: "",
+};
 
 export function SedesPage() {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [ciudadFilter, setCiudadFilter] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState("");
+  const { sedes, guardarSede, eliminarSede } = useDatos();
+  const { mostrar } = useToast();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login", { replace: true });
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroCiudad, setFiltroCiudad] = useState("todas");
+  const [filtroEstado, setFiltroEstado] = useState("todos");
+  const [filtroSede, setFiltroSede] = useState("todas");
+  const [editando, setEditando] = useState<Sede | null>(null);
+  const [aEliminar, setAEliminar] = useState<Sede | null>(null);
+
+  // Las ciudades del filtro salen de las sedes ya registradas.
+  const ciudades = useMemo(
+    () => Array.from(new Set(sedes.map((s) => s.ciudad).filter(Boolean))).sort(),
+    [sedes],
+  );
+
+  const metricas = useMemo(() => {
+    const total = sedes.length;
+    const activas = sedes.filter((s) => s.activa).length;
+    return {
+      total,
+      activas,
+      inactivas: total - activas,
+      sinDispositivos: sedes.filter((s) => s.dispositivos === 0).length,
+    };
+  }, [sedes]);
+
+  const filtradas = useMemo(
+    () =>
+      sedes.filter((sede) => {
+        const porTexto =
+          coincide(sede.nombre, busqueda) ||
+          coincide(sede.direccion, busqueda) ||
+          coincide(sede.ciudad, busqueda);
+        const porCiudad = filtroCiudad === "todas" || sede.ciudad === filtroCiudad;
+        const porEstado =
+          filtroEstado === "todos" || (filtroEstado === "activa" ? sede.activa : !sede.activa);
+        const porSede = filtroSede === "todas" || sede.nombre === filtroSede;
+        return porTexto && porCiudad && porEstado && porSede;
+      }),
+    [sedes, busqueda, filtroCiudad, filtroEstado, filtroSede],
+  );
+
+  const paginacion = usePaginacion(filtradas, POR_PAGINA);
+
+  const limpiarFiltros = () => {
+    setBusqueda("");
+    setFiltroCiudad("todas");
+    setFiltroEstado("todos");
+    setFiltroSede("todas");
+    mostrar("Filtros restablecidos.", "info");
+  };
+
+  const guardar = () => {
+    if (!editando) return;
+    if (!editando.nombre.trim() || !editando.direccion.trim()) {
+      mostrar("El nombre y la dirección de la sede son obligatorios.", "error");
+      return;
     }
-  }, [isAuthenticated, navigate]);
-
-  const filtered = MOCK_DATA.filter((s) => {
-    if (search && !s.nombre.toLowerCase().includes(search.toLowerCase())) return false;
-    if (ciudadFilter && s.ciudad !== ciudadFilter) return false;
-    if (estadoFilter && s.estado !== estadoFilter) return false;
-    return true;
-  });
-
-  const clearFilters = () => {
-    setSearch("");
-    setCiudadFilter("");
-    setEstadoFilter("");
+    const esNueva = !editando.id;
+    guardarSede({ ...editando, id: editando.id || `sede-${Date.now()}` });
+    setEditando(null);
+    mostrar(esNueva ? "Sede creada." : "Sede actualizada.");
   };
 
   return (
-    <AdminLayout title="Sedes" subtitle="Gestión de sedes del sistema">
-      <section className="admin-cards">
-        {CARDS.map((card) => (
-          <div key={card.label} className="admin-card">
-            <div className={`admin-card__icon ${card.iconClass}`} />
-            <div className="admin-card__info">
-              <span className="admin-card__label">{card.label}</span>
-              <span className="admin-card__value">{card.value}</span>
-            </div>
-          </div>
-        ))}
-      </section>
+    <>
+      <div className="page-actions">
+        <button type="button" className="btn btn--primary" onClick={() => setEditando({ ...VACIA })}>
+          <PlusIcon size={20} /> Nueva sede
+        </button>
+      </div>
 
-      <div className="admin-filters">
-        <input
-          type="text"
-          className="admin-filters__search"
-          placeholder="Buscar sede..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+      {/* ------------------------------------------------------ Métricas - */}
+      <div className="stat-grid">
+        <StatCard
+          icono={<BuildingIcon size={26} />}
+          color="yellow"
+          etiqueta="Total sedes"
+          valor={metricas.total}
+          pista="En total"
         />
-        <select className="admin-filters__select" value={ciudadFilter} onChange={(e) => setCiudadFilter(e.target.value)}>
-          <option value="">Todas las ciudades</option>
-          <option value="Medellín">Medellín</option>
-          <option value="Envigado">Envigado</option>
-          <option value="Rionegro">Rionegro</option>
-        </select>
-        <select className="admin-filters__select" value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)}>
-          <option value="">Todos los estados</option>
-          <option value="Activa">Activa</option>
-          <option value="Inactiva">Inactiva</option>
-        </select>
-        <button type="button" className="admin-filters__clear" onClick={clearFilters}>Limpiar filtros</button>
-        <button type="button" className="admin-btn admin-btn--primary">Nueva sede</button>
+        <StatCard
+          icono={<BuildingCheckIcon size={26} />}
+          color="yellow"
+          etiqueta="Sedes activas"
+          valor={metricas.activas}
+          pista={`${porcentaje(metricas.activas, metricas.total)} del total`}
+        />
+        <StatCard
+          icono={<BuildingXIcon size={26} />}
+          color="pink"
+          etiqueta="Sedes inactivas"
+          valor={metricas.inactivas}
+          pista={`${porcentaje(metricas.inactivas, metricas.total)} del total`}
+        />
+        <StatCard
+          icono={<BuildingOffIcon size={26} />}
+          color="pink"
+          etiqueta="Sedes sin dispositivos"
+          valor={metricas.sinDispositivos}
+          pista={`${porcentaje(metricas.sinDispositivos, metricas.total)} del total`}
+        />
       </div>
 
-      <div className="admin-table-container">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Sede</th>
-              <th>Dirección</th>
-              <th>Ciudad</th>
-              <th>Trabajadores</th>
-              <th>Dispositivos</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((s) => (
-              <tr key={s.id}>
-                <td>{s.nombre}</td>
-                <td>{s.direccion}</td>
-                <td>{s.ciudad}</td>
-                <td>{s.trabajadores}</td>
-                <td>{s.dispositivos}</td>
-                <td>
-                  <span className={`admin-badge ${s.estado === "Activa" ? "admin-badge--green" : "admin-badge--red"}`}>
-                    {s.estado}
-                  </span>
-                </td>
-                <td>
-                  <div className="admin-table__actions">
-                    <button type="button" className="admin-table__action-btn" title="Ver">&#128065;</button>
-                    <button type="button" className="admin-table__action-btn" title="Editar">&#9998;</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="admin-pagination">
-          <span className="admin-pagination__info">Mostrando 1 a {filtered.length} de {filtered.length} registros</span>
-          <div className="admin-pagination__controls">
-            <button type="button" className="admin-pagination__btn">&laquo;</button>
-            <button type="button" className="admin-pagination__btn admin-pagination__btn--active">1</button>
-            <button type="button" className="admin-pagination__btn">&raquo;</button>
-          </div>
+      {/* ------------------------------------------------------- Filtros - */}
+      <Card>
+        <div className="filters">
+          <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar sede" />
+          <SelectField
+            etiqueta="Ciudad"
+            valor={filtroCiudad}
+            alCambiar={setFiltroCiudad}
+            opciones={[
+              { valor: "todas", etiqueta: "Todas las ciudades" },
+              ...ciudades.map((c) => ({ valor: c, etiqueta: c })),
+            ]}
+          />
+          <SelectField
+            etiqueta="Estado"
+            valor={filtroEstado}
+            alCambiar={setFiltroEstado}
+            opciones={[
+              { valor: "todos", etiqueta: "Todos los estados" },
+              { valor: "activa", etiqueta: "Activas" },
+              { valor: "inactiva", etiqueta: "Inactivas" },
+            ]}
+          />
+          <SelectField
+            etiqueta="Sede"
+            valor={filtroSede}
+            alCambiar={setFiltroSede}
+            opciones={[
+              { valor: "todas", etiqueta: "Todas las sedes" },
+              ...sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre })),
+            ]}
+          />
+          <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
+            <RefreshIcon size={20} /> Limpiar filtros
+          </button>
         </div>
-      </div>
-    </AdminLayout>
+      </Card>
+
+      {/* --------------------------------------------------------- Tabla - */}
+      <Card>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Sede</th>
+                <th>Dirección</th>
+                <th>Ciudad</th>
+                <th>Trabajadores</th>
+                <th>Dispositivos</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginacion.visibles.length === 0 ? (
+                <EmptyRow columnas={7} mensaje={
+                  sedes.length === 0
+                    ? "Aún no hay sedes registradas."
+                    : "No hay sedes que coincidan con los filtros."
+                } />
+              ) : (
+                paginacion.visibles.map((sede) => (
+                  <tr key={sede.id}>
+                    <td>{sede.nombre}</td>
+                    <td>{sede.direccion}</td>
+                    <td>{sede.ciudad}</td>
+                    <td>{sede.trabajadores}</td>
+                    <td>{sede.dispositivos}</td>
+                    <td>
+                      <Badge tono={sede.activa ? "green" : "grey"}>
+                        {sede.activa ? "Activa" : "Inactiva"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <div className="table__actions">
+                        <button
+                          type="button"
+                          className="btn btn--icon"
+                          aria-label={`Editar ${sede.nombre}`}
+                          onClick={() => setEditando(sede)}
+                        >
+                          <EditIcon size={19} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--icon"
+                          aria-label={`Eliminar ${sede.nombre}`}
+                          onClick={() => setAEliminar(sede)}
+                        >
+                          <TrashIcon size={19} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          pagina={paginacion.pagina}
+          totalPaginas={paginacion.totalPaginas}
+          info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} sedes`}
+          irA={paginacion.irA}
+        />
+      </Card>
+
+      {/* ------------------------------------------------------- Modales - */}
+      <Modal
+        abierto={editando !== null}
+        titulo={editando?.id ? "Editar sede" : "Nueva sede"}
+        subtitulo="La sede agrupa trabajadores, dispositivos y reportes de asistencia."
+        ancho="ancho"
+        alCerrar={() => setEditando(null)}
+        pie={
+          <>
+            <button type="button" className="btn btn--neutral" onClick={() => setEditando(null)}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn--primary" onClick={guardar}>
+              Guardar sede
+            </button>
+          </>
+        }
+      >
+        {editando ? (
+          <>
+            <div className="modal__grid">
+              <TextField
+                etiqueta="Nombre de la sede"
+                requerido
+                valor={editando.nombre}
+                alCambiar={(v) => setEditando({ ...editando, nombre: v })}
+              />
+              <TextField
+                etiqueta="Dirección"
+                requerido
+                placeholder="Cra 43 # 10-15"
+                valor={editando.direccion}
+                alCambiar={(v) => setEditando({ ...editando, direccion: v })}
+              />
+              <TextField
+                etiqueta="Ciudad"
+                requerido
+                placeholder="Medellín"
+                valor={editando.ciudad}
+                alCambiar={(v) => setEditando({ ...editando, ciudad: v })}
+              />
+              <TextField
+                etiqueta="Teléfono"
+                valor={editando.telefono}
+                alCambiar={(v) => setEditando({ ...editando, telefono: v })}
+              />
+              <TextField
+                etiqueta="Responsable"
+                valor={editando.responsable}
+                alCambiar={(v) => setEditando({ ...editando, responsable: v })}
+              />
+            </div>
+            <div className="setting-row">
+              <div>
+                <p className="setting-row__label">Sede activa</p>
+                <p className="setting-row__hint">
+                  Las sedes inactivas no aceptan registros de asistencia nuevos.
+                </p>
+              </div>
+              <Switch
+                marcado={editando.activa}
+                etiqueta="Sede activa"
+                alCambiar={(v) => setEditando({ ...editando, activa: v })}
+              />
+            </div>
+          </>
+        ) : null}
+      </Modal>
+
+      <ConfirmDialog
+        abierto={aEliminar !== null}
+        titulo="Eliminar sede"
+        mensaje={`Se eliminará ${aEliminar?.nombre ?? ""}. Los trabajadores y dispositivos asociados quedarán sin sede asignada.`}
+        alCerrar={() => setAEliminar(null)}
+        alConfirmar={() => {
+          if (aEliminar) {
+            eliminarSede(aEliminar.id);
+            mostrar("Sede eliminada.");
+          }
+          setAEliminar(null);
+        }}
+      />
+    </>
   );
 }
