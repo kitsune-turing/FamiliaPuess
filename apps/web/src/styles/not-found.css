@@ -48,3 +48,23 @@
 .not-found-btn:hover {
   background: #6a3f26;
 }
+
+@media (max-width: 480px) {
+  .not-found-code {
+    font-size: 4rem;
+  }
+
+  .not-found-title {
+    font-size: 1.25rem;
+  }
+
+  .not-found-message {
+    font-size: 0.875rem;
+  }
+
+  .not-found-btn {
+    padding: 0.625rem 1.5rem;
+    font-size: 0.875rem;
+    width: 100%;
+  }
+}

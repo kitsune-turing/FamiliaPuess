@@ -321,4 +321,34 @@
     align-items: flex-start;
     gap: 12px;
   }
+
+  .login-field__input {
+    font-size: 15px;
+  }
+
+  .login-submit {
+    padding: 14px 20px;
+  }
+
+  .login-submit__text {
+    font-size: 14px;
+  }
+
+  .login-mazorca--top-right {
+    width: 140px;
+  }
+
+  .login-mazorca--bottom-right {
+    width: 180px;
+  }
+}
+
+@media (max-width: 380px) {
+  .login-card {
+    padding: 24px 16px 28px;
+  }
+
+  .login-panel-right {
+    padding: 16px;
+  }
 }

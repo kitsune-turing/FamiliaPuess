@@ -260,4 +260,18 @@
     align-items: flex-start;
     gap: 16px;
   }
+
+  .dashboard-card {
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .dashboard-card__icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .dashboard-card__value {
+    font-size: 22px;
+  }
 }
