@@ -7,13 +7,13 @@ import {
   ChartIcon,
   ClipboardIcon,
   ClockIcon,
+  DoorIcon,
   HomeIcon,
-  LockIcon,
   MapPinIcon,
   MonitorIcon,
-  ParameterIcon,
   SettingsIcon,
-  ShieldIcon,
+  UserCheckIcon,
+  UserShieldIcon,
   UsersIcon,
   type IconProps,
 } from "../ui/Icons";
@@ -28,21 +28,21 @@ interface Enlace {
 /** Bloque principal del menú. */
 const MENU_PRINCIPAL: Enlace[] = [
   { to: "/panel", etiqueta: "Dashboard", Icono: HomeIcon, exacto: true },
-  { to: "/panel/registros", etiqueta: "Registros de entrada", Icono: ClockIcon },
+  { to: "/panel/registros", etiqueta: "Registros de entrada", Icono: DoorIcon },
   { to: "/panel/trabajadores", etiqueta: "Trabajadores", Icono: UsersIcon },
+  { to: "/panel/horarios", etiqueta: "Horarios", Icono: ClockIcon },
   { to: "/panel/dispositivos", etiqueta: "Dispositivos", Icono: MonitorIcon },
   { to: "/panel/sedes", etiqueta: "Sedes", Icono: MapPinIcon },
   { to: "/panel/reportes", etiqueta: "Reportes", Icono: ChartIcon },
-  { to: "/panel/usuarios", etiqueta: "Usuarios", Icono: ShieldIcon },
+  { to: "/panel/usuarios", etiqueta: "Usuarios", Icono: UserCheckIcon },
+  { to: "/panel/roles", etiqueta: "Roles y permisos", Icono: UserShieldIcon },
   { to: "/panel/configuracion", etiqueta: "Configuración", Icono: SettingsIcon },
-  { to: "/panel/seguridad", etiqueta: "Seguridad", Icono: LockIcon },
   { to: "/panel/auditoria", etiqueta: "Auditoría", Icono: ClipboardIcon },
 ];
 
 /** Bloque de administración: solo lo ve el súper administrador. */
 const MENU_ADMINISTRACION: Enlace[] = [
   { to: "/panel/catalogos", etiqueta: "Catálogos", Icono: CatalogIcon },
-  { to: "/panel/parametros", etiqueta: "Parámetros", Icono: ParameterIcon },
 ];
 
 function Enlaces({ enlaces, alCerrar }: { enlaces: Enlace[]; alCerrar: () => void }) {

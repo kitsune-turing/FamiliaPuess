@@ -11,14 +11,14 @@ import {
   SelectField,
   Switch,
   TextField,
-} from "../components/ui";
-import { EditIcon, TrashIcon, UploadIcon } from "../components/ui/Icons";
-import { useAuth } from "../contexts/AuthContext";
-import { useDatos } from "../context/DataProvider";
-import { useToast } from "../context/ToastProvider";
-import { usePaginacion } from "../hooks";
-import { coincide, descargarArchivo, generarCsv } from "../lib/format";
-import type { Trabajador } from "../types/admin";
+} from "../../components/ui";
+import { DownloadIcon, EditIcon, PlusIcon, TrashIcon, UploadIcon } from "../../components/ui/Icons";
+import { useAuth } from "../../context/AuthProvider";
+import { useDatos } from "../../context/DataProvider";
+import { useToast } from "../../context/ToastProvider";
+import { usePaginacion } from "../../hooks";
+import { coincide, descargarExcel } from "../../lib/format";
+import type { Trabajador } from "../../types/admin";
 
 const POR_PAGINA = 10;
 
@@ -81,67 +81,56 @@ export function TrabajadoresPage() {
     const nuevos: Record<string, string> = {};
     if (!valor.nombre.trim()) nuevos.nombre = "El nombre es obligatorio.";
     if (!valor.documento.trim()) nuevos.documento = "El documento es obligatorio.";
-    if (valor.correo && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(valor.correo)) {
-      nuevos.correo = "Escribe un correo válido.";
-    }
     setErrores(nuevos);
     return Object.keys(nuevos).length === 0;
   };
 
-  const confirmarGuardado = () => {
+  const confirmarGuardado = async () => {
     if (!editando || !validar(editando)) return;
     const esNuevo = !editando.id;
-    guardarTrabajador({
-      ...editando,
-      id: editando.id || `trab-${Date.now()}`,
-      ingreso: editando.ingreso || new Date().toLocaleDateString("es-CO"),
-    });
-    setEditando(null);
-    setErrores({});
-    mostrar(esNuevo ? "Trabajador registrado." : "Trabajador actualizado.");
+    try {
+      await guardarTrabajador({
+        ...editando,
+        id: editando.id || `trab-${Date.now()}`,
+        ingreso: editando.ingreso || new Date().toLocaleDateString("es-CO"),
+      });
+      setEditando(null);
+      setErrores({});
+      mostrar(esNuevo ? "Trabajador registrado." : "Trabajador actualizado.");
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al guardar el trabajador.", "error");
+    }
   };
 
   const exportar = () => {
-    const csv = generarCsv(
-      ["Trabajador", "Documento", "Sede", "Cargo", "Correo", "Teléfono", "Estado"],
+    descargarExcel(
+      "trabajadores",
+      ["Trabajador", "Documento", "Sede", "Cargo", "Estado"],
       filtrados.map((t) => [
         t.nombre,
         t.documento,
         t.sede,
         t.cargo,
-        t.correo,
-        t.telefono,
         t.activo ? "Activo" : "Inactivo",
       ]),
     );
-    descargarArchivo("trabajadores.csv", csv);
-    mostrar("Listado exportado en CSV.");
+    mostrar("Listado exportado en Excel.");
   };
 
   const opcionesSede = sedes.map((sede) => ({ valor: sede.nombre, etiqueta: sede.nombre }));
 
   return (
     <>
-      {/* --------------------------------------------- Búsqueda y acciones */}
-      <Card className="card--pad" pad={false}>
-        <div
-          style={{
-            display: "flex",
-            gap: 18,
-            alignItems: "center",
-            flexWrap: "wrap",
-            padding: 24,
-            border: "1.5px solid var(--fp-brown)",
-            borderRadius: "var(--fp-r-lg)",
-          }}
-        >
+      {/* --------------------------------------------- Filtros y acciones */}
+      <Card>
+        <div className="filters">
           <SearchInput
             valor={busqueda}
             alCambiar={setBusqueda}
             placeholder="Buscar trabajador"
             etiquetaAccesible="Buscar trabajador por nombre, documento o cargo"
           />
-          <button type="button" className="btn btn--primary" onClick={() => setImportando(true)}>
+          <button type="button" className="btn btn--ghost" onClick={() => setImportando(true)}>
             <UploadIcon size={20} /> Importar
           </button>
           <button
@@ -149,12 +138,15 @@ export function TrabajadoresPage() {
             className="btn btn--primary"
             onClick={() => setEditando({ ...VACIO, sede: sedeActiva !== "Todas las sedes" ? sedeActiva : (sedes[0]?.nombre ?? "") })}
           >
-            <UploadIcon size={20} /> Nuevo trabajador
+            <PlusIcon size={20} /> Nuevo trabajador
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={exportar}>
+            <DownloadIcon size={20} /> Exportar
           </button>
         </div>
       </Card>
 
-      {/* ------------------------------------------------------ Listado -- */}
+      {/* -------------------------------------------------------- Tabla -- */}
       <Card>
         <div className="table-wrap">
           <table className="table">
@@ -163,15 +155,14 @@ export function TrabajadoresPage() {
                 <th>Trabajador</th>
                 <th>Documento</th>
                 <th>Sede</th>
-                <th>Entrada</th>
+                <th>Cargo</th>
                 <th>Estado</th>
-                <th>Dispositivo</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {paginacion.visibles.length === 0 ? (
-                <EmptyRow columnas={7} mensaje={
+                <EmptyRow columnas={6} mensaje={
                     trabajadores.length === 0
                       ? "Aún no hay trabajadores registrados."
                       : "No hay trabajadores que coincidan con la búsqueda."
@@ -182,17 +173,11 @@ export function TrabajadoresPage() {
                     <td>{trabajador.nombre}</td>
                     <td>{trabajador.documento}</td>
                     <td>{trabajador.sede}</td>
-                    <td>08:02 a.m</td>
+                    <td>{trabajador.cargo}</td>
                     <td>
                       <BadgeOutline tono={trabajador.activo ? "neutral" : "pink"}>
-                        {trabajador.activo ? "A tiempo" : "Inactivo"}
+                        {trabajador.activo ? "Activo" : "Inactivo"}
                       </BadgeOutline>
-                    </td>
-                    <td>
-                      <span className="cell-device">
-                        <span className="dot" />
-                        PV-01
-                      </span>
                     </td>
                     <td>
                       <div className="table__actions">
@@ -220,14 +205,14 @@ export function TrabajadoresPage() {
             </tbody>
           </table>
         </div>
-      </Card>
 
-      <Pagination
-        pagina={paginacion.pagina}
-        totalPaginas={paginacion.totalPaginas}
-        info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} registros`}
-        irA={paginacion.irA}
-      />
+        <Pagination
+          pagina={paginacion.pagina}
+          totalPaginas={paginacion.totalPaginas}
+          info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} registros`}
+          irA={paginacion.irA}
+        />
+      </Card>
 
       {/* ------------------------------------------------------- Modales - */}
       <Modal
@@ -285,24 +270,6 @@ export function TrabajadoresPage() {
                 etiqueta="Cargo"
                 valor={editando.cargo}
                 alCambiar={(v) => setEditando({ ...editando, cargo: v })}
-              />
-              <TextField
-                etiqueta="Correo electrónico"
-                tipo="email"
-                valor={editando.correo}
-                error={errores.correo}
-                alCambiar={(v) => setEditando({ ...editando, correo: v })}
-              />
-              <TextField
-                etiqueta="Teléfono"
-                valor={editando.telefono}
-                alCambiar={(v) => setEditando({ ...editando, telefono: v })}
-              />
-              <TextField
-                etiqueta="Código alfanumérico"
-                placeholder="ABCD"
-                valor={editando.codigoAlfa}
-                alCambiar={(v) => setEditando({ ...editando, codigoAlfa: v.toUpperCase().slice(0, 6) })}
               />
             </div>
             <div className="setting-row">
@@ -362,10 +329,14 @@ export function TrabajadoresPage() {
         titulo="Eliminar trabajador"
         mensaje={`Se eliminará a ${aEliminar?.nombre ?? ""} del sistema. Sus registros históricos de asistencia se conservan.`}
         alCerrar={() => setAEliminar(null)}
-        alConfirmar={() => {
+        alConfirmar={async () => {
           if (aEliminar) {
-            eliminarTrabajador(aEliminar.id);
-            mostrar("Trabajador eliminado.");
+            try {
+              await eliminarTrabajador(aEliminar.id);
+              mostrar("Trabajador eliminado.");
+            } catch (e) {
+              mostrar(e instanceof Error ? e.message : "Error al eliminar el trabajador.", "error");
+            }
           }
           setAEliminar(null);
         }}

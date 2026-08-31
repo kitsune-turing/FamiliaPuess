@@ -5,9 +5,11 @@ import re
 from collections.abc import Sequence
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.core.timezone import now as tz_now
+from apps.API.models.cat_cargo import CatCargo
 from apps.API.models.empleado import Empleado
 from apps.API.repositories import (
     auditoria_repository,
@@ -29,8 +31,10 @@ from shared.exceptions.sedes import SedeInactivaError, SedeNoEncontradaError
 
 logger = logging.getLogger(__name__)
 
-_DOCUMENTO_RE = re.compile(r"^\d{6,20}$")
+_DOCUMENTO_RE = re.compile(r"^[A-Za-z0-9\-]{4,30}$")
 _NOMBRE_RE = re.compile(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\-]+$")
+
+DEFAULT_TIPO_DOCUMENTO = 1  # CC
 
 
 def _validar_documento(documento: str) -> None:
@@ -41,6 +45,31 @@ def _validar_documento(documento: str) -> None:
 def _validar_nombre(valor: str, campo: str) -> None:
     if not _NOMBRE_RE.match(valor):
         raise NombreInvalidoError(campo)
+
+
+async def _resolve_cargo_id(session: AsyncSession, cargo_nombre: str) -> int:
+    stmt = select(CatCargo).where(CatCargo.nombre == cargo_nombre)
+    result = await session.execute(stmt)
+    cargo = result.scalar_one_or_none()
+    if cargo is not None:
+        return cargo.id
+    activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
+    codigo = cargo_nombre.upper().replace(" ", "_").replace("-", "_")[:30]
+    nuevo = CatCargo(codigo=codigo, nombre=cargo_nombre, id_estado=activo_id)
+    session.add(nuevo)
+    await session.flush()
+    return nuevo.id
+
+
+def _detect_tipo_documento(documento: str) -> int:
+    upper = documento.upper()
+    if upper.startswith("PPT"):
+        return 2  # PPT
+    if upper.startswith("PP"):
+        return 2  # PPT
+    if upper.startswith("CE"):
+        return 3  # CE
+    return 1  # CC
 
 
 async def list_empleados(
@@ -96,16 +125,19 @@ async def create_empleado(
     if sede.id_estado != activo_id:
         raise SedeInactivaError(id_sede)
 
+    id_cargo = await _resolve_cargo_id(session, cargo)
+    id_tipo_documento = _detect_tipo_documento(documento)
     timestamp = tz_now()
 
     empleado = await empleado_repository.create(
         session,
-        documento=documento,
+        id_tipo_documento=id_tipo_documento,
+        numero_documento=documento,
         nombre=nombre,
         apellido=apellido,
-        cargo=cargo,
+        id_cargo=id_cargo,
         id_estado=activo_id,
-        id_sede=id_sede,
+        id_sede_actual=id_sede,
         now=timestamp,
     )
 
@@ -151,16 +183,16 @@ async def update_empleado(
         raise ConflictoConcurrenciaError("empleado", empleado_id)
 
     valor_anterior = {
-        "documento": empleado.documento,
+        "documento": empleado.numero_documento,
         "nombre": empleado.nombre,
         "apellido": empleado.apellido,
-        "cargo": empleado.cargo,
-        "id_sede": empleado.id_sede,
+        "cargo": empleado.cargo.nombre if empleado.cargo else "",
+        "id_sede": empleado.id_sede_actual,
     }
 
     if documento is not None:
         _validar_documento(documento)
-        if documento != empleado.documento:
+        if documento != empleado.numero_documento:
             existing = await empleado_repository.get_by_documento(session, documento)
             if existing is not None:
                 raise DocumentoDuplicadoError(documento)
@@ -171,7 +203,7 @@ async def update_empleado(
     if apellido is not None:
         _validar_nombre(apellido, "apellido")
 
-    if id_sede is not None and id_sede != empleado.id_sede:
+    if id_sede is not None and id_sede != empleado.id_sede_actual:
         sede = await sede_repository.get_by_id(session, id_sede)
         if sede is None:
             raise SedeNoEncontradaError(id_sede)
@@ -181,15 +213,25 @@ async def update_empleado(
         if sede.id_estado != activo_id:
             raise SedeInactivaError(id_sede)
 
+    id_cargo: int | None = None
+    if cargo is not None:
+        id_cargo = await _resolve_cargo_id(session, cargo)
+
+    id_tipo_documento: int | None = None
+    if documento is not None:
+        id_tipo_documento = _detect_tipo_documento(documento)
+
     timestamp = tz_now()
     await empleado_repository.update_empleado(
         session,
         empleado_id,
-        documento=documento,
+        id_tipo_documento=id_tipo_documento,
+        numero_documento=documento,
         nombre=nombre,
         apellido=apellido,
-        cargo=cargo,
-        id_sede=id_sede,
+        id_cargo=id_cargo,
+        id_estado=None,
+        id_sede_actual=id_sede,
         now=timestamp,
     )
 
@@ -249,8 +291,9 @@ async def deactivate_empleado(
         id_recurso=str(empleado_id),
         operacion=OperacionAuditoria.DELETE,
         valor_anterior={
-            "documento": empleado.documento,
+            "documento": empleado.numero_documento,
             "nombre": empleado.nombre,
+            "apellido": empleado.apellido,
             "id_estado": empleado.id_estado,
         },
         ip_address=ip_address,
@@ -260,7 +303,7 @@ async def deactivate_empleado(
     logger.info(
         "Empleado desactivado: id=%d, documento=%s",
         empleado_id,
-        empleado.documento,
+        empleado.numero_documento,
     )
 
 

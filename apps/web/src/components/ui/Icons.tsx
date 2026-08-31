@@ -492,3 +492,47 @@ export const BriefcaseIcon = ({ size = 22, strokeWidth = 1.8, className }: P) =>
     <path d="M3 12.4h18" />
   </svg>
 );
+
+/* --------------------------------------------- Roles y permisos / perfil */
+
+export const ShieldOffIcon = ({ size = 22, strokeWidth = 1.8, className }: P) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <path d="M12 2.8 4.8 5.6v6.1c0 4.4 3 8.4 7.2 9.5 4.2-1.1 7.2-5.1 7.2-9.5V5.6Z" />
+    <path d="m8.6 15.4 6.8-6.8" />
+  </svg>
+);
+
+export const UserShieldIcon = ({ size = 22, strokeWidth = 1.8, className }: P) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <circle cx="9.6" cy="8" r="3.6" />
+    <path d="M3.2 20.4a6.6 6.6 0 0 1 10.2-5.5" />
+    <path d="M18 12.2l3.4 1.3v2.9c0 2.1-1.4 4-3.4 4.6-2-.6-3.4-2.5-3.4-4.6v-2.9Z" />
+  </svg>
+);
+
+export const CameraIcon = ({ size = 22, strokeWidth = 1.8, className }: P) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <path d="M3 8.6a2 2 0 0 1 2-2h2.2l1.4-2.2h6.8L16.8 6.6H19a2 2 0 0 1 2 2v8.8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+    <circle cx="12" cy="13" r="3.4" />
+  </svg>
+);
+
+export const MailIcon = ({ size = 22, strokeWidth = 1.8, className }: P) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <rect x="2.8" y="5" width="18.4" height="14" rx="2.2" />
+    <path d="m3.6 7 8.4 6 8.4-6" />
+  </svg>
+);
+
+export const PhoneIcon = ({ size = 22, strokeWidth = 1.8, className }: P) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <path d="M8.1 3.6 9.9 8l-2 1.6a11 11 0 0 0 5.9 5.9l1.6-2 4.4 1.8v3.1a2 2 0 0 1-2.2 2 17.6 17.6 0 0 1-15.9-15.9 2 2 0 0 1 2-2.2h3.1Z" />
+  </svg>
+);
+
+export const CopyIcon = ({ size = 22, strokeWidth = 1.8, className }: P) => (
+  <svg {...base(size, strokeWidth, className)}>
+    <rect x="8.6" y="8.6" width="11.6" height="11.6" rx="2" />
+    <path d="M15.4 5.6a2 2 0 0 0-2-1.8H5.8a2 2 0 0 0-2 2v7.6a2 2 0 0 0 1.8 2" />
+  </svg>
+);

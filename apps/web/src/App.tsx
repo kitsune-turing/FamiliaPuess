@@ -1,75 +1,76 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { useAuth } from "./context/AuthProvider";
 import { AdminLayout } from "./components/layout/AdminLayout";
-import { useAuth } from "./contexts/AuthContext";
-import { AccesoDenegadoPage } from "./pages/AccesoDenegadoPage";
-import { AuditoriaPage } from "./pages/AuditoriaPage";
-import { CatalogosPage } from "./pages/CatalogosPage";
-import { ConfiguracionPage } from "./pages/ConfiguracionPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { DispositivosPage } from "./pages/DispositivosPage";
-import { HorariosPage } from "./pages/HorariosPage";
 import { LoginPage } from "./pages/LoginPage";
-import { NotFoundPage } from "./pages/NotFoundPage";
-import { ParametrosPage } from "./pages/ParametrosPage";
-import { RegistroPage } from "./pages/RegistroPage";
-import { RegistroTrabajadoresPage } from "./pages/RegistroTrabajadoresPage";
-import { RegistrosPage } from "./pages/RegistrosEntradaPage";
-import { ReportesPage } from "./pages/ReportesPage";
-import { SedesPage } from "./pages/SedesPage";
-import { SeguridadPage } from "./pages/SeguridadPage";
-import { TrabajadoresPage } from "./pages/TrabajadoresPage";
-import { UsuariosPage } from "./pages/UsuariosPage";
 
-/** Restringe las rutas de administración al súper administrador. */
+const RegistroPage = lazy(() => import("./pages/RegistroPage").then((m) => ({ default: m.RegistroPage })));
+const AccesoDenegadoPage = lazy(() => import("./pages/AccesoDenegadoPage").then((m) => ({ default: m.AccesoDenegadoPage })));
+const DashboardPage = lazy(() => import("./pages/admin/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const RegistrosPage = lazy(() => import("./pages/admin/RegistrosPage").then((m) => ({ default: m.RegistrosPage })));
+const TrabajadoresPage = lazy(() => import("./pages/admin/TrabajadoresPage").then((m) => ({ default: m.TrabajadoresPage })));
+const RegistroTrabajadoresPage = lazy(() => import("./pages/admin/RegistroTrabajadoresPage").then((m) => ({ default: m.RegistroTrabajadoresPage })));
+const CatalogosPage = lazy(() => import("./pages/admin/CatalogosPage").then((m) => ({ default: m.CatalogosPage })));
+const DispositivosPage = lazy(() => import("./pages/admin/DispositivosPage").then((m) => ({ default: m.DispositivosPage })));
+const SedesPage = lazy(() => import("./pages/admin/SedesPage").then((m) => ({ default: m.SedesPage })));
+const ReportesPage = lazy(() => import("./pages/admin/ReportesPage").then((m) => ({ default: m.ReportesPage })));
+const UsuariosPage = lazy(() => import("./pages/admin/UsuariosPage").then((m) => ({ default: m.UsuariosPage })));
+const RolesPage = lazy(() => import("./pages/admin/RolesPage").then((m) => ({ default: m.RolesPage })));
+const PerfilPage = lazy(() => import("./pages/admin/PerfilPage").then((m) => ({ default: m.PerfilPage })));
+const HorariosPage = lazy(() => import("./pages/admin/HorariosPage").then((m) => ({ default: m.HorariosPage })));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })));
+const ConfiguracionPage = lazy(() => import("./pages/admin/ConfiguracionPage").then((m) => ({ default: m.ConfiguracionPage })));
+const AuditoriaPage = lazy(() => import("./pages/admin/AuditoriaPage").then((m) => ({ default: m.AuditoriaPage })));
+
+function PageLoader() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 200 }}>
+      <span className="spinner" />
+    </div>
+  );
+}
+
+/** Protege las rutas de administración: solo entra el súper administrador. */
 function RutaSuperAdmin() {
-  const { user } = useAuth();
-  if (user?.rol_codigo !== "SUPER_ADMIN") return <Navigate to="/panel" replace />;
+  const { usuario } = useAuth();
+  if (usuario?.rolCodigo !== "SUPER_ADMIN") return <Navigate to="/panel" replace />;
   return <Outlet />;
 }
 
 export function App() {
   return (
-    <Routes>
-      {/* ---- Rutas públicas ---- */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/registro" element={<RegistroPage />} />
-      <Route path="/acceso-denegado" element={<AccesoDenegadoPage />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Registro de asistencia por QR (acceso público con token) */}
+        <Route path="/registro" element={<RegistroPage />} />
+        <Route path="/acceso-denegado" element={<AccesoDenegadoPage />} />
 
-      {/* ---- Panel administrativo (exige sesión) ---- */}
-      <Route path="/panel" element={<AdminLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="registros" element={<RegistrosPage />} />
-        <Route path="trabajadores" element={<RegistroTrabajadoresPage />} />
-        <Route path="trabajadores/listado" element={<TrabajadoresPage />} />
-        <Route path="dispositivos" element={<DispositivosPage />} />
-        <Route path="sedes" element={<SedesPage />} />
-        <Route path="horarios" element={<HorariosPage />} />
-        <Route path="reportes" element={<ReportesPage />} />
-        <Route path="usuarios" element={<UsuariosPage />} />
-        <Route path="configuracion" element={<ConfiguracionPage />} />
-        <Route path="seguridad" element={<SeguridadPage />} />
-        <Route path="auditoria" element={<AuditoriaPage />} />
+        {/* Panel administrativo */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/panel" element={<AdminLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="registros" element={<RegistrosPage />} />
+          <Route path="trabajadores" element={<RegistroTrabajadoresPage />} />
+          <Route path="trabajadores/listado" element={<TrabajadoresPage />} />
+          <Route path="dispositivos" element={<DispositivosPage />} />
+          <Route path="sedes" element={<SedesPage />} />
+          <Route path="reportes" element={<ReportesPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="roles" element={<RolesPage />} />
+          <Route path="perfil" element={<PerfilPage />} />
+          <Route path="horarios" element={<HorariosPage />} />
+          <Route path="configuracion" element={<ConfiguracionPage />} />
+          <Route path="auditoria" element={<AuditoriaPage />} />
 
-        {/* Solo súper administrador */}
-        <Route element={<RutaSuperAdmin />}>
-          <Route path="catalogos" element={<CatalogosPage />} />
-          <Route path="parametros" element={<ParametrosPage />} />
+          {/* Administración: reservado al súper administrador */}
+          <Route element={<RutaSuperAdmin />}>
+            <Route path="catalogos" element={<CatalogosPage />} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* ---- Compatibilidad con las rutas antiguas ---- */}
-      <Route path="/dashboard" element={<Navigate to="/panel" replace />} />
-      <Route path="/trabajadores" element={<Navigate to="/panel/trabajadores" replace />} />
-      <Route path="/sedes" element={<Navigate to="/panel/sedes" replace />} />
-      <Route path="/dispositivos" element={<Navigate to="/panel/dispositivos" replace />} />
-      <Route path="/horarios" element={<Navigate to="/panel/horarios" replace />} />
-      <Route path="/reportes" element={<Navigate to="/panel/reportes" replace />} />
-      <Route path="/usuarios" element={<Navigate to="/panel/usuarios" replace />} />
-      <Route path="/auditoria" element={<Navigate to="/panel/auditoria" replace />} />
-      <Route path="/configuracion" element={<Navigate to="/panel/configuracion" replace />} />
-
-      <Route path="/" element={<Navigate to="/panel" replace />} />
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route path="/" element={<Navigate to="/panel" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
   );
 }

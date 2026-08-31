@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { registrarAsistencia, validarToken } from "../services/api";
+import { registrarAsistencia, validarToken } from "../services/adminApi";
 import marcaImg from "../assets/images/marca.png";
 import mazorcaImg from "../assets/images/mazorca.png";
 import mapPinIcon from "../assets/icons/map-pin.png";

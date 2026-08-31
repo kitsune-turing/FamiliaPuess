@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class AuditoriaResponse(BaseModel):
@@ -16,6 +16,13 @@ class AuditoriaResponse(BaseModel):
     timestamp_accion: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator("ip_address", mode="before")
+    @classmethod
+    def _coerce_ip(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        return str(v)
 
 
 class AuditoriaListResponse(BaseModel):

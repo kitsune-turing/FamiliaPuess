@@ -1,21 +1,18 @@
 import { useState } from "react";
-import { Card, SelectField, StatCard, Switch, TextField } from "../components/ui";
-import { ClockIcon, MapPinIcon, MonitorIcon, SaveIcon, UsersIcon } from "../components/ui/Icons";
-import { useAuth } from "../contexts/AuthContext";
-import { useDatos } from "../context/DataProvider";
-import { useToast } from "../context/ToastProvider";
+import { Card, SelectField, StatCard, Switch, TextField } from "../../components/ui";
+import { ClockIcon, MapPinIcon, MonitorIcon, SaveIcon, UsersIcon } from "../../components/ui/Icons";
+import { useDatos } from "../../context/DataProvider";
+import { useToast } from "../../context/ToastProvider";
 
-type Pestana = "general" | "asistencia" | "notificaciones" | "perfil";
+type Pestana = "general" | "asistencia" | "desktop";
 
 const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: "general", etiqueta: "General" },
   { valor: "asistencia", etiqueta: "Asistencia" },
-  { valor: "notificaciones", etiqueta: "Notificaciones" },
-  { valor: "perfil", etiqueta: "Mi perfil" },
+  { valor: "desktop", etiqueta: "Aplicación Desktop" },
 ];
 
 export function ConfiguracionPage() {
-  const { user } = useAuth();
   const { sedes, trabajadores, dispositivos } = useDatos();
   const { mostrar } = useToast();
 
@@ -35,15 +32,11 @@ export function ConfiguracionPage() {
   const [bloquearDuplicados, setBloquearDuplicados] = useState(false);
   const [exigirCodigo, setExigirCodigo] = useState(false);
 
-  // ---- Notificaciones
-  const [avisoTarde, setAvisoTarde] = useState(false);
-  const [avisoDispositivo, setAvisoDispositivo] = useState(false);
-  const [resumenDiario, setResumenDiario] = useState(false);
-  const [correoAvisos, setCorreoAvisos] = useState("");
-
-  // ---- Perfil
-  const [nombrePerfil, setNombrePerfil] = useState(user?.nombre ?? "");
-  const [correoPerfil, setCorreoPerfil] = useState(user?.username ?? "");
+  // ---- Desktop
+  const [modoKiosco, setModoKiosco] = useState(false);
+  const [inicioAutomatico, setInicioAutomatico] = useState(false);
+  const [intervaloQr, setIntervaloQr] = useState("30");
+  const [mostrarReloj, setMostrarReloj] = useState(true);
 
   const guardar = () => mostrar("Configuración guardada.");
 
@@ -195,44 +188,49 @@ export function ConfiguracionPage() {
         </Card>
       ) : null}
 
-      {pestana === "notificaciones" ? (
+      {pestana === "desktop" ? (
         <Card>
           <h2 className="card__title" style={{ marginBottom: 18 }}>
-            Avisos del sistema
+            Aplicación Desktop
           </h2>
-          <TextField
-            etiqueta="Correo para avisos"
-            tipo="email"
-            valor={correoAvisos}
-            alCambiar={setCorreoAvisos}
-          />
+          <p className="setting-row__hint" style={{ marginBottom: 16 }}>
+            Configura el comportamiento de la aplicación instalada en cada computador de registro.
+          </p>
+          <div className="settings-grid">
+            <TextField
+              etiqueta="Intervalo de renovación QR (segundos)"
+              tipo="number"
+              valor={intervaloQr}
+              alCambiar={setIntervaloQr}
+            />
+          </div>
           <div style={{ marginTop: 12 }}>
             <div className="setting-row">
               <div>
-                <p className="setting-row__label">Avisar entradas tarde</p>
-                <p className="setting-row__hint">Envía un correo cuando alguien registra fuera de la tolerancia.</p>
-              </div>
-              <Switch marcado={avisoTarde} etiqueta="Avisar entradas tarde" alCambiar={setAvisoTarde} />
-            </div>
-            <div className="setting-row">
-              <div>
-                <p className="setting-row__label">Avisar dispositivos sin conexión</p>
+                <p className="setting-row__label">Modo kiosco</p>
                 <p className="setting-row__hint">
-                  Notifica cuando un dispositivo lleva más de 30 minutos sin reportarse.
+                  Bloquea la pantalla para que solo se pueda usar la aplicación de registro.
                 </p>
               </div>
-              <Switch
-                marcado={avisoDispositivo}
-                etiqueta="Avisar dispositivos sin conexión"
-                alCambiar={setAvisoDispositivo}
-              />
+              <Switch marcado={modoKiosco} etiqueta="Modo kiosco" alCambiar={setModoKiosco} />
             </div>
             <div className="setting-row">
               <div>
-                <p className="setting-row__label">Resumen diario</p>
-                <p className="setting-row__hint">Envía un consolidado de asistencia al cerrar la jornada.</p>
+                <p className="setting-row__label">Inicio automático</p>
+                <p className="setting-row__hint">
+                  La aplicación se abre automáticamente al encender el computador.
+                </p>
               </div>
-              <Switch marcado={resumenDiario} etiqueta="Resumen diario" alCambiar={setResumenDiario} />
+              <Switch marcado={inicioAutomatico} etiqueta="Inicio automático" alCambiar={setInicioAutomatico} />
+            </div>
+            <div className="setting-row">
+              <div>
+                <p className="setting-row__label">Mostrar reloj en pantalla</p>
+                <p className="setting-row__hint">
+                  Muestra la hora actual en la pantalla de registro.
+                </p>
+              </div>
+              <Switch marcado={mostrarReloj} etiqueta="Mostrar reloj" alCambiar={setMostrarReloj} />
             </div>
           </div>
           <div style={{ marginTop: 22, display: "flex", justifyContent: "flex-end" }}>
@@ -243,25 +241,6 @@ export function ConfiguracionPage() {
         </Card>
       ) : null}
 
-      {pestana === "perfil" ? (
-        <Card>
-          <h2 className="card__title" style={{ marginBottom: 18 }}>
-            Mi perfil
-          </h2>
-          <div className="settings-grid">
-            <TextField etiqueta="Nombre" valor={nombrePerfil} alCambiar={setNombrePerfil} />
-            <TextField etiqueta="Correo electrónico" tipo="email" valor={correoPerfil} alCambiar={setCorreoPerfil} />
-          </div>
-          <p style={{ marginTop: 14, fontSize: 14, color: "var(--fp-text-muted)" }}>
-            Rol asignado: {user?.rol_nombre ?? "Sin rol"}
-          </p>
-          <div style={{ marginTop: 22, display: "flex", justifyContent: "flex-end" }}>
-            <button type="button" className="btn btn--primary" onClick={guardar}>
-              <SaveIcon size={19} /> Guardar cambios
-            </button>
-          </div>
-        </Card>
-      ) : null}
     </>
   );
 }

@@ -29,6 +29,23 @@ export function fechaAIso(fecha: string): string {
   return `${anio}-${mes}-${dia}`;
 }
 
+/** Fecha y hora actuales con el formato que usa la tabla de auditoría. */
+export function fechaHoraActual(): string {
+  const ahora = new Date();
+  const fecha = ahora.toLocaleDateString("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const hora = ahora.toLocaleTimeString("es-CO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  return `${fecha} ${hora}`;
+}
+
 export function iniciales(nombre: string): string {
   return nombre
     .trim()
@@ -71,4 +88,40 @@ export function generarCsv(encabezados: string[], filas: (string | number)[][]):
     return /[",;\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
   };
   return [encabezados, ...filas].map((fila) => fila.map(escapar).join(";")).join("\n");
+}
+
+/** Genera y descarga un archivo Excel (.xlsx) usando SpreadsheetML XML. */
+export function descargarExcel(
+  nombre: string,
+  encabezados: string[],
+  filas: (string | number)[][],
+): void {
+  const esc = (v: string | number) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const celdas = (fila: (string | number)[], esEncabezado = false) =>
+    fila
+      .map((v) => {
+        const tipo = typeof v === "number" ? "Number" : "String";
+        const estilo = esEncabezado ? ' ss:StyleID="header"' : "";
+        return `<Cell${estilo}><Data ss:Type="${tipo}">${esc(v)}</Data></Cell>`;
+      })
+      .join("");
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+<Style ss:ID="Default"><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+<Style ss:ID="header"><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#F2E9E0" ss:Pattern="Solid"/></Style>
+</Styles>
+<Worksheet ss:Name="Datos">
+<Table>
+${encabezados.map((h) => `<Column ss:AutoFitWidth="1" ss:Width="120"/>`).join("\n")}
+<Row>${celdas(encabezados, true)}</Row>
+${filas.map((f) => `<Row>${celdas(f)}</Row>`).join("\n")}
+</Table>
+</Worksheet>
+</Workbook>`;
+
+  descargarArchivo(`${nombre}.xls`, xml, "application/vnd.ms-excel");
 }

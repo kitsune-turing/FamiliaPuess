@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { App } from "./App";
+import { AuthProvider } from "./context/AuthProvider";
 import { DataProvider } from "./context/DataProvider";
 import { ToastProvider } from "./context/ToastProvider";
-import { App } from "./App";
 import "./styles/fonts.css";
 import "./styles/global.css";
 import "./styles/layout.css";

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../context/AuthProvider";
 import { useDatos } from "../../context/DataProvider";
 import { NOTIFICACIONES } from "../../data/initial";
 import { useClickFuera } from "../../hooks";
@@ -23,7 +23,7 @@ interface Props {
 }
 
 export function Topbar({ titulo, subtitulo, alAbrirMenu }: Props) {
-  const { user, logout, sedeActiva, cambiarSede } = useAuth();
+  const { usuario, perfil, salir, sedeActiva, cambiarSede } = useAuth();
   const { sedes } = useDatos();
   const navegar = useNavigate();
 
@@ -39,7 +39,7 @@ export function Topbar({ titulo, subtitulo, alAbrirMenu }: Props) {
   const refNotif = useClickFuera<HTMLDivElement>(notifAbiertas, cerrarNotif);
   const refMenu = useClickFuera<HTMLDivElement>(menuAbierto, cerrarMenu);
 
-  const nombre = user?.nombre ?? "Invitado";
+  const nombre = usuario?.nombre ?? "Invitado";
 
   return (
     <header className="topbar">
@@ -149,7 +149,11 @@ export function Topbar({ titulo, subtitulo, alAbrirMenu }: Props) {
             aria-expanded={menuAbierto}
             aria-haspopup="menu"
           >
-            <span className="user-menu__avatar">{iniciales(nombre)}</span>
+            {perfil?.avatar ? (
+              <img className="user-menu__avatar user-menu__avatar--img" src={perfil.avatar} alt="" />
+            ) : (
+              <span className="user-menu__avatar">{iniciales(nombre)}</span>
+            )}
             <span className="user-menu__name">{nombre}</span>
             <ChevronDownIcon size={20} />
           </button>
@@ -158,7 +162,7 @@ export function Topbar({ titulo, subtitulo, alAbrirMenu }: Props) {
             <div className="dropdown" role="menu">
               <div style={{ padding: "10px 12px 8px" }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: "var(--fp-text)" }}>{nombre}</p>
-                <p style={{ fontSize: 12.5, color: "var(--fp-text-muted)" }}>{user?.rol_nombre}</p>
+                <p style={{ fontSize: 12.5, color: "var(--fp-text-muted)" }}>{usuario?.rolNombre}</p>
               </div>
               <div className="dropdown__divider" />
               <button
@@ -167,7 +171,7 @@ export function Topbar({ titulo, subtitulo, alAbrirMenu }: Props) {
                 className="dropdown__item"
                 onClick={() => {
                   cerrarMenu();
-                  navegar("/panel/configuracion");
+                  navegar("/panel/perfil");
                 }}
               >
                 <UserIcon size={18} /> Mi perfil
@@ -201,7 +205,7 @@ export function Topbar({ titulo, subtitulo, alAbrirMenu }: Props) {
                 className="dropdown__item dropdown__item--danger"
                 onClick={() => {
                   cerrarMenu();
-                  logout();
+                  salir();
                   navegar("/login", { replace: true });
                 }}
               >

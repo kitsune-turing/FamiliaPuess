@@ -11,7 +11,7 @@ import {
   StatCard,
   Switch,
   TextField,
-} from "../components/ui";
+} from "../../components/ui";
 import {
   EditIcon,
   PlusIcon,
@@ -21,26 +21,14 @@ import {
   UserCheckIcon,
   UserXIcon,
   UsersIcon,
-} from "../components/ui/Icons";
-import { useDatos } from "../context/DataProvider";
-import { useToast } from "../context/ToastProvider";
-import { usePaginacion } from "../hooks";
-import { coincide, porcentaje } from "../lib/format";
-import type { RolCodigo, Usuario } from "../types/admin";
+} from "../../components/ui/Icons";
+import { useDatos } from "../../context/DataProvider";
+import { useToast } from "../../context/ToastProvider";
+import { usePaginacion } from "../../hooks";
+import { coincide, porcentaje } from "../../lib/format";
+import type { Usuario } from "../../types/admin";
 
 const POR_PAGINA = 5;
-
-export const ROLES: { valor: RolCodigo; etiqueta: string; tono: "pink" | "orange" | "purple" | "green" | "grey" }[] = [
-  { valor: "SUPER_ADMIN", etiqueta: "Súper admin", tono: "pink" },
-  { valor: "ADMIN", etiqueta: "Administrador", tono: "orange" },
-  { valor: "SUPERVISOR", etiqueta: "Supervisor", tono: "purple" },
-  { valor: "AUDITOR", etiqueta: "Auditor", tono: "green" },
-  { valor: "OPERADOR", etiqueta: "Operador", tono: "grey" },
-];
-
-function rolInfo(codigo: RolCodigo) {
-  return ROLES.find((r) => r.valor === codigo) ?? ROLES[4];
-}
 
 const VACIO: Usuario = {
   id: "",
@@ -53,15 +41,17 @@ const VACIO: Usuario = {
 };
 
 export function UsuariosPage() {
-  const { usuarios, sedes, guardarUsuario, eliminarUsuario } = useDatos();
+  const { usuarios, roles, guardarUsuario, eliminarUsuario } = useDatos();
   const { mostrar } = useToast();
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroRol, setFiltroRol] = useState("todos");
-  const [filtroSede, setFiltroSede] = useState("todas");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [editando, setEditando] = useState<Usuario | null>(null);
   const [aEliminar, setAEliminar] = useState<Usuario | null>(null);
+
+  /** Solo los roles activos se pueden asignar a un usuario. */
+  const rolesAsignables = useMemo(() => roles.filter((r) => r.activo), [roles]);
 
   const metricas = useMemo(() => {
     const total = usuarios.length;
@@ -70,21 +60,20 @@ export function UsuariosPage() {
       total,
       activos,
       inactivos: total - activos,
-      roles: new Set(usuarios.map((u) => u.rol)).size,
+      roles: roles.length,
     };
-  }, [usuarios]);
+  }, [usuarios, roles]);
 
   const filtrados = useMemo(
     () =>
       usuarios.filter((usuario) => {
         const porTexto = coincide(usuario.nombre, busqueda) || coincide(usuario.correo, busqueda);
         const porRol = filtroRol === "todos" || usuario.rol === filtroRol;
-        const porSede = filtroSede === "todas" || usuario.sede === filtroSede;
         const porEstado =
           filtroEstado === "todos" || (filtroEstado === "activo" ? usuario.activo : !usuario.activo);
-        return porTexto && porRol && porSede && porEstado;
+        return porTexto && porRol && porEstado;
       }),
-    [usuarios, busqueda, filtroRol, filtroSede, filtroEstado],
+    [usuarios, busqueda, filtroRol, filtroEstado],
   );
 
   const paginacion = usePaginacion(filtrados, POR_PAGINA);
@@ -92,12 +81,11 @@ export function UsuariosPage() {
   const limpiarFiltros = () => {
     setBusqueda("");
     setFiltroRol("todos");
-    setFiltroSede("todas");
     setFiltroEstado("todos");
     mostrar("Filtros restablecidos.", "info");
   };
 
-  const guardar = () => {
+  const guardar = async () => {
     if (!editando) return;
     if (!editando.nombre.trim()) {
       mostrar("El nombre del usuario es obligatorio.", "error");
@@ -108,23 +96,17 @@ export function UsuariosPage() {
       return;
     }
     const esNuevo = !editando.id;
-    guardarUsuario({ ...editando, id: editando.id || `user-${Date.now()}` });
-    setEditando(null);
-    mostrar(esNuevo ? "Usuario creado." : "Usuario actualizado.");
+    try {
+      await guardarUsuario({ ...editando, id: editando.id || `user-${Date.now()}` });
+      setEditando(null);
+      mostrar(esNuevo ? "Usuario creado." : "Usuario actualizado.");
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al guardar el usuario.", "error");
+    }
   };
 
   return (
     <>
-      <div className="page-actions">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" })}
-        >
-          <PlusIcon size={20} /> Nuevo usuario
-        </button>
-      </div>
-
       <div className="stat-grid">
         <StatCard
           icono={<UsersIcon size={26} />}
@@ -158,23 +140,14 @@ export function UsuariosPage() {
 
       <Card>
         <div className="filters">
-          <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar usuario" />
+          <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar usuario" etiquetaAccesible="Buscar usuario por nombre o correo" />
           <SelectField
             etiqueta="Rol"
             valor={filtroRol}
             alCambiar={setFiltroRol}
             opciones={[
               { valor: "todos", etiqueta: "Todos los roles" },
-              ...ROLES.map((r) => ({ valor: r.valor, etiqueta: r.etiqueta })),
-            ]}
-          />
-          <SelectField
-            etiqueta="Sede"
-            valor={filtroSede}
-            alCambiar={setFiltroSede}
-            opciones={[
-              { valor: "todas", etiqueta: "Todas las sedes" },
-              ...sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre })),
+              ...roles.map((r) => ({ valor: r.codigo, etiqueta: r.nombre })),
             ]}
           />
           <SelectField
@@ -190,6 +163,18 @@ export function UsuariosPage() {
           <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
             <RefreshIcon size={20} /> Limpiar filtros
           </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() =>
+              setEditando({
+                ...VACIO,
+                rol: rolesAsignables[0]?.codigo ?? "OPERADOR",
+              })
+            }
+          >
+            <PlusIcon size={20} /> Nuevo usuario
+          </button>
         </div>
       </Card>
 
@@ -201,7 +186,6 @@ export function UsuariosPage() {
                 <th>Usuario</th>
                 <th>Correo electrónico</th>
                 <th>Rol</th>
-                <th>Sede</th>
                 <th>Estado</th>
                 <th>Último acceso</th>
                 <th>Acciones</th>
@@ -209,25 +193,24 @@ export function UsuariosPage() {
             </thead>
             <tbody>
               {paginacion.visibles.length === 0 ? (
-                <EmptyRow columnas={7} mensaje={
+                <EmptyRow columnas={6} mensaje={
                   usuarios.length === 0
                     ? "Aún no hay usuarios registrados."
                     : "No hay usuarios que coincidan con los filtros."
                 } />
               ) : (
                 paginacion.visibles.map((usuario) => {
-                  const rol = rolInfo(usuario.rol);
+                  const rol = roles.find((r) => r.codigo === usuario.rol);
                   return (
                     <tr key={usuario.id}>
                       <td>{usuario.nombre}</td>
                       <td>{usuario.correo}</td>
                       <td>
-                        <Badge tono={rol?.tono ?? "grey"}>{rol?.etiqueta ?? usuario.rol}</Badge>
+                        <Badge tono={rol?.tono ?? "grey"}>{rol?.nombre ?? usuario.rol}</Badge>
                       </td>
-                      <td>{usuario.sede}</td>
                       <td>
                         <Badge tono={usuario.activo ? "green" : "grey"}>
-                          {usuario.activo ? "Activa" : "Inactiva"}
+                          {usuario.activo ? "Activo" : "Inactivo"}
                         </Badge>
                       </td>
                       <td>{usuario.ultimoAcceso}</td>
@@ -304,14 +287,8 @@ export function UsuariosPage() {
               <SelectField
                 etiqueta="Rol"
                 valor={editando.rol}
-                opciones={ROLES.map((r) => ({ valor: r.valor, etiqueta: r.etiqueta }))}
-                alCambiar={(v) => setEditando({ ...editando, rol: v as RolCodigo })}
-              />
-              <SelectField
-                etiqueta="Sede"
-                valor={editando.sede}
-                opciones={sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre }))}
-                alCambiar={(v) => setEditando({ ...editando, sede: v })}
+                opciones={rolesAsignables.map((r) => ({ valor: r.codigo, etiqueta: r.nombre }))}
+                alCambiar={(v) => setEditando({ ...editando, rol: v })}
               />
             </div>
             <div className="setting-row">
@@ -336,10 +313,14 @@ export function UsuariosPage() {
         titulo="Eliminar usuario"
         mensaje={`Se eliminará la cuenta de ${aEliminar?.nombre ?? ""}. Las acciones que registró en auditoría se conservan.`}
         alCerrar={() => setAEliminar(null)}
-        alConfirmar={() => {
+        alConfirmar={async () => {
           if (aEliminar) {
-            eliminarUsuario(aEliminar.id);
-            mostrar("Usuario eliminado.");
+            try {
+              await eliminarUsuario(aEliminar.id);
+              mostrar("Usuario eliminado.");
+            } catch (e) {
+              mostrar(e instanceof Error ? e.message : "Error al eliminar el usuario.", "error");
+            }
           }
           setAEliminar(null);
         }}

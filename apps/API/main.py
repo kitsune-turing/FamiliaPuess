@@ -3,6 +3,7 @@ import sys
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from apps.API.core.config import get_settings
@@ -115,6 +116,26 @@ app = FastAPI(title="Familia Puess - Sistema de Control de Asistencia")
 
 
 @app.on_event("startup")
+async def _seed_superadmin() -> None:
+    """Ensure superadmin exists with a known password for development."""
+    from sqlalchemy import text
+    from apps.API.database.session import _session_factory
+    from apps.API.security.password import hash_password
+
+    async with _session_factory() as session:
+        pw_hash = hash_password("Admin123!")
+        for uname in ("superadmin", "admin"):
+            row = (await session.execute(text("SELECT id FROM usuario WHERE username = :u"), {"u": uname})).first()
+            if row:
+                await session.execute(
+                    text("UPDATE usuario SET password_hash = :h, debe_cambiar_pw = false WHERE username = :u"),
+                    {"h": pw_hash, "u": uname},
+                )
+        await session.commit()
+        logger.info("dev passwords reset (Admin123!)")
+
+
+@app.on_event("startup")
 async def _validate_settings() -> None:
     settings = get_settings()
     _INSECURE_SECRETS = {
@@ -135,6 +156,7 @@ async def _validate_settings() -> None:
 
 
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 _settings = get_settings()
 app.add_middleware(

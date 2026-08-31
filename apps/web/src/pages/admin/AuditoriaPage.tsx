@@ -8,7 +8,7 @@ import {
   SelectField,
   StatCard,
   type RangoFechas,
-} from "../components/ui";
+} from "../../components/ui";
 import {
   CursorClickIcon,
   DownloadIcon,
@@ -16,13 +16,13 @@ import {
   ListChecksIcon,
   RefreshIcon,
   UserCheckIcon,
-} from "../components/ui/Icons";
-import { useDatos } from "../context/DataProvider";
-import { useToast } from "../context/ToastProvider";
-import { ACCIONES_AUDITORIA, MODULOS_AUDITORIA } from "../data/initial";
-import { usePaginacion } from "../hooks";
-import { descargarArchivo, generarCsv, numero } from "../lib/format";
-import type { AccionAuditoria, ModuloAuditoria } from "../types/admin";
+} from "../../components/ui/Icons";
+import { useDatos } from "../../context/DataProvider";
+import { useToast } from "../../context/ToastProvider";
+import { ACCIONES_AUDITORIA, MODULOS_AUDITORIA } from "../../data/initial";
+import { usePaginacion } from "../../hooks";
+import { descargarExcel, numero } from "../../lib/format";
+import type { AccionAuditoria, ModuloAuditoria } from "../../types/admin";
 
 const POR_PAGINA = 6;
 
@@ -33,6 +33,8 @@ const TONO_MODULO: Record<ModuloAuditoria, "pink" | "orange" | "purple" | "green
   Dispositivos: "green",
   Reportes: "yellow",
   Usuarios: "grey",
+  Roles: "pink",
+  Perfil: "purple",
 };
 
 const TONO_ACCION: Record<AccionAuditoria, "green" | "purple" | "pink" | "grey"> = {
@@ -46,7 +48,15 @@ export function AuditoriaPage() {
   const { auditorias, usuarios } = useDatos();
   const { mostrar } = useToast();
 
-  const [rango, setRango] = useState<RangoFechas>({ desde: "2026-05-01", hasta: "2026-05-12" });
+  const [rango, setRango] = useState<RangoFechas>(() => {
+    const hoy = new Date();
+    const hace30 = new Date(hoy);
+    hace30.setDate(hace30.getDate() - 30);
+    return {
+      desde: hace30.toISOString().slice(0, 10),
+      hasta: hoy.toISOString().slice(0, 10),
+    };
+  });
   const [filtroUsuario, setFiltroUsuario] = useState("todos");
   const [filtroModulo, setFiltroModulo] = useState("todos");
   const [filtroAccion, setFiltroAccion] = useState("todas");
@@ -54,12 +64,14 @@ export function AuditoriaPage() {
   const filtradas = useMemo(
     () =>
       auditorias.filter((entrada) => {
+        const fecha = entrada.fechaHora.slice(0, 10);
+        const porFecha = fecha >= rango.desde && fecha <= rango.hasta;
         const porUsuario = filtroUsuario === "todos" || entrada.usuario === filtroUsuario;
         const porModulo = filtroModulo === "todos" || entrada.modulo === filtroModulo;
         const porAccion = filtroAccion === "todas" || entrada.accion === filtroAccion;
-        return porUsuario && porModulo && porAccion;
+        return porFecha && porUsuario && porModulo && porAccion;
       }),
-    [auditorias, filtroUsuario, filtroModulo, filtroAccion],
+    [auditorias, rango, filtroUsuario, filtroModulo, filtroAccion],
   );
 
   const metricas = useMemo(
@@ -82,18 +94,50 @@ export function AuditoriaPage() {
   };
 
   const exportar = () => {
-    const csv = generarCsv(
-      ["Fecha / Hora", "Usuario", "Módulo", "Acción", "Detalle", "IP", "Dispositivo"],
-      filtradas.map((a) => [a.fechaHora, a.usuario, a.modulo, a.accion, a.detalle, a.ip, a.dispositivo]),
+    descargarExcel(
+      "auditoria",
+      ["Fecha / Hora", "Usuario", "Módulo", "Acción", "Detalle", "IP"],
+      filtradas.map((a) => [a.fechaHora, a.usuario, a.modulo, a.accion, a.detalle, a.ip]),
     );
-    descargarArchivo("auditoria.csv", csv);
-    mostrar("Historial exportado en CSV.");
+    mostrar("Historial exportado en Excel.");
   };
 
   const nombresUsuario = Array.from(new Set(usuarios.map((u) => u.nombre)));
 
   return (
     <>
+      {/* ------------------------------------------------------ Métricas - */}
+      <div className="stat-grid">
+        <StatCard
+          icono={<ListChecksIcon size={26} />}
+          color="yellow"
+          etiqueta="Total actividades"
+          valor={numero(metricas.total)}
+          pista="En el periodo seleccionado"
+        />
+        <StatCard
+          icono={<UserCheckIcon size={26} />}
+          color="yellow"
+          etiqueta="Usuarios únicos"
+          valor={metricas.usuarios}
+          pista="En el periodo seleccionado"
+        />
+        <StatCard
+          icono={<GridIcon size={26} />}
+          color="yellow"
+          etiqueta="Módulos utilizados"
+          valor={metricas.modulos}
+          pista="En el periodo seleccionado"
+        />
+        <StatCard
+          icono={<CursorClickIcon size={26} />}
+          color="yellow"
+          etiqueta="Acciones realizadas"
+          valor={metricas.acciones}
+          pista="Tipos diferentes"
+        />
+      </div>
+
       {/* ------------------------------------------------------- Filtros - */}
       <Card>
         <div className="filters">
@@ -128,50 +172,14 @@ export function AuditoriaPage() {
           <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
             <RefreshIcon size={20} /> Limpiar filtros
           </button>
-        </div>
-      </Card>
-
-      {/* ------------------------------------------------------ Métricas - */}
-      <div className="stat-grid">
-        <StatCard
-          icono={<ListChecksIcon size={26} />}
-          color="yellow"
-          etiqueta="Total actividades"
-          valor={numero(metricas.total)}
-          pista="En el periodo seleccionado"
-        />
-        <StatCard
-          icono={<UserCheckIcon size={26} />}
-          color="yellow"
-          etiqueta="Usuarios únicos"
-          valor={metricas.usuarios}
-          pista="En el periodo seleccionado"
-        />
-        <StatCard
-          icono={<GridIcon size={26} />}
-          color="yellow"
-          etiqueta="Módulos utilizados"
-          valor={metricas.modulos}
-          pista="En el periodo seleccionado"
-        />
-        <StatCard
-          icono={<CursorClickIcon size={26} />}
-          color="yellow"
-          etiqueta="Acciones realizadas"
-          valor={metricas.acciones}
-          pista="Tipos diferentes"
-        />
-      </div>
-
-      {/* -------------------------------------------- Historial de acciones */}
-      <Card>
-        <div className="card__head">
-          <h2 className="card__title">Historial de actividades</h2>
-          <button type="button" className="btn btn--ghost" onClick={exportar}>
+          <button type="button" className="btn btn--primary" onClick={exportar}>
             <DownloadIcon size={19} /> Exportar
           </button>
         </div>
+      </Card>
 
+      {/* -------------------------------------------- Historial de acciones */}
+      <Card>
         <div className="table-wrap">
           <table className="table">
             <thead>

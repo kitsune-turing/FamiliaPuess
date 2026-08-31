@@ -10,7 +10,7 @@ import {
   SelectField,
   Switch,
   TextField,
-} from "../components/ui";
+} from "../../components/ui";
 import {
   BuildingCheckIcon,
   BuildingIcon,
@@ -20,13 +20,13 @@ import {
   PlusIcon,
   RefreshIcon,
   TrashIcon,
-} from "../components/ui/Icons";
-import { StatCard } from "../components/ui";
-import { useDatos } from "../context/DataProvider";
-import { useToast } from "../context/ToastProvider";
-import { usePaginacion } from "../hooks";
-import { coincide, porcentaje } from "../lib/format";
-import type { Sede } from "../types/admin";
+} from "../../components/ui/Icons";
+import { StatCard } from "../../components/ui";
+import { useDatos } from "../../context/DataProvider";
+import { useToast } from "../../context/ToastProvider";
+import { usePaginacion } from "../../hooks";
+import { coincide, porcentaje } from "../../lib/format";
+import type { Sede } from "../../types/admin";
 
 const POR_PAGINA = 5;
 
@@ -47,17 +47,9 @@ export function SedesPage() {
   const { mostrar } = useToast();
 
   const [busqueda, setBusqueda] = useState("");
-  const [filtroCiudad, setFiltroCiudad] = useState("todas");
   const [filtroEstado, setFiltroEstado] = useState("todos");
-  const [filtroSede, setFiltroSede] = useState("todas");
   const [editando, setEditando] = useState<Sede | null>(null);
   const [aEliminar, setAEliminar] = useState<Sede | null>(null);
-
-  // Las ciudades del filtro salen de las sedes ya registradas.
-  const ciudades = useMemo(
-    () => Array.from(new Set(sedes.map((s) => s.ciudad).filter(Boolean))).sort(),
-    [sedes],
-  );
 
   const metricas = useMemo(() => {
     const total = sedes.length;
@@ -75,47 +67,40 @@ export function SedesPage() {
       sedes.filter((sede) => {
         const porTexto =
           coincide(sede.nombre, busqueda) ||
-          coincide(sede.direccion, busqueda) ||
-          coincide(sede.ciudad, busqueda);
-        const porCiudad = filtroCiudad === "todas" || sede.ciudad === filtroCiudad;
+          coincide(sede.direccion, busqueda);
         const porEstado =
           filtroEstado === "todos" || (filtroEstado === "activa" ? sede.activa : !sede.activa);
-        const porSede = filtroSede === "todas" || sede.nombre === filtroSede;
-        return porTexto && porCiudad && porEstado && porSede;
+        return porTexto && porEstado;
       }),
-    [sedes, busqueda, filtroCiudad, filtroEstado, filtroSede],
+    [sedes, busqueda, filtroEstado],
   );
 
   const paginacion = usePaginacion(filtradas, POR_PAGINA);
 
   const limpiarFiltros = () => {
     setBusqueda("");
-    setFiltroCiudad("todas");
     setFiltroEstado("todos");
-    setFiltroSede("todas");
     mostrar("Filtros restablecidos.", "info");
   };
 
-  const guardar = () => {
+  const guardar = async () => {
     if (!editando) return;
     if (!editando.nombre.trim() || !editando.direccion.trim()) {
       mostrar("El nombre y la dirección de la sede son obligatorios.", "error");
       return;
     }
     const esNueva = !editando.id;
-    guardarSede({ ...editando, id: editando.id || `sede-${Date.now()}` });
-    setEditando(null);
-    mostrar(esNueva ? "Sede creada." : "Sede actualizada.");
+    try {
+      await guardarSede({ ...editando, id: editando.id || `sede-${Date.now()}` });
+      setEditando(null);
+      mostrar(esNueva ? "Sede creada." : "Sede actualizada.");
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al guardar la sede.", "error");
+    }
   };
 
   return (
     <>
-      <div className="page-actions">
-        <button type="button" className="btn btn--primary" onClick={() => setEditando({ ...VACIA })}>
-          <PlusIcon size={20} /> Nueva sede
-        </button>
-      </div>
-
       {/* ------------------------------------------------------ Métricas - */}
       <div className="stat-grid">
         <StatCard
@@ -148,19 +133,10 @@ export function SedesPage() {
         />
       </div>
 
-      {/* ------------------------------------------------------- Filtros - */}
+      {/* ----------------------------------------- Filtros y acciones -- */}
       <Card>
         <div className="filters">
           <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar sede" />
-          <SelectField
-            etiqueta="Ciudad"
-            valor={filtroCiudad}
-            alCambiar={setFiltroCiudad}
-            opciones={[
-              { valor: "todas", etiqueta: "Todas las ciudades" },
-              ...ciudades.map((c) => ({ valor: c, etiqueta: c })),
-            ]}
-          />
           <SelectField
             etiqueta="Estado"
             valor={filtroEstado}
@@ -171,22 +147,16 @@ export function SedesPage() {
               { valor: "inactiva", etiqueta: "Inactivas" },
             ]}
           />
-          <SelectField
-            etiqueta="Sede"
-            valor={filtroSede}
-            alCambiar={setFiltroSede}
-            opciones={[
-              { valor: "todas", etiqueta: "Todas las sedes" },
-              ...sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre })),
-            ]}
-          />
           <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
             <RefreshIcon size={20} /> Limpiar filtros
+          </button>
+          <button type="button" className="btn btn--primary" onClick={() => setEditando({ ...VACIA })}>
+            <PlusIcon size={20} /> Nueva sede
           </button>
         </div>
       </Card>
 
-      {/* --------------------------------------------------------- Tabla - */}
+      {/* -------------------------------------------------------- Tabla -- */}
       <Card>
         <div className="table-wrap">
           <table className="table">
@@ -194,7 +164,6 @@ export function SedesPage() {
               <tr>
                 <th>Sede</th>
                 <th>Dirección</th>
-                <th>Ciudad</th>
                 <th>Trabajadores</th>
                 <th>Dispositivos</th>
                 <th>Estado</th>
@@ -203,7 +172,7 @@ export function SedesPage() {
             </thead>
             <tbody>
               {paginacion.visibles.length === 0 ? (
-                <EmptyRow columnas={7} mensaje={
+                <EmptyRow columnas={6} mensaje={
                   sedes.length === 0
                     ? "Aún no hay sedes registradas."
                     : "No hay sedes que coincidan con los filtros."
@@ -213,7 +182,6 @@ export function SedesPage() {
                   <tr key={sede.id}>
                     <td>{sede.nombre}</td>
                     <td>{sede.direccion}</td>
-                    <td>{sede.ciudad}</td>
                     <td>{sede.trabajadores}</td>
                     <td>{sede.dispositivos}</td>
                     <td>
@@ -290,23 +258,6 @@ export function SedesPage() {
                 valor={editando.direccion}
                 alCambiar={(v) => setEditando({ ...editando, direccion: v })}
               />
-              <TextField
-                etiqueta="Ciudad"
-                requerido
-                placeholder="Medellín"
-                valor={editando.ciudad}
-                alCambiar={(v) => setEditando({ ...editando, ciudad: v })}
-              />
-              <TextField
-                etiqueta="Teléfono"
-                valor={editando.telefono}
-                alCambiar={(v) => setEditando({ ...editando, telefono: v })}
-              />
-              <TextField
-                etiqueta="Responsable"
-                valor={editando.responsable}
-                alCambiar={(v) => setEditando({ ...editando, responsable: v })}
-              />
             </div>
             <div className="setting-row">
               <div>
@@ -330,10 +281,14 @@ export function SedesPage() {
         titulo="Eliminar sede"
         mensaje={`Se eliminará ${aEliminar?.nombre ?? ""}. Los trabajadores y dispositivos asociados quedarán sin sede asignada.`}
         alCerrar={() => setAEliminar(null)}
-        alConfirmar={() => {
+        alConfirmar={async () => {
           if (aEliminar) {
-            eliminarSede(aEliminar.id);
-            mostrar("Sede eliminada.");
+            try {
+              await eliminarSede(aEliminar.id);
+              mostrar("Sede eliminada.");
+            } catch (e) {
+              mostrar(e instanceof Error ? e.message : "Error al eliminar la sede.", "error");
+            }
           }
           setAEliminar(null);
         }}

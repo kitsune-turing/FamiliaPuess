@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DonutChart } from "../components/charts/DonutChart";
-import { LineChart } from "../components/charts/LineChart";
-import { BadgeOutline, Card, EmptyRow, StatCard } from "../components/ui";
+import { DonutChart } from "../../components/charts/DonutChart";
+import { LineChart } from "../../components/charts/LineChart";
+import { BadgeOutline, Card, EmptyRow, StatCard } from "../../components/ui";
 import {
   CalendarIcon,
+  CheckIcon,
   ChevronDownIcon,
   DoorIcon,
   DoorLateIcon,
@@ -14,11 +15,12 @@ import {
   PlusIcon,
   UploadIcon,
   UsersIcon,
-} from "../components/ui/Icons";
-import { useAuth } from "../contexts/AuthContext";
-import { useDatos } from "../context/DataProvider";
-import { ACTIVIDADES, ENTRADAS_POR_HORA, SEGMENTOS_ASISTENCIA } from "../data/initial";
-import { porcentaje } from "../lib/format";
+} from "../../components/ui/Icons";
+import { useAuth } from "../../context/AuthProvider";
+import { useDatos } from "../../context/DataProvider";
+import { ACTIVIDADES, SEGMENTOS_ASISTENCIA } from "../../data/initial";
+import { useClickFuera } from "../../hooks";
+import { porcentaje } from "../../lib/format";
 
 const PERIODOS = [
   { valor: "hoy", etiqueta: "Hoy" },
@@ -36,31 +38,48 @@ const ETIQUETA_ESTADO: Record<string, string> = {
 
 /** Selector compacto de periodo usado en las dos gráficas. */
 function PeriodSelect({ valor, alCambiar }: { valor: string; alCambiar: (valor: string) => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const cerrar = useCallback(() => setAbierto(false), []);
+  const ref = useClickFuera<HTMLDivElement>(abierto, cerrar);
+  const actual = PERIODOS.find((p) => p.valor === valor);
+
   return (
-    <div className="period-select">
-      <span className="period-select__trigger" style={{ position: "relative" }}>
+    <div className="period-select" ref={ref}>
+      <button
+        type="button"
+        className="period-select__trigger"
+        aria-haspopup="listbox"
+        aria-expanded={abierto}
+        aria-label="Periodo"
+        onClick={() => setAbierto((a) => !a)}
+      >
         <CalendarIcon size={22} />
-        <select
-          value={valor}
-          onChange={(e) => alCambiar(e.target.value)}
-          aria-label="Periodo"
-          style={{
-            appearance: "none",
-            border: "none",
-            background: "transparent",
-            font: "inherit",
-            paddingRight: 22,
-            cursor: "pointer",
-          }}
-        >
+        <span>{actual?.etiqueta ?? "Periodo"}</span>
+        <ChevronDownIcon
+          size={20}
+          className={`select__chevron--inline ${abierto ? "select__chevron--open" : ""}`.trim()}
+        />
+      </button>
+
+      {abierto ? (
+        <ul className="select__menu select__menu--derecha" role="listbox">
           {PERIODOS.map((periodo) => (
-            <option key={periodo.valor} value={periodo.valor}>
-              {periodo.etiqueta}
-            </option>
+            <li
+              key={periodo.valor}
+              role="option"
+              aria-selected={periodo.valor === valor}
+              className={`select__option ${periodo.valor === valor ? "select__option--activa" : ""}`.trim()}
+              onClick={() => {
+                alCambiar(periodo.valor);
+                setAbierto(false);
+              }}
+            >
+              <span>{periodo.etiqueta}</span>
+              {periodo.valor === valor ? <CheckIcon size={18} /> : null}
+            </li>
           ))}
-        </select>
-        <ChevronDownIcon size={20} className="select__chevron" />
-      </span>
+        </ul>
+      ) : null}
     </div>
   );
 }
@@ -77,6 +96,17 @@ export function DashboardPage() {
     () => (sedeActiva === "Todas las sedes" ? registros : registros.filter((r) => r.sede === sedeActiva)),
     [registros, sedeActiva],
   );
+
+  const entradasPorHora = useMemo(() => {
+    const conteo: Record<string, number> = {};
+    for (const r of registrosSede) {
+      const hora = r.entrada?.split(":")[0];
+      if (hora) conteo[hora] = (conteo[hora] ?? 0) + 1;
+    }
+    return Object.entries(conteo)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([h, v]) => ({ etiqueta: `${h}:00`, valor: v }));
+  }, [registrosSede]);
 
   const metricas = useMemo(() => {
     const activos = trabajadores.filter((t) => t.activo).length;
@@ -173,7 +203,7 @@ export function DashboardPage() {
             <h2 className="card__title">Entradas por hora</h2>
             <PeriodSelect valor={periodoEntradas} alCambiar={setPeriodoEntradas} />
           </div>
-          <LineChart serie={ENTRADAS_POR_HORA} />
+          <LineChart serie={entradasPorHora} />
         </Card>
 
         <Card className="chart-card">

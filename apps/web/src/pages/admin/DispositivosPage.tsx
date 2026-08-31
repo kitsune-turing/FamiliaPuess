@@ -11,35 +11,24 @@ import {
   SelectField,
   Switch,
   TextField,
-} from "../components/ui";
+} from "../../components/ui";
 import {
   BoxIcon,
   EditIcon,
   MonitorIcon,
   MonitorOffIcon,
+  PlusIcon,
   RefreshIcon,
   TrashIcon,
   WifiOffIcon,
-} from "../components/ui/Icons";
-import { useDatos } from "../context/DataProvider";
-import { useToast } from "../context/ToastProvider";
-import { usePaginacion } from "../hooks";
-import { coincide } from "../lib/format";
-import type { Dispositivo, EstadoDispositivo } from "../types/admin";
+} from "../../components/ui/Icons";
+import { useDatos } from "../../context/DataProvider";
+import { useToast } from "../../context/ToastProvider";
+import { usePaginacion } from "../../hooks";
+import { coincide } from "../../lib/format";
+import type { Dispositivo } from "../../types/admin";
 
 const POR_PAGINA = 5;
-
-const ETIQUETA_ESTADO: Record<EstadoDispositivo, string> = {
-  en_linea: "En línea",
-  problemas: "Problemas",
-  fuera_de_linea: "Fuera de línea",
-};
-
-const TONO_ESTADO: Record<EstadoDispositivo, "green" | "pink" | "yellow"> = {
-  en_linea: "green",
-  problemas: "pink",
-  fuera_de_linea: "yellow",
-};
 
 const VACIO: Dispositivo = {
   id: "",
@@ -60,7 +49,6 @@ export function DispositivosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroSede, setFiltroSede] = useState("todas");
   const [filtroEstado, setFiltroEstado] = useState("todos");
-  const [filtroConexion, setFiltroConexion] = useState("todas");
   const [editando, setEditando] = useState<Dispositivo | null>(null);
   const [aEliminar, setAEliminar] = useState<Dispositivo | null>(null);
 
@@ -93,58 +81,33 @@ export function DispositivosPage() {
         const porEstado =
           filtroEstado === "todos" ||
           (filtroEstado === "activo" ? dispositivo.activo : !dispositivo.activo);
-        const porConexion = filtroConexion === "todas" || dispositivo.estado === filtroConexion;
-        return porTexto && porSede && porEstado && porConexion;
+        return porTexto && porSede && porEstado;
       }),
-    [dispositivos, busqueda, filtroSede, filtroEstado, filtroConexion],
+    [dispositivos, busqueda, filtroSede, filtroEstado],
   );
 
   const paginacion = usePaginacion(filtrados, POR_PAGINA);
 
-  const guardar = () => {
+  const guardar = async () => {
     if (!editando) return;
     if (!editando.nombre.trim() || !editando.codigo.trim()) {
       mostrar("El nombre y el código del dispositivo son obligatorios.", "error");
       return;
     }
     const esNuevo = !editando.id;
-    guardarDispositivo({ ...editando, id: editando.id || `disp-${Date.now()}` });
-    setEditando(null);
-    mostrar(esNuevo ? "Dispositivo agregado." : "Dispositivo actualizado.");
+    try {
+      await guardarDispositivo({ ...editando, id: editando.id || `disp-${Date.now()}` });
+      setEditando(null);
+      mostrar(esNuevo ? "Dispositivo agregado." : "Dispositivo actualizado.");
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al guardar el dispositivo.", "error");
+    }
   };
 
   return (
-    <Card>
-      {/* -------------------------------------------- Búsqueda y creación */}
-      <div
-        style={{
-          display: "flex",
-          gap: 18,
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          marginBottom: 22,
-        }}
-      >
-        <div style={{ display: "flex", flex: "0 1 360px", minWidth: 240 }}>
-          <SearchInput
-            valor={busqueda}
-            alCambiar={setBusqueda}
-            placeholder="Buscar dispositivo"
-            etiquetaAccesible="Buscar dispositivo por nombre, código o sede"
-          />
-        </div>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" })}
-        >
-          Agregar dispositivo
-        </button>
-      </div>
-
+    <>
       {/* ------------------------------------------------------ Métricas - */}
-      <div className="stat-grid" style={{ marginBottom: 22 }}>
+      <div className="stat-grid">
         <StatBox icono={<MonitorIcon size={26} />} color="pink" etiqueta="Total dispositivos" valor={metricas.total} />
         <StatBox icono={<BoxIcon size={26} />} color="pink" etiqueta="Dispositivos activos" valor={metricas.activos} />
         <StatBox
@@ -156,42 +119,46 @@ export function DispositivosPage() {
         <StatBox icono={<WifiOffIcon size={26} />} color="yellow" etiqueta="Sin conexión" valor={metricas.sinConexion} />
       </div>
 
-      {/* ------------------------------------------------------- Filtros - */}
-      <div className="filters" style={{ marginBottom: 22 }}>
-        <SelectField
-          etiqueta="Sede"
-          valor={filtroSede}
-          alCambiar={setFiltroSede}
-          opciones={[
-            { valor: "todas", etiqueta: "Todas las sedes" },
-            ...sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre })),
-          ]}
-        />
-        <SelectField
-          etiqueta="Estado"
-          valor={filtroEstado}
-          alCambiar={setFiltroEstado}
-          opciones={[
-            { valor: "todos", etiqueta: "Todos los estados" },
-            { valor: "activo", etiqueta: "Activos" },
-            { valor: "inactivo", etiqueta: "Inactivos" },
-          ]}
-        />
-        <SelectField
-          etiqueta="Conexión"
-          valor={filtroConexion}
-          alCambiar={setFiltroConexion}
-          opciones={[
-            { valor: "todas", etiqueta: "Todas las conexiones" },
-            { valor: "en_linea", etiqueta: "En línea" },
-            { valor: "problemas", etiqueta: "Con problemas" },
-            { valor: "fuera_de_linea", etiqueta: "Fuera de línea" },
-          ]}
-        />
-        <div style={{ flex: "0 0 auto" }} />
-      </div>
+      {/* ---------------------------------------- Filtros y acciones -- */}
+      <Card>
+        <div className="filters">
+          <SearchInput
+            valor={busqueda}
+            alCambiar={setBusqueda}
+            placeholder="Buscar dispositivo"
+            etiquetaAccesible="Buscar dispositivo por nombre, código o sede"
+          />
+          <SelectField
+            etiqueta="Sede"
+            valor={filtroSede}
+            alCambiar={setFiltroSede}
+            opciones={[
+              { valor: "todas", etiqueta: "Todas las sedes" },
+              ...sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre })),
+            ]}
+          />
+          <SelectField
+            etiqueta="Estado"
+            valor={filtroEstado}
+            alCambiar={setFiltroEstado}
+            opciones={[
+              { valor: "todos", etiqueta: "Todos los estados" },
+              { valor: "activo", etiqueta: "Activos" },
+              { valor: "inactivo", etiqueta: "Inactivos" },
+            ]}
+          />
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" })}
+          >
+            <PlusIcon size={20} /> Agregar dispositivo
+          </button>
+        </div>
+      </Card>
 
       {/* -------------------------------------------------------- Tabla -- */}
+      <Card>
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -199,15 +166,13 @@ export function DispositivosPage() {
               <th>Dispositivo</th>
               <th>Código</th>
               <th>Sede</th>
-              <th>Última conexión</th>
               <th>Estado</th>
-              <th>Versión</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {paginacion.visibles.length === 0 ? (
-              <EmptyRow columnas={7} mensaje={
+              <EmptyRow columnas={5} mensaje={
                   dispositivos.length === 0
                   ? "Aún no hay dispositivos registrados."
                   : "No hay dispositivos que coincidan con los filtros."
@@ -218,13 +183,11 @@ export function DispositivosPage() {
                   <td>{dispositivo.nombre}</td>
                   <td>{dispositivo.codigo}</td>
                   <td>{dispositivo.sede}</td>
-                  <td>{dispositivo.ultimaConexion}</td>
                   <td>
-                    <BadgeOutline tono={TONO_ESTADO[dispositivo.estado]}>
-                      {ETIQUETA_ESTADO[dispositivo.estado]}
+                    <BadgeOutline tono={dispositivo.activo ? "green" : "pink"}>
+                      {dispositivo.activo ? "Activo" : "Inactivo"}
                     </BadgeOutline>
                   </td>
-                  <td>{dispositivo.version}</td>
                   <td>
                     <div className="table__actions">
                       <button
@@ -266,6 +229,7 @@ export function DispositivosPage() {
         info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} dispositivos`}
         irA={paginacion.irA}
       />
+      </Card>
 
       {/* ------------------------------------------------------- Modales - */}
       <Modal
@@ -308,11 +272,6 @@ export function DispositivosPage() {
                 opciones={sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre }))}
                 alCambiar={(v) => setEditando({ ...editando, sede: v })}
               />
-              <TextField
-                etiqueta="Versión"
-                valor={editando.version}
-                alCambiar={(v) => setEditando({ ...editando, version: v })}
-              />
             </div>
             <div className="setting-row">
               <div>
@@ -336,15 +295,19 @@ export function DispositivosPage() {
         titulo="Eliminar dispositivo"
         mensaje={`Se eliminará ${aEliminar?.nombre ?? ""} (${aEliminar?.codigo ?? ""}). Los registros hechos desde este dispositivo se conservan.`}
         alCerrar={() => setAEliminar(null)}
-        alConfirmar={() => {
+        alConfirmar={async () => {
           if (aEliminar) {
-            eliminarDispositivo(aEliminar.id);
-            mostrar("Dispositivo eliminado.");
+            try {
+              await eliminarDispositivo(aEliminar.id);
+              mostrar("Dispositivo eliminado.");
+            } catch (e) {
+              mostrar(e instanceof Error ? e.message : "Error al eliminar el dispositivo.", "error");
+            }
           }
           setAEliminar(null);
         }}
       />
-    </Card>
+    </>
   );
 }
 
@@ -363,7 +326,6 @@ function StatBox({
   return (
     <article
       className="stat-card"
-      style={{ border: "1.5px solid var(--fp-brown)", boxShadow: "none" }}
     >
       <div className={`stat-card__icon stat-card__icon--${color}`}>{icono}</div>
       <div className="stat-card__body">

@@ -1,145 +1,146 @@
-import { type FormEvent, useCallback, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { login } from "../services/api";
-import marcaImg from "../assets/images/marca.png";
-import mazorcaImg from "../assets/images/mazorca.png";
-import loginBgImg from "../assets/images/login-bg.png";
-import userIcon from "../assets/icons/user.png";
-import "../styles/login.css";
+import { useEffect, useState, type FormEvent } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import panelLateral from "../assets/images/login-panel.jpg";
+import mazorca from "../assets/images/mazorca-deco.png";
+import logo from "../assets/images/logo-familiapues.png";
+import { Checkbox } from "../components/ui";
+import { EyeIcon, EyeOffIcon, LockIcon, UserIcon } from "../components/ui/Icons";
+import { useAuth } from "../context/AuthProvider";
+import { leerUsuarioRecordado } from "../services/adminApi";
+import "../styles/pages.css";
 
 export function LoginPage() {
-  const { login: authLogin, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { usuario, entrar } = useAuth();
+  const navegar = useNavigate();
+  const ubicacion = useLocation();
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [correo, setCorreo] = useState("");
+  const [clave, setClave] = useState("");
+  const [recordar, setRecordar] = useState(false);
+  const [verClave, setVerClave] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
-  const handleSubmit = useCallback(
-    (e: FormEvent) => {
-      e.preventDefault();
-      if (loading) return;
+  useEffect(() => {
+    const recordado = leerUsuarioRecordado();
+    if (recordado) {
+      setCorreo(recordado);
+      setRecordar(true);
+    }
+  }, []);
 
-      setError("");
-      setLoading(true);
-
-      login({ username, password })
-        .then((response) => {
-          authLogin(response);
-          navigate("/dashboard", { replace: true });
-        })
-        .catch((err: Error) => {
-          setError(err.message);
-          setLoading(false);
-        });
-    },
-    [username, password, loading, authLogin, navigate],
-  );
-
-  const canSubmit = username.trim().length > 0 && password.length > 0;
-
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+  if (usuario) {
+    const destino = (ubicacion.state as { desde?: string } | null)?.desde ?? "/panel";
+    return <Navigate to={destino} replace />;
   }
 
+  const enviar = async (evento: FormEvent) => {
+    evento.preventDefault();
+    setError(null);
+
+    if (!correo.trim()) {
+      setError("Escribe tu usuario para continuar.");
+      return;
+    }
+    if (!clave) {
+      setError("Escribe tu contraseña para continuar.");
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      await entrar(correo, clave, recordar);
+      navegar("/panel", { replace: true });
+    } catch (excepcion) {
+      setError(excepcion instanceof Error ? excepcion.message : "No fue posible iniciar sesión.");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   return (
-    <div className="login-page">
-      <div className="login-panel-left">
-        <img
-          src={loginBgImg}
-          alt=""
-          className="login-panel-left__bg"
-        />
-      </div>
+    <div className="login">
+      <div
+        className="login__aside"
+        style={{ backgroundImage: `url(${panelLateral})` }}
+        role="img"
+        aria-label="Familia Pues"
+      />
 
-      <div className="login-panel-right">
-        <img
-          src={mazorcaImg}
-          alt=""
-          className="login-mazorca login-mazorca--top-right"
-        />
-        <img
-          src={mazorcaImg}
-          alt=""
-          className="login-mazorca login-mazorca--bottom-right"
-        />
+      <div className="login__panel">
+        <img className="login__corn login__corn--top" src={mazorca} alt="" />
+        <img className="login__corn login__corn--bottom" src={mazorca} alt="" />
 
-        <div className="login-card">
-          <img src={marcaImg} alt="Familia Puess" className="login-marca" />
-          <p className="login-subtitle">Inicio de sesion administrativo</p>
+        <div className="login__card">
+          <img className="login__logo" src={logo} alt="Familia Pues" />
+          <h1 className="login__heading">Inicio de sesión administrativo</h1>
 
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="login-field">
-              <label className="login-field__label" htmlFor="login-username">
+          <form className="login__form" onSubmit={enviar} noValidate>
+            <div>
+              <label className="login__field-label" htmlFor="login-usuario">
                 Usuario
               </label>
-              <div className="login-field__input-wrapper">
-                <img src={userIcon} alt="" className="login-field__icon" />
+              <div className="login__input-wrap">
+                <UserIcon size={24} className="login__input-icon" />
                 <input
-                  id="login-username"
-                  className="login-field__input"
+                  id="login-usuario"
                   type="text"
-                  placeholder="@email.com"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  disabled={loading}
+                  className="login__input"
+                  placeholder="usuario"
                   autoComplete="username"
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="login-field">
-              <label className="login-field__label" htmlFor="login-password">
-                Contrasena
+            <div>
+              <label className="login__field-label" htmlFor="login-clave">
+                Contraseña
               </label>
-              <div className="login-field__input-wrapper">
+              <div className="login__input-wrap">
+                <LockIcon size={24} className="login__input-icon" />
                 <input
-                  id="login-password"
-                  className="login-field__input"
-                  type="password"
+                  id="login-clave"
+                  type={verClave ? "text" : "password"}
+                  className="login__input"
                   placeholder="**********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
                   autoComplete="current-password"
+                  value={clave}
+                  onChange={(e) => setClave(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="login__toggle-pw"
+                  onClick={() => setVerClave((v) => !v)}
+                  aria-label={verClave ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {verClave ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+                </button>
               </div>
             </div>
 
-            <div className="login-options">
-              <label className="login-remember">
-                <input
-                  type="checkbox"
-                  className="login-remember__checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  disabled={loading}
-                />
-                <span className="login-remember__text">Recordarme</span>
-              </label>
-
-              <button type="button" className="login-forgot" disabled={loading}>
-                ¿Olvidaste tu contrasena?
-              </button>
+            <div className="login__row">
+              <Checkbox marcado={recordar} alCambiar={setRecordar}>
+                Recordarme
+              </Checkbox>
             </div>
 
-            {error && <p className="login-error">{error}</p>}
+            {error ? (
+              <p className="login__alert" role="alert">
+                {error}
+              </p>
+            ) : null}
 
-            <button
-              type="submit"
-              className="login-submit"
-              disabled={!canSubmit || loading}
-            >
-              {loading ? (
-                <div className="login-spinner" />
-              ) : (
-                <span className="login-submit__text">Ingresar</span>
-              )}
+            <button type="submit" className="login__submit" disabled={enviando}>
+              {enviando ? <span className="spinner" /> : null}
+              {enviando ? "Ingresando…" : "Ingresar"}
             </button>
           </form>
+
+          <p className="login__hint">
+            Acceso de prueba: admin / Admin123!
+          </p>
         </div>
       </div>
     </div>

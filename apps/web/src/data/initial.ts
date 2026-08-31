@@ -15,6 +15,7 @@
    ========================================================================== */
 
 import type {
+  AccionPermiso,
   Actividad,
   Auditoria,
   AccionAuditoria,
@@ -26,6 +27,7 @@ import type {
   Parametro,
   RegistroEntrada,
   Reporte,
+  Rol,
   Sede,
   SesionActiva,
   Trabajador,
@@ -88,6 +90,8 @@ export const MODULOS_AUDITORIA: ModuloAuditoria[] = [
   "Dispositivos",
   "Reportes",
   "Usuarios",
+  "Roles",
+  "Perfil",
 ];
 
 /** Acciones auditables del sistema. */
@@ -96,13 +100,131 @@ export const ACCIONES_AUDITORIA: AccionAuditoria[] = ["Crear", "Actualizar", "El
 /** Módulos sobre los que se otorgan permisos por rol. */
 export const MODULOS_PERMISOS = [
   "Dashboard",
-  "Registros de entrada",
   "Trabajadores",
   "Dispositivos",
   "Sedes",
+  "Horarios",
   "Reportes",
   "Usuarios",
+  "Roles",
   "Auditoría",
+  "Configuración",
+  "Catálogos",
+];
+
+/** Acciones que se pueden conceder sobre cada módulo. */
+export const ACCIONES_PERMISO: { valor: AccionPermiso; etiqueta: string }[] = [
+  { valor: "ver", etiqueta: "Ver" },
+  { valor: "crear", etiqueta: "Crear" },
+  { valor: "editar", etiqueta: "Editar" },
+  { valor: "eliminar", etiqueta: "Eliminar" },
+];
+
+/** Construye la clave de permiso que guarda cada rol. */
+export function clavePermiso(modulo: string, accion: AccionPermiso): string {
+  return `${modulo}:${accion}`;
+}
+
+/** Todos los permisos posibles del sistema (acceso total). */
+export function todosLosPermisos(): string[] {
+  return MODULOS_PERMISOS.flatMap((modulo) =>
+    ACCIONES_PERMISO.map((accion) => clavePermiso(modulo, accion.valor)),
+  );
+}
+
+/** Atajo: concede solo lectura sobre los módulos indicados. */
+function soloVer(modulos: string[]): string[] {
+  return modulos.map((modulo) => clavePermiso(modulo, "ver"));
+}
+
+/** Atajo: concede ver + crear + editar sobre los módulos indicados. */
+function gestionar(modulos: string[]): string[] {
+  return modulos.flatMap((modulo) => [
+    clavePermiso(modulo, "ver"),
+    clavePermiso(modulo, "crear"),
+    clavePermiso(modulo, "editar"),
+  ]);
+}
+
+/**
+ * Roles base del sistema. No son datos de negocio: son el vocabulario que
+ * comparten el frontend y la API para pintar etiquetas y armar desplegables.
+ * La pantalla de Roles permite crear roles adicionales sobre esta base.
+ */
+export const ROLES_SISTEMA: Rol[] = [
+  {
+    id: "rol-super-admin",
+    codigo: "SUPER_ADMIN",
+    nombre: "Súper admin",
+    descripcion: "Acceso total al sistema",
+    permisos: todosLosPermisos(),
+    activo: true,
+    sistema: true,
+    tono: "pink",
+  },
+  {
+    id: "rol-admin",
+    codigo: "ADMIN",
+    nombre: "Administrador",
+    descripcion: "Gestiona la operación diaria de todas las sedes",
+    permisos: [
+      ...gestionar([
+        "Registros de entrada",
+        "Trabajadores",
+        "Dispositivos",
+        "Sedes",
+        "Reportes",
+      ]),
+      ...soloVer(["Dashboard", "Usuarios", "Auditoría"]),
+    ],
+    activo: true,
+    sistema: true,
+    tono: "orange",
+  },
+  {
+    id: "rol-supervisor",
+    codigo: "SUPERVISOR",
+    nombre: "Supervisor",
+    descripcion: "Supervisa la asistencia de su sede",
+    permisos: [
+      ...gestionar(["Registros de entrada", "Trabajadores"]),
+      ...soloVer(["Dashboard", "Dispositivos", "Reportes"]),
+    ],
+    activo: true,
+    sistema: true,
+    tono: "purple",
+  },
+  {
+    id: "rol-auditor",
+    codigo: "AUDITOR",
+    nombre: "Auditor",
+    descripcion: "Consulta información y auditoría sin modificar datos",
+    permisos: soloVer([
+      "Dashboard",
+      "Registros de entrada",
+      "Trabajadores",
+      "Dispositivos",
+      "Sedes",
+      "Reportes",
+      "Auditoría",
+    ]),
+    activo: true,
+    sistema: true,
+    tono: "green",
+  },
+  {
+    id: "rol-operador",
+    codigo: "OPERADOR",
+    nombre: "Operador",
+    descripcion: "Registra entradas desde el punto de asistencia",
+    permisos: [
+      ...soloVer(["Dashboard", "Registros de entrada"]),
+      clavePermiso("Registros de entrada", "crear"),
+    ],
+    activo: true,
+    sistema: true,
+    tono: "grey",
+  },
 ];
 
 /* ========================================================================

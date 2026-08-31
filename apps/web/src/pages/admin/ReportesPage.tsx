@@ -9,7 +9,7 @@ import {
   SelectField,
   StatCard,
   type RangoFechas,
-} from "../components/ui";
+} from "../../components/ui";
 import {
   DownloadIcon,
   FileCheckIcon,
@@ -18,12 +18,12 @@ import {
   FolderIcon,
   LoaderIcon,
   TrashIcon,
-} from "../components/ui/Icons";
-import { useDatos } from "../context/DataProvider";
-import { useToast } from "../context/ToastProvider";
-import { usePaginacion } from "../hooks";
-import { descargarArchivo, generarCsv, isoAFecha, porcentaje } from "../lib/format";
-import type { EstadoReporte, Reporte } from "../types/admin";
+} from "../../components/ui/Icons";
+import { useDatos } from "../../context/DataProvider";
+import { useToast } from "../../context/ToastProvider";
+import { usePaginacion } from "../../hooks";
+import { descargarExcel, isoAFecha, porcentaje } from "../../lib/format";
+import type { EstadoReporte, Reporte } from "../../types/admin";
 
 const POR_PAGINA = 5;
 
@@ -43,7 +43,15 @@ export function ReportesPage() {
   const { reportes, sedes, registros, itemsCatalogo, agregarReporte, eliminarReporte } = useDatos();
   const { mostrar } = useToast();
 
-  const [rango, setRango] = useState<RangoFechas>({ desde: "2026-05-01", hasta: "2026-05-12" });
+  const [rango, setRango] = useState<RangoFechas>(() => {
+    const hoy = new Date();
+    const hace30 = new Date(hoy);
+    hace30.setDate(hace30.getDate() - 30);
+    return {
+      desde: hace30.toISOString().slice(0, 10),
+      hasta: hoy.toISOString().slice(0, 10),
+    };
+  });
   const [tipo, setTipo] = useState("");
   const [sede, setSede] = useState("todas");
   const [generando, setGenerando] = useState(false);
@@ -104,16 +112,52 @@ export function ReportesPage() {
     const filas = registros
       .filter((r) => sede === "todas" || r.sede === sede)
       .map((r) => [r.trabajador, r.documento, r.sede, r.entrada, r.estado, r.dispositivo, r.fecha]);
-    const csv = generarCsv(
+    if (filas.length === 0) {
+      mostrar("No hay datos para descargar en el rango seleccionado.", "error");
+      return;
+    }
+    descargarExcel(
+      reporte.tipo.toLowerCase().replace(/\s+/g, "-"),
       ["Trabajador", "Documento", "Sede", "Entrada", "Estado", "Dispositivo", "Fecha"],
       filas,
     );
-    descargarArchivo(`${reporte.tipo.toLowerCase().replace(/\s+/g, "-")}.csv`, csv);
     mostrar("Descarga iniciada.");
   };
 
   return (
     <>
+      {/* ------------------------------------------------------ Métricas - */}
+      <div className="stat-grid">
+        <StatCard
+          icono={<FolderIcon size={26} />}
+          color="yellow"
+          etiqueta="Total reportes"
+          valor={metricas.total}
+          pista="En el periodo"
+        />
+        <StatCard
+          icono={<FileCheckIcon size={26} />}
+          color="yellow"
+          etiqueta="Reportes completados"
+          valor={metricas.completados}
+          pista={`${porcentaje(metricas.completados, metricas.total)} del total`}
+        />
+        <StatCard
+          icono={<LoaderIcon size={26} />}
+          color="pink"
+          etiqueta="En procesamiento"
+          valor={metricas.procesando}
+          pista={`${porcentaje(metricas.procesando, metricas.total)} del total`}
+        />
+        <StatCard
+          icono={<FileXIcon size={26} />}
+          color="pink"
+          etiqueta="Con errores"
+          valor={metricas.error}
+          pista={`${porcentaje(metricas.error, metricas.total)} del total`}
+        />
+      </div>
+
       {/* ------------------------------------------- Generador de reportes */}
       <Card>
         <div className="filters">
@@ -149,44 +193,8 @@ export function ReportesPage() {
         </div>
       </Card>
 
-      {/* ------------------------------------------------------ Métricas - */}
-      <div className="stat-grid">
-        <StatCard
-          icono={<FolderIcon size={26} />}
-          color="yellow"
-          etiqueta="Total reportes"
-          valor={metricas.total}
-          pista="En el periodo"
-        />
-        <StatCard
-          icono={<FileCheckIcon size={26} />}
-          color="yellow"
-          etiqueta="Reportes completados"
-          valor={metricas.completados}
-          pista={`${porcentaje(metricas.completados, metricas.total)} del total`}
-        />
-        <StatCard
-          icono={<LoaderIcon size={26} />}
-          color="pink"
-          etiqueta="En procesamiento"
-          valor={metricas.procesando}
-          pista={`${porcentaje(metricas.procesando, metricas.total)} del total`}
-        />
-        <StatCard
-          icono={<FileXIcon size={26} />}
-          color="pink"
-          etiqueta="Con errores"
-          valor={metricas.error}
-          pista={`${porcentaje(metricas.error, metricas.total)} del total`}
-        />
-      </div>
-
       {/* ------------------------------------------ Reportes generados --- */}
       <Card>
-        <h2 className="card__title" style={{ marginBottom: 18 }}>
-          Reportes generados
-        </h2>
-
         <div className="table-wrap">
           <table className="table">
             <thead>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../context/AuthProvider";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
@@ -35,13 +35,21 @@ const CABECERAS: Record<string, { titulo: string; subtitulo: string }> = {
     titulo: "Usuarios",
     subtitulo: "Gestiona los usuarios del sistema y sus permisos de acceso",
   },
+  "/panel/horarios": {
+    titulo: "Horarios",
+    subtitulo: "Gestiona los horarios laborales de los trabajadores",
+  },
+  "/panel/roles": {
+    titulo: "Roles y permisos",
+    subtitulo: "Gestiona roles y permisos del sistema",
+  },
+  "/panel/perfil": {
+    titulo: "Mi perfil",
+    subtitulo: "Consulta y actualiza los datos de tu cuenta",
+  },
   "/panel/configuracion": {
     titulo: "Configuración",
     subtitulo: "Ajusta los parámetros generales del sistema de asistencia",
-  },
-  "/panel/seguridad": {
-    titulo: "Seguridad",
-    subtitulo: "Administra contraseñas, sesiones activas y permisos por rol",
   },
   "/panel/auditoria": {
     titulo: "Auditoría",
@@ -58,7 +66,7 @@ const CABECERAS: Record<string, { titulo: string; subtitulo: string }> = {
 };
 
 export function AdminLayout() {
-  const { user } = useAuth();
+  const { usuario, cargando } = useAuth();
   const ubicacion = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
 
@@ -68,7 +76,15 @@ export function AdminLayout() {
     window.scrollTo({ top: 0 });
   }, [ubicacion.pathname]);
 
-  if (!user) {
+  if (cargando) {
+    return (
+      <div style={{ display: "grid", placeItems: "center", minHeight: "100vh" }}>
+        <span className="spinner spinner--dark" />
+      </div>
+    );
+  }
+
+  if (!usuario) {
     return <Navigate to="/login" replace state={{ desde: ubicacion.pathname }} />;
   }
 
@@ -82,7 +98,7 @@ export function AdminLayout() {
       <Sidebar
         abierto={menuAbierto}
         alCerrar={() => setMenuAbierto(false)}
-        mostrarAdministracion={user.rol_codigo === "SUPER_ADMIN"}
+        mostrarAdministracion={usuario.rolCodigo === "SUPER_ADMIN"}
       />
       <div className="admin-main">
         <Topbar
