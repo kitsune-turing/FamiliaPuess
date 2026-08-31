@@ -295,4 +295,48 @@
   .mazorca--bottom-right {
     width: 200px;
   }
+
+  .field-group__input {
+    font-size: 15px;
+  }
+
+  .registro-submit {
+    padding: 14px 20px;
+  }
+
+  .registro-submit__text {
+    font-size: 14px;
+    letter-spacing: 1.2px;
+  }
+
+  .registro-message--error {
+    padding: 32px 24px;
+    border-radius: 20px;
+  }
+
+  .registro-message__title {
+    font-size: 18px;
+  }
+
+  .registro-message__text {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .registro-card {
+    padding: 24px 16px 28px;
+  }
+
+  .registro-marca {
+    width: 140px;
+  }
+
+  .registro-sede {
+    margin-bottom: 24px;
+  }
+
+  .field-group__input-wrapper {
+    padding: 12px 14px;
+  }
 }
