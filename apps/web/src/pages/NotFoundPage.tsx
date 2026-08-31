@@ -1,14 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../context/AuthProvider";
 import "../styles/not-found.css";
 
 export function NotFoundPage() {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-
-  const handleBack = () => {
-    navigate(isAuthenticated ? "/dashboard" : "/login", { replace: true });
-  };
+  const navegar = useNavigate();
+  const { usuario } = useAuth();
+  const autenticado = usuario !== null;
 
   return (
     <div className="not-found-page">
@@ -18,8 +15,12 @@ export function NotFoundPage() {
         <p className="not-found-message">
           La pagina que buscas no existe o fue movida.
         </p>
-        <button type="button" className="not-found-btn" onClick={handleBack}>
-          {isAuthenticated ? "Ir al Dashboard" : "Ir al Login"}
+        <button
+          type="button"
+          className="not-found-btn"
+          onClick={() => navegar(autenticado ? "/panel" : "/login", { replace: true })}
+        >
+          {autenticado ? "Ir al panel" : "Ir al login"}
         </button>
       </div>
     </div>
