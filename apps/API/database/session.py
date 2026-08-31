@@ -4,7 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from apps.API.core.config import get_settings
 
-_engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
+_engine = create_async_engine(
+    get_settings().database_url,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=300,
+)
 _session_factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
 
 

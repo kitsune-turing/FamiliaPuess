@@ -6,12 +6,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 from apps.API.models.base import Base
 
 
-class CatTipoRegistro(Base):
-    __tablename__ = "cat_tipo_registro"
+class CatCargo(Base):
+    """Catálogo de cargos incorporado en el esquema físico v2.2."""
+
+    __tablename__ = "cat_cargo"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    codigo: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
-    nombre: Mapped[str] = mapped_column(String(50), nullable=False)
+    codigo: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    nombre: Mapped[str] = mapped_column(String(100), nullable=False)
     id_estado: Mapped[int] = mapped_column(ForeignKey("cat_estado.id"), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
