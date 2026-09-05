@@ -29,10 +29,12 @@ class TokenClient:
         self,
         base_url: str,
         dispositivo_identificador: str,
+        api_key: str = "",
         timeout: float = TIEMPO_ESPERA_SEGUNDOS,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._dispositivo_identificador = dispositivo_identificador
+        self._api_key = api_key
         self._timeout = timeout
 
     def solicitar_token(self) -> TokenRecibido:
@@ -41,10 +43,15 @@ class TokenClient:
         `TokenClientError`, para que la ventana solo tenga que manejar un tipo
         de error y pueda mostrar el estado "Sin conexión".
         """
+        headers: dict[str, str] = {}
+        if self._api_key:
+            headers["X-Api-Key"] = self._api_key
+
         try:
             respuesta = httpx.post(
                 f"{self._base_url}/desktop/tokens",
                 json={"dispositivo_identificador": self._dispositivo_identificador},
+                headers=headers,
                 timeout=self._timeout,
             )
             respuesta.raise_for_status()

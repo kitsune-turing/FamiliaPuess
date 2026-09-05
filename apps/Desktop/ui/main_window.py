@@ -94,6 +94,12 @@ class DesktopMainWindow(QWidget):
         self._reloj.start(1000)
         self._actualizar_reloj()
 
+        # Countdown del QR: decrementa cada segundo.
+        self._segundos_restantes = 0
+        self._countdown = QTimer(self)
+        self._countdown.timeout.connect(self._tick_countdown)
+        self._countdown.start(1000)
+
         self.set_connection_status(False)
 
     # ------------------------------------------------------- Cabecera ----
@@ -353,24 +359,28 @@ class DesktopMainWindow(QWidget):
             build_qr_pixmap(token.token, self._registro_publico_url, TAMANO_QR)
         )
         self._codigo_label.setText(token.codigo_alfa)
-        self._fijar_texto_temporizador(self._segundos_de_validez(token))
+        self._segundos_restantes = self._segundos_hasta_expiracion(token)
+        self._fijar_texto_temporizador(self._segundos_restantes)
 
     def set_connection_status(self, conectado: bool) -> None:
         """Refleja en el pie si el kiosco está hablando con la API."""
-        self._connection_label.setText("Connected" if conectado else "Sin conexión")
+        self._connection_label.setText("Conectado" if conectado else "Sin conexión")
         self._wifi_icon.setVisible(conectado)
 
     # ------------------------------------------------------- Internos ----
 
     @staticmethod
-    def _segundos_de_validez(token: TokenRecibido) -> int:
+    def _segundos_hasta_expiracion(token: TokenRecibido) -> int:
         expira = token.expira_en
-        generado = token.generado_en
         if expira.tzinfo is None:
             expira = expira.replace(tzinfo=timezone.utc)
-        if generado.tzinfo is None:
-            generado = generado.replace(tzinfo=timezone.utc)
-        return max(0, round((expira - generado).total_seconds()))
+        ahora = datetime.now(timezone.utc)
+        return max(0, round((expira - ahora).total_seconds()))
+
+    def _tick_countdown(self) -> None:
+        if self._segundos_restantes > 0:
+            self._segundos_restantes -= 1
+            self._fijar_texto_temporizador(self._segundos_restantes)
 
     def _fijar_texto_temporizador(self, segundos: int) -> None:
         self._timer_label.setText(

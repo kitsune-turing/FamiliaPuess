@@ -17,6 +17,7 @@ REGISTRO_PUBLICO_URL = os.getenv(
     "DESKTOP_REGISTRO_URL", "http://localhost:5173/registro"
 )
 DISPOSITIVO_IDENTIFICADOR = os.getenv("DESKTOP_DISPOSITIVO_ID", "KIOSK-001")
+DESKTOP_API_KEY = os.getenv("DESKTOP_API_KEY", "")
 
 
 def main() -> int:
@@ -33,6 +34,7 @@ def main() -> int:
     cliente = TokenClient(
         base_url=API_BASE_URL,
         dispositivo_identificador=DISPOSITIVO_IDENTIFICADOR,
+        api_key=DESKTOP_API_KEY,
     )
     worker = TokenRotationWorker(client=cliente)
 

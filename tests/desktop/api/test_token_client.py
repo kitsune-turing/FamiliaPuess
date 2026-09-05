@@ -19,15 +19,7 @@ def _mock_response(json_payload, status_code=200):
     return response
 
 
-def _login_response():
-    return _mock_response({
-        "access_token": "fake-jwt",
-        "refresh_token": "fake-refresh",
-        "token_type": "bearer",
-    })
-
-
-def test_solicitar_token_returns_parsed_token_unmodified():
+def test_solicitar_token_returns_parsed_token():
     token_payload = {
         "token": "tok-abc",
         "codigo_alfa": "A1B2C3",
@@ -35,13 +27,8 @@ def test_solicitar_token_returns_parsed_token_unmodified():
         "expira_en": "2026-01-01T08:00:30+00:00",
     }
 
-    def side_effect(url, **kwargs):
-        if "/auth/login" in url:
-            return _login_response()
-        return _mock_response(token_payload)
-
-    with patch("apps.Desktop.api.token_client.httpx.post", side_effect=side_effect) as mock_post:
-        client = TokenClient(base_url="http://api.local", dispositivo_identificador="KIOSK-001", username="test", password="test")
+    with patch("apps.Desktop.api.token_client.httpx.post", return_value=_mock_response(token_payload)) as mock_post:
+        client = TokenClient(base_url="http://api.local", dispositivo_identificador="KIOSK-001", api_key="test-key")
         recibido = client.solicitar_token()
 
     assert recibido == TokenRecibido(
@@ -50,30 +37,36 @@ def test_solicitar_token_returns_parsed_token_unmodified():
         generado_en=datetime(2026, 1, 1, 8, 0, 0, tzinfo=timezone.utc),
         expira_en=datetime(2026, 1, 1, 8, 0, 30, tzinfo=timezone.utc),
     )
-    calls = mock_post.call_args_list
-    assert any("/auth/login" in str(c) for c in calls)
-    assert any("/desktop/tokens" in str(c) for c in calls)
+    mock_post.assert_called_once()
+    call_kwargs = mock_post.call_args
+    assert call_kwargs.kwargs["headers"]["X-Api-Key"] == "test-key"
 
 
-def test_solicitar_token_raises_token_client_error_on_connection_failure():
-    def side_effect(url, **kwargs):
-        if "/auth/login" in url:
-            return _login_response()
-        raise httpx.ConnectError("boom")
+def test_solicitar_token_sends_no_header_without_api_key():
+    token_payload = {
+        "token": "tok-abc",
+        "codigo_alfa": "A1B2C3",
+        "generado_en": "2026-01-01T08:00:00+00:00",
+        "expira_en": "2026-01-01T08:00:30+00:00",
+    }
 
-    with patch("apps.Desktop.api.token_client.httpx.post", side_effect=side_effect):
-        client = TokenClient(base_url="http://api.local", dispositivo_identificador="KIOSK-001", username="test", password="test")
+    with patch("apps.Desktop.api.token_client.httpx.post", return_value=_mock_response(token_payload)) as mock_post:
+        client = TokenClient(base_url="http://api.local", dispositivo_identificador="KIOSK-001")
+        client.solicitar_token()
+
+    call_kwargs = mock_post.call_args
+    assert call_kwargs.kwargs["headers"] == {}
+
+
+def test_solicitar_token_raises_on_connection_failure():
+    with patch("apps.Desktop.api.token_client.httpx.post", side_effect=httpx.ConnectError("boom")):
+        client = TokenClient(base_url="http://api.local", dispositivo_identificador="KIOSK-001", api_key="key")
         with pytest.raises(TokenClientError):
             client.solicitar_token()
 
 
-def test_solicitar_token_raises_token_client_error_on_http_error_status():
-    def side_effect(url, **kwargs):
-        if "/auth/login" in url:
-            return _login_response()
-        return _mock_response({}, status_code=500)
-
-    with patch("apps.Desktop.api.token_client.httpx.post", side_effect=side_effect):
-        client = TokenClient(base_url="http://api.local", dispositivo_identificador="KIOSK-001", username="test", password="test")
+def test_solicitar_token_raises_on_http_error_status():
+    with patch("apps.Desktop.api.token_client.httpx.post", return_value=_mock_response({}, status_code=500)):
+        client = TokenClient(base_url="http://api.local", dispositivo_identificador="KIOSK-001", api_key="key")
         with pytest.raises(TokenClientError):
             client.solicitar_token()

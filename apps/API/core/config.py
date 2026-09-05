@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     max_login_attempts: int = 5
     lockout_duration_minutes: int = 15
 
+    desktop_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
