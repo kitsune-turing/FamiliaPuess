@@ -232,6 +232,7 @@ CREATE TABLE horario (
     vigente_desde   DATE            NOT NULL DEFAULT CURRENT_DATE,
     vigente_hasta   DATE,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_horario_sede FOREIGN KEY (id_sede) REFERENCES sede(id),
     CONSTRAINT ck_horario_tolerancia CHECK (tolerancia_min >= 0 AND tolerancia_min <= 120),
     CONSTRAINT ck_horario_vigencia CHECK (vigente_hasta IS NULL OR vigente_hasta >= vigente_desde)
