@@ -1,22 +1,23 @@
-import logging
+"""Cliente HTTP para pedir tokens de asistencia a la API."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 
 import httpx
 
-logger = logging.getLogger(__name__)
+TIEMPO_ESPERA_SEGUNDOS = 10.0
 
 
-class TokenClientError(Exception):
-    pass
-
-
-class AuthenticationError(TokenClientError):
-    pass
+class TokenClientError(RuntimeError):
+    """La API no pudo entregar un token válido."""
 
 
 @dataclass(frozen=True)
 class TokenRecibido:
+    """Token vigente devuelto por ``POST /desktop/tokens``."""
+
     token: str
     codigo_alfa: str
     generado_en: datetime
@@ -28,81 +29,35 @@ class TokenClient:
         self,
         base_url: str,
         dispositivo_identificador: str,
-        username: str,
-        password: str,
-        timeout: float = 5.0,
+        timeout: float = TIEMPO_ESPERA_SEGUNDOS,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._dispositivo_identificador = dispositivo_identificador
-        self._username = username
-        self._password = password
         self._timeout = timeout
-        self._access_token: str | None = None
-        self._refresh_token: str | None = None
-
-    def _login(self) -> None:
-        try:
-            response = httpx.post(
-                f"{self._base_url}/auth/login",
-                json={"username": self._username, "password": self._password},
-                timeout=self._timeout,
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise AuthenticationError(f"Login failed: {exc}") from exc
-
-        data = response.json()
-        self._access_token = data["access_token"]
-        self._refresh_token = data.get("refresh_token")
-        logger.info("Desktop authenticated successfully")
-
-    def _refresh(self) -> bool:
-        if not self._refresh_token:
-            return False
-        try:
-            response = httpx.post(
-                f"{self._base_url}/auth/refresh",
-                json={"refresh_token": self._refresh_token},
-                timeout=self._timeout,
-            )
-            response.raise_for_status()
-        except httpx.HTTPError:
-            logger.warning("Token refresh failed, will re-login")
-            return False
-
-        data = response.json()
-        self._access_token = data["access_token"]
-        self._refresh_token = data.get("refresh_token", self._refresh_token)
-        return True
-
-    def _auth_headers(self) -> dict[str, str]:
-        if not self._access_token:
-            self._login()
-        return {"Authorization": f"Bearer {self._access_token}"}
 
     def solicitar_token(self) -> TokenRecibido:
-        for attempt in range(2):
-            try:
-                response = httpx.post(
-                    f"{self._base_url}/desktop/tokens",
-                    json={"dispositivo_identificador": self._dispositivo_identificador},
-                    headers=self._auth_headers(),
-                    timeout=self._timeout,
-                )
-                if response.status_code == 401 and attempt == 0:
-                    if not self._refresh():
-                        self._login()
-                    continue
-                response.raise_for_status()
-            except httpx.HTTPError as exc:
-                raise TokenClientError(str(exc)) from exc
-
-            payload = response.json()
-            return TokenRecibido(
-                token=payload["token"],
-                codigo_alfa=payload["codigo_alfa"],
-                generado_en=datetime.fromisoformat(payload["generado_en"]),
-                expira_en=datetime.fromisoformat(payload["expira_en"]),
+        """
+        Pide un token nuevo. Cualquier fallo de red o de servidor se traduce a
+        `TokenClientError`, para que la ventana solo tenga que manejar un tipo
+        de error y pueda mostrar el estado "Sin conexión".
+        """
+        try:
+            respuesta = httpx.post(
+                f"{self._base_url}/desktop/tokens",
+                json={"dispositivo_identificador": self._dispositivo_identificador},
+                timeout=self._timeout,
             )
+            respuesta.raise_for_status()
+            datos = respuesta.json()
+        except httpx.HTTPError as error:
+            raise TokenClientError(str(error)) from error
 
-        raise TokenClientError("Failed to obtain token after re-authentication")
+        try:
+            return TokenRecibido(
+                token=datos["token"],
+                codigo_alfa=datos["codigo_alfa"],
+                generado_en=datetime.fromisoformat(datos["generado_en"]),
+                expira_en=datetime.fromisoformat(datos["expira_en"]),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise TokenClientError(f"Respuesta inesperada de la API: {error}") from error

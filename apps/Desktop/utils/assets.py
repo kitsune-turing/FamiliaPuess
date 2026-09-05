@@ -1,18 +1,34 @@
+"""Resolución de rutas a los recursos empaquetados con la aplicación."""
+
+from __future__ import annotations
+
 from pathlib import Path
 
-RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources"
-ICONS_DIR = RESOURCES_DIR / "icons"
-IMAGES_DIR = RESOURCES_DIR / "images"
-FONTS_DIR = RESOURCES_DIR / "fonts"
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
+_POPPINS_WEIGHTS = (
+    "Poppins-Regular.ttf",
+    "Poppins-Medium.ttf",
+    "Poppins-SemiBold.ttf",
+    "Poppins-Bold.ttf",
+)
+
+
+def assets_dir() -> Path:
+    """Carpeta raíz de recursos."""
+    return _ASSETS_DIR
 
 
 def icon_path(name: str) -> Path:
-    return ICONS_DIR / name
+    """Ruta a un icono SVG, por ejemplo ``point.svg``."""
+    return _ASSETS_DIR / "icons" / name
 
 
 def image_path(name: str) -> Path:
-    return IMAGES_DIR / name
+    """Ruta a una imagen de marca, por ejemplo ``marca.png``."""
+    return _ASSETS_DIR / "images" / name
 
 
-def font_paths() -> list[Path]:
-    return sorted(FONTS_DIR.glob("*.ttf"))
+def font_paths() -> tuple[Path, ...]:
+    """Las cuatro variantes de Poppins que usa la interfaz."""
+    return tuple(_ASSETS_DIR / "fonts" / name for name in _POPPINS_WEIGHTS)

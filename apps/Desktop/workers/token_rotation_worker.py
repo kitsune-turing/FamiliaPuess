@@ -1,82 +1,71 @@
-import logging
+"""Rotación automática del token de asistencia."""
 
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal
+from __future__ import annotations
 
-from apps.Desktop.api.token_client import TokenClient, TokenClientError, TokenRecibido
+from datetime import datetime, timezone
 
-logger = logging.getLogger(__name__)
+from PySide6.QtCore import QObject, QTimer, Signal
 
+from apps.Desktop.api.token_client import TokenClientError, TokenRecibido
 
-class _FetchSignals(QObject):
-    succeeded = Signal(object)
-    failed = Signal(str)
-
-
-class _FetchTokenRunnable(QRunnable):
-    def __init__(self, client: TokenClient) -> None:
-        super().__init__()
-        self.setAutoDelete(False)
-        self._client = client
-        self.signals = _FetchSignals()
-
-    def run(self) -> None:
-        try:
-            token = self._client.solicitar_token()
-        except TokenClientError as exc:
-            logger.error("Token fetch failed: %s", exc)
-            self.signals.failed.emit(str(exc))
-            return
-        except Exception as exc:
-            logger.error("Unexpected error fetching token: %s", exc)
-            self.signals.failed.emit(str(exc))
-            return
-        self.signals.succeeded.emit(token)
+INTERVALO_POR_DEFECTO_SEGUNDOS = 30
 
 
 class TokenRotationWorker(QObject):
+    """
+    Pide un token nuevo cada vez que el anterior caduca.
+
+    El intervalo lo manda el servidor a través de `expira_en`, no el cliente,
+    para que el kiosco nunca muestre un token ya vencido. Si el token llega
+    caducado o la API falla, se recurre al intervalo de respaldo.
+    """
 
     token_ready = Signal(object)
     token_error = Signal(str)
 
     def __init__(
         self,
-        client: TokenClient,
-        fallback_interval_seconds: float,
-        thread_pool: QThreadPool | None = None,
+        client,
+        fallback_interval_seconds: int = INTERVALO_POR_DEFECTO_SEGUNDOS,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._client = client
         self._fallback_interval_seconds = fallback_interval_seconds
-        self._thread_pool = thread_pool or QThreadPool.globalInstance()
+
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
-        self._timer.timeout.connect(self._request_token)
-        self._current_runnable: _FetchTokenRunnable | None = None
+        self._timer.timeout.connect(self._rotar)
 
     def start(self) -> None:
-        self._request_token()
+        """Pide el primer token y programa el siguiente."""
+        self._rotar()
 
     def stop(self) -> None:
         self._timer.stop()
 
-    def _request_token(self) -> None:
-        runnable = _FetchTokenRunnable(self._client)
-        self._current_runnable = runnable
-        runnable.signals.succeeded.connect(self._on_token_received)
-        runnable.signals.failed.connect(self._on_token_failed)
-        self._thread_pool.start(runnable)
+    def _rotar(self) -> None:
+        try:
+            recibido = self._client.solicitar_token()
+        except TokenClientError as error:
+            self.token_error.emit(str(error))
+            self._programar(self._fallback_interval_seconds)
+            return
 
-    def _on_token_received(self, token: TokenRecibido) -> None:
-        self._current_runnable = None
-        self.token_ready.emit(token)
-        self._timer.start(int(self._next_interval_seconds(token) * 1000))
+        self.token_ready.emit(recibido)
+        self._programar(self._next_interval_seconds(recibido))
 
-    def _on_token_failed(self, message: str) -> None:
-        self._current_runnable = None
-        self.token_error.emit(message)
-        self._timer.start(int(self._fallback_interval_seconds * 1000))
+    def _next_interval_seconds(self, token: TokenRecibido) -> int:
+        """Segundos que faltan para que caduque el token, o el de respaldo."""
+        ahora = datetime.now(timezone.utc)
+        expira = token.expira_en
+        if expira.tzinfo is None:
+            expira = expira.replace(tzinfo=timezone.utc)
 
-    def _next_interval_seconds(self, token: TokenRecibido) -> float:
-        remaining = (token.expira_en - token.generado_en).total_seconds()
-        return remaining if remaining > 0 else self._fallback_interval_seconds
+        restantes = round((expira - ahora).total_seconds())
+        if restantes <= 0:
+            return self._fallback_interval_seconds
+        return restantes
+
+    def _programar(self, segundos: int) -> None:
+        self._timer.start(max(1, segundos) * 1000)

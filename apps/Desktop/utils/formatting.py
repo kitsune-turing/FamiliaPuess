@@ -1,23 +1,44 @@
+"""Formato de fechas en español para la pantalla de asistencia."""
+
+from __future__ import annotations
+
 from datetime import datetime
 
-_DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
-_MESES = [
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
-]
+# No se usa `locale` a propósito: el kiosco puede correr en equipos sin los
+# locales de español instalados, y la fecha del pie es parte del diseño.
+_DIAS = (
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+    "Domingo",
+)
+
+_MESES = (
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+)
 
 
-def format_datetime_es(moment: datetime) -> str:
-    dia = _DIAS[moment.weekday()].capitalize()
-    mes = _MESES[moment.month - 1].capitalize()
-    return f"{dia}, {moment.day} de {mes} del {moment.year}\n{moment.strftime('%I:%M %p')}"
+def format_datetime_es(momento: datetime) -> str:
+    """Devuelve, por ejemplo, ``Lunes, 27 de Julio del 2026 10:46 AM``."""
+    dia = _DIAS[momento.weekday()]
+    mes = _MESES[momento.month - 1]
+    hora12 = momento.hour % 12 or 12
+    meridiano = "AM" if momento.hour < 12 else "PM"
+    return (
+        f"{dia}, {momento.day} de {mes} del {momento.year} "
+        f"{hora12:02d}:{momento.minute:02d} {meridiano}"
+    )
