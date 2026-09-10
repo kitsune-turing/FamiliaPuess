@@ -559,10 +559,22 @@ INSERT INTO cat_cargo (codigo, nombre, id_estado, descripcion) VALUES
     ('PRODUCCION_PLANCHERO',         'Produccion-Planchero',                   1, 'Produccion y plancha'),
     ('PLANCHERA',                    'Planchera',                              1, 'Operacion de plancha');
 
--- 8.8 Sedes
+-- 8.8 Sedes (Locales Arepa Puess, Empanadas Puess, Helados Puess, Planta, Oficina)
 INSERT INTO sede (nombre, direccion, id_estado) VALUES
-    ('Sede Principal', 'Direccion pendiente de configurar', 1);
-    
+    ('Local #1',       'Carrera 51 # 45-97',             1),
+    ('Local #2',       'Diagonal 50 # 49-07',            1),
+    ('Local #5',       'Carrera 51 # 53-22',             1),
+    ('Local #7',       'Carrera 43A # 33-17',            1),
+    ('Local #8',       'Calle 47 # 45-49',               1),
+    ('Local #14',      'Carrera 52 # 44-36',             1),
+    ('Local #15',      'Carrera 54 # 46-21',             1),
+    ('Local #16',      'Calle 38 SUR # 40-23',           1),
+    ('Empanadas #1',   'Calle 46 Carrera 51-9',          1),
+    ('Empanadas #2',   'Carrera 50 # 48-06',             1),
+    ('Planta',         'Carrera 48 # 40-13',             1),
+    ('Oficina',        'Carrera 52 # 46-68 INT 406',     1),
+    ('Helados Puess',  'Calle 46 Cr 51-5',               1);
+
 -- 8.9 Empleados
 -- id_tipo_documento: 1=CC, 2=PPT, 3=CE, 4=PASAPORTE
 -- id_cargo: 1=Cajera-Planchera, 2=Administradora, 3=Admin Planta-Cajera, 4=Domiciliario,
@@ -611,7 +623,7 @@ INSERT INTO empleado (id_tipo_documento, numero_documento, nombre, apellido, id_
     (1, '1044910690', 'CAROL LIANNET',         'UTRIA SIERRA',           8, 1),
     (1, '1034917645', 'Anderson',              'Gomez Tobon',            7, 1);
 
--- 8.11 Modulos del sistema
+-- 8.10 Modulos del sistema
 INSERT INTO modulo (codigo, nombre, descripcion) VALUES
     ('DASHBOARD',     'Dashboard',                'Panel principal con indicadores'),
     ('USUARIOS',      'Gestion de Usuarios',      'CRUD de usuarios administrativos'),
@@ -628,7 +640,7 @@ INSERT INTO modulo (codigo, nombre, descripcion) VALUES
     ('CALENDARIO',    'Calendario Laboral',       'Festivos y dias no laborales'),
     ('NOVEDADES',     'Deteccion de Novedades',   'Consulta de novedades de asistencia');
 
--- 8.12 Permisos (Super Usuario: todo con administrar)
+-- 8.11 Permisos (Super Usuario: todo con administrar)
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_escribir, puede_eliminar, puede_administrar)
 SELECT 1, id, TRUE, TRUE, TRUE, TRUE FROM modulo;
 
@@ -636,6 +648,16 @@ SELECT 1, id, TRUE, TRUE, TRUE, TRUE FROM modulo;
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_escribir, puede_eliminar, puede_administrar)
 SELECT 2, id, TRUE, TRUE, TRUE, FALSE FROM modulo
 WHERE codigo IN ('DASHBOARD', 'EMPLEADOS', 'CARGOS', 'SEDES', 'DISPOSITIVOS', 'HORARIOS', 'REPORTES');
+
+-- 8.12 Usuarios iniciales (password: Admin123!)
+-- Hash generado con Argon2id (mismo algoritmo que usa la API)
+INSERT INTO usuario (id_rol, id_estado, nombre, correo, username, password_hash, debe_cambiar_pw) VALUES
+    (1, 1, 'Super Administrador', 'superadmin@familiapuess.com', 'superadmin',
+     '$argon2id$v=19$m=65536,t=3,p=4$Y1nAxn1W806fNme9mzBKnA$rWi0vtkI38ZlwhSl85X7NUdDV0wOX0NNbRsfNCtaNx8',
+     FALSE),
+    (2, 1, 'Administrador', 'admin@familiapuess.com', 'admin',
+     '$argon2id$v=19$m=65536,t=3,p=4$Y1nAxn1W806fNme9mzBKnA$rWi0vtkI38ZlwhSl85X7NUdDV0wOX0NNbRsfNCtaNx8',
+     FALSE);
 
 -- 8.13 Parametros iniciales (RF-085 a RF-090) + Personalizacion (RF-066)
 INSERT INTO config_general (categoria, clave, valor, tipo_dato, descripcion) VALUES
