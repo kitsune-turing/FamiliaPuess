@@ -84,7 +84,7 @@ function mapEmpleado(e: EmpleadoApi): Trabajador {
   };
 }
 
-function mapSede(s: SedeApi, empleados: EmpleadoApi[], dispositivos: DispositivoApi[]): Sede {
+function mapSede(s: SedeApi, _empleados: EmpleadoApi[], dispositivos: DispositivoApi[]): Sede {
   return {
     id: String(s.id),
     nombre: s.nombre,

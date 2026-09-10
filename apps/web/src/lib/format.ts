@@ -116,7 +116,7 @@ export function descargarExcel(
 </Styles>
 <Worksheet ss:Name="Datos">
 <Table>
-${encabezados.map((h) => `<Column ss:AutoFitWidth="1" ss:Width="120"/>`).join("\n")}
+${encabezados.map(() => `<Column ss:AutoFitWidth="1" ss:Width="120"/>`).join("\n")}
 <Row>${celdas(encabezados, true)}</Row>
 ${filas.map((f) => `<Row>${celdas(f)}</Row>`).join("\n")}
 </Table>
