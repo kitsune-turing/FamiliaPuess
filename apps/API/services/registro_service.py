@@ -64,10 +64,11 @@ async def validar_token(session: AsyncSession, token_value: str) -> TokenValidad
         raise TokenExpiradoError()
 
     activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
-    if token_qr.sede.id_estado != activo_id:
+    sede = token_qr.dispositivo.sede
+    if sede is None or sede.id_estado != activo_id:
         raise SedeNoDisponibleError()
 
-    return TokenValidado(token=token_value, sede_nombre=token_qr.sede.nombre)
+    return TokenValidado(token=token_value, sede_nombre=sede.nombre)
 
 
 async def registrar_asistencia(
@@ -97,7 +98,8 @@ async def registrar_asistencia(
 
     activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
 
-    if token_qr.sede.id_estado != activo_id:
+    sede = token_qr.dispositivo.sede
+    if sede is None or sede.id_estado != activo_id:
         raise SedeNoDisponibleError()
 
     empleado = await empleado_repository.get_by_documento(session, documento)
@@ -111,8 +113,6 @@ async def registrar_asistencia(
         raise CodigoAlfaInvalidoError()
 
     if token_qr.dispositivo.id_estado != activo_id:
-        raise DispositivoTokenNoAutorizadoError()
-    if token_qr.dispositivo.id_sede != token_qr.id_sede:
         raise DispositivoTokenNoAutorizadoError()
 
     activo_token_id = await cat_estado_token_repository.get_estado_token_id(
@@ -153,18 +153,18 @@ async def registrar_asistencia(
             id_empleado=empleado.id,
             id_token_qr=token_qr.id,
             id_tipo_registro=tipo_entrada_id,
-            id_sede=token_qr.id_sede,
+            id_sede=token_qr.dispositivo.id_sede,
             fecha_registro=fecha_hoy,
             registrado_en=ahora,
         )
     except IntegrityError:
         raise AsistenciaDuplicadaError(
             hora_anterior=ahora,
-            sede_anterior=token_qr.sede.nombre,
+            sede_anterior=sede.nombre,
         )
 
     return RegistroExitoso(
         empleado_nombre=f"{empleado.nombre} {empleado.apellido}",
-        sede_nombre=token_qr.sede.nombre,
+        sede_nombre=sede.nombre,
         registrado_en=ahora,
     )

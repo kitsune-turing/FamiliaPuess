@@ -13,15 +13,11 @@ from apps.API.schemas.auth import (
     RefreshRequest,
     RefreshResponse,
 )
+from apps.API.repositories import usuario_repository
 from apps.API.services import auth_service
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.post(
@@ -136,8 +132,6 @@ async def me(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user_enforce_pw),
 ) -> MeResponse:
-    from apps.API.repositories import usuario_repository
-
     user_id = int(current_user["sub"])
     usuario = await usuario_repository.get_by_id(session, user_id)
     permisos = await auth_service.get_permisos_usuario(session, usuario.id_rol)

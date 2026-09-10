@@ -15,10 +15,11 @@ from apps.API.repositories import (
     dispositivo_repository,
     sede_repository,
 )
+from apps.API.repositories.dispositivo_repository import UNSET
 from shared.constants.estado import EstadoCodigo
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
-from shared.exceptions.concurrencia import ConflictoConcurrenciaError
+from apps.API.utils.concurrency import check_concurrency
 from shared.exceptions.device import (
     DispositivoNoEncontradoPorIdError,
     IdentificadorDuplicadoError,
@@ -63,10 +64,11 @@ async def create_dispositivo(
     session: AsyncSession,
     *,
     identificador: str,
-    id_sede: int,
+    id_sede: int | None = None,
     descripcion: str | None = None,
-    user_id: int,
+    user_id: int | None = None,
     ip_address: str | None = None,
+    forzar_inactivo: bool = False,
 ) -> Dispositivo:
     _validar_identificador(identificador)
 
@@ -74,19 +76,27 @@ async def create_dispositivo(
     if existing is not None:
         raise IdentificadorDuplicadoError(identificador)
 
-    sede = await sede_repository.get_by_id(session, id_sede)
-    if sede is None:
-        raise SedeNoEncontradaError(id_sede)
-
     activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
-    if sede.id_estado != activo_id:
-        raise SedeInactivaError(id_sede)
 
-    active_device = await dispositivo_repository.get_active_by_sede(
-        session, id_sede, activo_id
-    )
-    if active_device is not None:
-        raise SedeYaTieneDispositivoError(id_sede)
+    if id_sede is not None:
+        sede = await sede_repository.get_by_id(session, id_sede)
+        if sede is None:
+            raise SedeNoEncontradaError(id_sede)
+        if sede.id_estado != activo_id:
+            raise SedeInactivaError(id_sede)
+        active_device = await dispositivo_repository.get_active_by_sede(
+            session, id_sede, activo_id
+        )
+        if active_device is not None:
+            raise SedeYaTieneDispositivoError(id_sede)
+
+    if forzar_inactivo:
+        inactivo_id = await cat_estado_repository.get_estado_id(
+            session, EstadoCodigo.INACTIVO
+        )
+        estado_id = inactivo_id
+    else:
+        estado_id = activo_id
 
     timestamp = tz_now()
 
@@ -94,7 +104,7 @@ async def create_dispositivo(
         session,
         identificador=identificador,
         id_sede=id_sede,
-        id_estado=activo_id,
+        id_estado=estado_id,
         descripcion=descripcion,
         now=timestamp,
     )
@@ -115,7 +125,7 @@ async def create_dispositivo(
     )
 
     logger.info(
-        "Dispositivo creado: identificador=%s, sede=%d, id=%d",
+        "Dispositivo creado: identificador=%s, sede=%s, id=%d",
         identificador,
         id_sede,
         dispositivo.id,
@@ -129,6 +139,7 @@ async def update_dispositivo(
     *,
     identificador: str | None = None,
     descripcion: str | None = None,
+    id_sede: int | None = UNSET,
     updated_at: datetime,
     user_id: int,
     ip_address: str | None = None,
@@ -137,12 +148,12 @@ async def update_dispositivo(
     if dispositivo is None:
         raise DispositivoNoEncontradoPorIdError(dispositivo_id)
 
-    if dispositivo.updated_at != updated_at:
-        raise ConflictoConcurrenciaError("dispositivo", dispositivo_id)
+    check_concurrency(dispositivo.updated_at, updated_at, "dispositivo", dispositivo_id)
 
     valor_anterior = {
         "identificador": dispositivo.identificador,
         "descripcion": dispositivo.descripcion,
+        "id_sede": dispositivo.id_sede,
     }
 
     if identificador is not None:
@@ -154,12 +165,32 @@ async def update_dispositivo(
             if existing is not None:
                 raise IdentificadorDuplicadoError(identificador)
 
+    repo_id_sede = UNSET
+    if id_sede is not UNSET and id_sede != dispositivo.id_sede:
+        if id_sede is None:
+            repo_id_sede = None
+        else:
+            sede = await sede_repository.get_by_id(session, id_sede)
+            if sede is None:
+                raise SedeNoEncontradaError(id_sede)
+            activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
+            if sede.id_estado != activo_id:
+                raise SedeInactivaError(id_sede)
+            if dispositivo.id_estado == activo_id:
+                active_device = await dispositivo_repository.get_active_by_sede(
+                    session, id_sede, activo_id
+                )
+                if active_device is not None and active_device.id != dispositivo_id:
+                    raise SedeYaTieneDispositivoError(id_sede)
+            repo_id_sede = id_sede
+
     timestamp = tz_now()
     await dispositivo_repository.update_dispositivo(
         session,
         dispositivo_id,
         identificador=identificador,
         descripcion=descripcion,
+        id_sede=repo_id_sede,
         now=timestamp,
     )
 
@@ -168,6 +199,8 @@ async def update_dispositivo(
         valor_nuevo["identificador"] = identificador
     if descripcion is not None:
         valor_nuevo["descripcion"] = descripcion
+    if id_sede is not UNSET and id_sede != dispositivo.id_sede:
+        valor_nuevo["id_sede"] = id_sede
 
     await auditoria_repository.create(
         session,
@@ -186,7 +219,7 @@ async def update_dispositivo(
     return updated
 
 
-async def deactivate_dispositivo(
+async def delete_dispositivo(
     session: AsyncSession,
     dispositivo_id: int,
     *,
@@ -197,14 +230,7 @@ async def deactivate_dispositivo(
     if dispositivo is None:
         raise DispositivoNoEncontradoPorIdError(dispositivo_id)
 
-    inactivo_id = await cat_estado_repository.get_estado_id(
-        session, EstadoCodigo.INACTIVO
-    )
     timestamp = tz_now()
-
-    await dispositivo_repository.update_dispositivo(
-        session, dispositivo_id, id_estado=inactivo_id, now=timestamp
-    )
 
     await auditoria_repository.create(
         session,
@@ -215,14 +241,16 @@ async def deactivate_dispositivo(
         valor_anterior={
             "identificador": dispositivo.identificador,
             "id_sede": dispositivo.id_sede,
-            "id_estado": dispositivo.id_estado,
+            "descripcion": dispositivo.descripcion,
         },
         ip_address=ip_address,
         timestamp_accion=timestamp,
     )
 
+    await dispositivo_repository.hard_delete(session, dispositivo_id)
+
     logger.info(
-        "Dispositivo desactivado: id=%d, identificador=%s",
+        "Dispositivo eliminado: id=%d, identificador=%s",
         dispositivo_id,
         dispositivo.identificador,
     )
@@ -243,11 +271,12 @@ async def activate_dispositivo(
         session, EstadoCodigo.ACTIVO
     )
 
-    active_device = await dispositivo_repository.get_active_by_sede(
-        session, dispositivo.id_sede, activo_id
-    )
-    if active_device is not None and active_device.id != dispositivo_id:
-        raise SedeYaTieneDispositivoError(dispositivo.id_sede)
+    if dispositivo.id_sede is not None:
+        active_device = await dispositivo_repository.get_active_by_sede(
+            session, dispositivo.id_sede, activo_id
+        )
+        if active_device is not None and active_device.id != dispositivo_id:
+            raise SedeYaTieneDispositivoError(dispositivo.id_sede)
 
     timestamp = tz_now()
 

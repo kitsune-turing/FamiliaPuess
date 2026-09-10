@@ -10,14 +10,9 @@ from apps.API.schemas.dispositivos import (
     UpdateDispositivoRequest,
 )
 from apps.API.services import dispositivos_service
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/dispositivos", tags=["dispositivos"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.get(
@@ -99,6 +94,8 @@ async def update_dispositivo(
         kwargs["identificador"] = payload.identificador
     if "descripcion" in payload.model_fields_set:
         kwargs["descripcion"] = payload.descripcion
+    if "id_sede" in payload.model_fields_set:
+        kwargs["id_sede"] = payload.id_sede
 
     dispositivo = await dispositivos_service.update_dispositivo(
         session, dispositivo_id, **kwargs
@@ -110,13 +107,13 @@ async def update_dispositivo(
     "/{dispositivo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def deactivate_dispositivo(
+async def delete_dispositivo(
     dispositivo_id: int,
     request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(require_permission("DISPOSITIVOS", "eliminar")),
 ) -> None:
-    await dispositivos_service.deactivate_dispositivo(
+    await dispositivos_service.delete_dispositivo(
         session,
         dispositivo_id,
         user_id=int(current_user["sub"]),

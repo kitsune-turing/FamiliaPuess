@@ -6,7 +6,7 @@ from datetime import date, time, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.API.core.timezone import extract_local_time, now as tz_now
+from apps.API.core.timezone import now as tz_now
 from apps.API.models.novedad import Novedad
 from apps.API.repositories import (
     cat_novedad_repository,

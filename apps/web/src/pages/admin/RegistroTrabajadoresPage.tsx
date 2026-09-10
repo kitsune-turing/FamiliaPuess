@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import {
   Badge,
   Card,
-  ConfirmDialog,
   EmptyRow,
   Modal,
   Pagination,
@@ -18,15 +17,12 @@ import {
   DownloadIcon,
   EditIcon,
   EyeIcon,
-  MapPinIcon,
   MoreIcon,
   PlusIcon,
-  TrashIcon,
   UploadIcon,
   UserCheckIcon,
   UsersIcon,
 } from "../../components/ui/Icons";
-import { useAuth } from "../../context/AuthProvider";
 import { useDatos } from "../../context/DataProvider";
 import { useToast } from "../../context/ToastProvider";
 import { useClickFuera, usePaginacion } from "../../hooks";
@@ -53,12 +49,10 @@ function MenuFila({
   trabajador,
   alVer,
   alEditar,
-  alEliminar,
 }: {
   trabajador: Trabajador;
   alVer: () => void;
   alEditar: () => void;
-  alEliminar: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
   const ref = useClickFuera<HTMLDivElement>(abierto, () => setAbierto(false));
@@ -100,18 +94,6 @@ function MenuFila({
           >
             <EditIcon size={18} /> Editar
           </button>
-          <div className="dropdown__divider" />
-          <button
-            type="button"
-            role="menuitem"
-            className="dropdown__item dropdown__item--danger"
-            onClick={() => {
-              setAbierto(false);
-              alEliminar();
-            }}
-          >
-            <TrashIcon size={18} /> Eliminar
-          </button>
         </div>
       ) : null}
     </div>
@@ -119,9 +101,8 @@ function MenuFila({
 }
 
 export function RegistroTrabajadoresPage() {
-  const { trabajadores, sedes, itemsCatalogo, guardarTrabajador, eliminarTrabajador } =
+  const { trabajadores, itemsCatalogo, guardarTrabajador } =
     useDatos();
-  const { sedeActiva } = useAuth();
   const { mostrar } = useToast();
   const [parametros, setParametros] = useSearchParams();
   const inputArchivo = useRef<HTMLInputElement | null>(null);
@@ -129,13 +110,12 @@ export function RegistroTrabajadoresPage() {
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [viendo, setViendo] = useState<Trabajador | null>(null);
-  const [aEliminar, setAEliminar] = useState<Trabajador | null>(null);
   const [errores, setErrores] = useState<Record<string, string>>({});
 
   // Permite abrir el formulario desde las acciones rápidas del dashboard.
   useEffect(() => {
     if (parametros.get("nuevo")) {
-      setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" });
+      setEditando({ ...VACIO });
       parametros.delete("nuevo");
       setParametros(parametros, { replace: true });
     }
@@ -144,17 +124,16 @@ export function RegistroTrabajadoresPage() {
       parametros.delete("importar");
       setParametros(parametros, { replace: true });
     }
-  }, [parametros, setParametros, sedes]);
+  }, [parametros, setParametros]);
 
   const filtrados = useMemo(
     () =>
-      trabajadores.filter((trabajador) => {
-        const porSede = sedeActiva === "Todas las sedes" || trabajador.sede === sedeActiva;
-        const porTexto =
-          coincide(trabajador.nombre, busqueda) || coincide(trabajador.documento, busqueda);
-        return porSede && porTexto;
-      }),
-    [trabajadores, sedeActiva, busqueda],
+      trabajadores
+        .filter((trabajador) =>
+          coincide(trabajador.nombre, busqueda) || coincide(trabajador.documento, busqueda),
+        )
+        .sort((a, b) => (a.activo === b.activo ? 0 : a.activo ? -1 : 1)),
+    [trabajadores, busqueda],
   );
 
   const metricas = useMemo(() => {
@@ -162,7 +141,6 @@ export function RegistroTrabajadoresPage() {
     return {
       total: filtrados.length,
       activos,
-      sedes: new Set(filtrados.map((t) => t.sede)).size,
       cargos: new Set(filtrados.map((t) => t.cargo)).size,
     };
   }, [filtrados]);
@@ -197,11 +175,10 @@ export function RegistroTrabajadoresPage() {
   const exportar = () => {
     descargarExcel(
       "registro-de-trabajadores",
-      ["Trabajador", "Documento", "Sede", "Cargo", "Estado", "Ingreso"],
+      ["Trabajador", "Documento", "Cargo", "Estado", "Ingreso"],
       filtrados.map((t) => [
         t.nombre,
         t.documento,
-        t.sede,
         t.cargo,
         t.activo ? "Activo" : "Inactivo",
         t.ingreso,
@@ -238,7 +215,7 @@ export function RegistroTrabajadoresPage() {
           color="yellow"
           etiqueta="Total trabajadores"
           valor={metricas.total}
-          pista="En la sede seleccionada"
+          pista="Registrados en el sistema"
         />
         <StatCard
           icono={<UserCheckIcon size={26} />}
@@ -246,13 +223,6 @@ export function RegistroTrabajadoresPage() {
           etiqueta="Trabajadores activos"
           valor={metricas.activos}
           pista={`${porcentaje(metricas.activos, metricas.total)} del total`}
-        />
-        <StatCard
-          icono={<MapPinIcon size={26} />}
-          color="pink"
-          etiqueta="Sedes cubiertas"
-          valor={metricas.sedes}
-          pista="Con personal asignado"
         />
         <StatCard
           icono={<BriefcaseIcon size={26} />}
@@ -278,12 +248,7 @@ export function RegistroTrabajadoresPage() {
           <button
             type="button"
             className="btn btn--primary"
-            onClick={() =>
-              setEditando({
-                ...VACIO,
-                sede: sedeActiva !== "Todas las sedes" ? sedeActiva : (sedes[0]?.nombre ?? ""),
-              })
-            }
+            onClick={() => setEditando({ ...VACIO })}
           >
             <PlusIcon size={20} /> Nuevo trabajador
           </button>
@@ -301,7 +266,6 @@ export function RegistroTrabajadoresPage() {
               <tr>
                 <th>Trabajador</th>
                 <th>Documento</th>
-                <th>Sede</th>
                 <th>Cargo</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -309,17 +273,16 @@ export function RegistroTrabajadoresPage() {
             </thead>
             <tbody>
               {paginacion.visibles.length === 0 ? (
-                <EmptyRow columnas={6} mensaje={
+                <EmptyRow columnas={5} mensaje={
                     trabajadores.length === 0
                       ? "Aún no hay trabajadores registrados."
-                      : "No hay trabajadores en la sede seleccionada."
+                      : "No se encontraron trabajadores."
                   } />
               ) : (
                 paginacion.visibles.map((trabajador) => (
                     <tr key={trabajador.id}>
                       <td>{trabajador.nombre}</td>
                       <td>{trabajador.documento}</td>
-                      <td>{trabajador.sede}</td>
                       <td>{trabajador.cargo || "—"}</td>
                       <td>
                         <Badge tono={trabajador.activo ? "green" : "grey"}>{trabajador.activo ? "Activo" : "Inactivo"}</Badge>
@@ -329,7 +292,6 @@ export function RegistroTrabajadoresPage() {
                           trabajador={trabajador}
                           alVer={() => setViendo(trabajador)}
                           alEditar={() => setEditando(trabajador)}
-                          alEliminar={() => setAEliminar(trabajador)}
                         />
                       </td>
                     </tr>
@@ -394,12 +356,6 @@ export function RegistroTrabajadoresPage() {
                 alCambiar={(v) => setEditando({ ...editando, documento: v })}
               />
               <SelectField
-                etiqueta="Sede"
-                valor={editando.sede}
-                opciones={sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre }))}
-                alCambiar={(v) => setEditando({ ...editando, sede: v })}
-              />
-              <SelectField
                 etiqueta="Cargo"
                 valor={editando.cargo}
                 opciones={[{ valor: "", etiqueta: "Sin asignar" }, ...opcionesCargo]}
@@ -441,10 +397,6 @@ export function RegistroTrabajadoresPage() {
               <span>{viendo.documento}</span>
             </div>
             <div className="setting-row">
-              <span className="setting-row__label">Sede</span>
-              <span>{viendo.sede}</span>
-            </div>
-            <div className="setting-row">
               <span className="setting-row__label">Cargo</span>
               <span>{viendo.cargo || "—"}</span>
             </div>
@@ -460,23 +412,6 @@ export function RegistroTrabajadoresPage() {
         ) : null}
       </Modal>
 
-      <ConfirmDialog
-        abierto={aEliminar !== null}
-        titulo="Eliminar trabajador"
-        mensaje={`Se eliminará a ${aEliminar?.nombre ?? ""} del sistema. Sus registros históricos de asistencia se conservan.`}
-        alCerrar={() => setAEliminar(null)}
-        alConfirmar={async () => {
-          if (aEliminar) {
-            try {
-              await eliminarTrabajador(aEliminar.id);
-              mostrar("Trabajador eliminado.");
-            } catch (e) {
-              mostrar(e instanceof Error ? e.message : "Error al eliminar el trabajador.", "error");
-            }
-          }
-          setAEliminar(null);
-        }}
-      />
     </>
   );
 }

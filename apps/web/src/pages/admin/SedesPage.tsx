@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   Badge,
+  BadgeOutline,
   Card,
   ConfirmDialog,
   EmptyRow,
@@ -17,6 +18,7 @@ import {
   BuildingOffIcon,
   BuildingXIcon,
   EditIcon,
+  MonitorIcon,
   PlusIcon,
   RefreshIcon,
   TrashIcon,
@@ -26,7 +28,7 @@ import { useDatos } from "../../context/DataProvider";
 import { useToast } from "../../context/ToastProvider";
 import { usePaginacion } from "../../hooks";
 import { coincide, porcentaje } from "../../lib/format";
-import type { Sede } from "../../types/admin";
+import type { Dispositivo, Sede } from "../../types/admin";
 
 const POR_PAGINA = 5;
 
@@ -43,7 +45,7 @@ const VACIA: Sede = {
 };
 
 export function SedesPage() {
-  const { sedes, guardarSede, eliminarSede } = useDatos();
+  const { sedes, dispositivos, guardarSede, eliminarSede, guardarDispositivo } = useDatos();
   const { mostrar } = useToast();
 
   const [busqueda, setBusqueda] = useState("");
@@ -96,6 +98,50 @@ export function SedesPage() {
       mostrar(esNueva ? "Sede creada." : "Sede actualizada.");
     } catch (e) {
       mostrar(e instanceof Error ? e.message : "Error al guardar la sede.", "error");
+    }
+  };
+
+  // Dispositivos de la sede que se está editando y dispositivos sin asignar
+  const dispositivosDeSede = useMemo(
+    () => editando?.id
+      ? dispositivos.filter((d) => {
+          const sedeNombre = editando.nombre;
+          return d.sede === sedeNombre;
+        })
+      : [],
+    [dispositivos, editando],
+  );
+
+  const dispositivosSinAsignar = useMemo(
+    () => dispositivos.filter((d) => !d.sede || d.sede === ""),
+    [dispositivos],
+  );
+
+  const asignarDispositivo = async (dispositivo: Dispositivo) => {
+    if (!editando) return;
+    try {
+      await guardarDispositivo({ ...dispositivo, sede: editando.nombre });
+      mostrar(`${dispositivo.nombre || dispositivo.codigo} asignado a ${editando.nombre}.`);
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al asignar dispositivo.", "error");
+    }
+  };
+
+  const desasignarDispositivo = async (dispositivo: Dispositivo) => {
+    try {
+      await guardarDispositivo({ ...dispositivo, sede: "" });
+      mostrar(`${dispositivo.nombre || dispositivo.codigo} desasignado.`);
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al desasignar dispositivo.", "error");
+    }
+  };
+
+  const toggleActivoDispositivo = async (dispositivo: Dispositivo) => {
+    try {
+      await guardarDispositivo({ ...dispositivo, activo: !dispositivo.activo });
+      mostrar(`${dispositivo.nombre || dispositivo.codigo} ${dispositivo.activo ? "desactivado" : "activado"}.`);
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al cambiar estado.", "error");
     }
   };
 
@@ -272,6 +318,100 @@ export function SedesPage() {
                 alCambiar={(v) => setEditando({ ...editando, activa: v })}
               />
             </div>
+
+            {/* ─── Dispositivos asociados ─── */}
+            {editando.id ? (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <MonitorIcon size={20} />
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "var(--fp-text)" }}>
+                    Dispositivos asociados
+                  </h3>
+                </div>
+
+                {dispositivosDeSede.length === 0 ? (
+                  <p style={{ color: "var(--fp-text-muted)", fontSize: 14, marginBottom: 12 }}>
+                    No hay dispositivos asociados a esta sede.
+                  </p>
+                ) : (
+                  <div className="table-wrap" style={{ marginBottom: 12 }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Identificador</th>
+                          <th>Descripción</th>
+                          <th>Estado</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dispositivosDeSede.map((d) => (
+                          <tr key={d.id}>
+                            <td style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>
+                              {d.codigo}
+                            </td>
+                            <td>{d.nombre}</td>
+                            <td>
+                              <BadgeOutline tono={d.activo ? "green" : "pink"}>
+                                {d.activo ? "Activo" : "Inactivo"}
+                              </BadgeOutline>
+                            </td>
+                            <td>
+                              <div className="table__actions">
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost"
+                                  style={{ fontSize: 13, padding: "4px 10px" }}
+                                  onClick={() => toggleActivoDispositivo(d)}
+                                >
+                                  {d.activo ? "Desactivar" : "Activar"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn--ghost"
+                                  style={{ fontSize: 13, padding: "4px 10px", color: "var(--fp-pink)" }}
+                                  onClick={() => desasignarDispositivo(d)}
+                                >
+                                  Desasignar
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Dispositivos disponibles para asignar */}
+                {dispositivosSinAsignar.length > 0 && (
+                  <>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--fp-text-muted)", marginBottom: 8 }}>
+                      Dispositivos disponibles para asignar:
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {dispositivosSinAsignar.map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          className="btn btn--ghost"
+                          style={{
+                            fontSize: 13,
+                            padding: "6px 14px",
+                            border: "1px dashed var(--fp-border)",
+                            borderRadius: 8,
+                          }}
+                          onClick={() => asignarDispositivo(d)}
+                        >
+                          <PlusIcon size={14} />
+                          {d.nombre || d.codigo}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
           </>
         ) : null}
       </Modal>

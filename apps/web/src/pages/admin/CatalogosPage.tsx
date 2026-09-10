@@ -70,41 +70,34 @@ export function CatalogosPage() {
     activo: true,
   });
 
-  const guardar = () => {
+  const [guardando, setGuardando] = useState(false);
+
+  const guardar = async () => {
     if (!editando) return;
 
     const nuevos: Record<string, string> = {};
     if (!editando.codigo.trim()) nuevos.codigo = "El código es obligatorio.";
     if (!editando.nombre.trim()) nuevos.nombre = "El nombre es obligatorio.";
 
-    const duplicadoCodigo = itemsCatalogo.some(
-      (i) =>
-        i.catalogo === editando.catalogo &&
-        i.codigo.toUpperCase() === editando.codigo.trim().toUpperCase() &&
-        i.id !== editando.id,
-    );
-    if (duplicadoCodigo) nuevos.codigo = "Ya existe un valor con este código en el catálogo.";
-
-    const duplicadoNombre = itemsCatalogo.some(
-      (i) =>
-        i.catalogo === editando.catalogo &&
-        i.nombre.trim().toUpperCase() === editando.nombre.trim().toUpperCase() &&
-        i.id !== editando.id,
-    );
-    if (duplicadoNombre) nuevos.nombre = "Ya existe un valor con este nombre en el catálogo.";
-
     setErrores(nuevos);
     if (Object.keys(nuevos).length > 0) return;
 
     const esNuevo = !editando.id;
-    guardarItemCatalogo({
-      ...editando,
-      codigo: editando.codigo.trim().toUpperCase(),
-      id: editando.id || `${editando.catalogo}-${Date.now()}`,
-    });
-    setEditando(null);
-    setErrores({});
-    mostrar(esNuevo ? "Valor agregado al catálogo." : "Valor actualizado.");
+    setGuardando(true);
+    try {
+      await guardarItemCatalogo({
+        ...editando,
+        codigo: editando.codigo.trim().toUpperCase(),
+      });
+      setEditando(null);
+      setErrores({});
+      mostrar(esNuevo ? "Valor agregado al catálogo." : "Valor actualizado.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error al guardar.";
+      mostrar(msg);
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
@@ -258,8 +251,8 @@ export function CatalogosPage() {
             >
               Cancelar
             </button>
-            <button type="button" className="btn btn--primary" onClick={guardar}>
-              Guardar valor
+            <button type="button" className="btn btn--primary" onClick={guardar} disabled={guardando}>
+              {guardando ? "Guardando..." : "Guardar valor"}
             </button>
           </>
         }
@@ -334,10 +327,15 @@ export function CatalogosPage() {
         titulo="Eliminar valor del catálogo"
         mensaje={`Se eliminará "${aEliminar?.nombre ?? ""}". Si algún registro lo está usando, conviene desactivarlo en lugar de borrarlo.`}
         alCerrar={() => setAEliminar(null)}
-        alConfirmar={() => {
+        alConfirmar={async () => {
           if (aEliminar) {
-            eliminarItemCatalogo(aEliminar.id);
-            mostrar("Valor eliminado del catálogo.");
+            try {
+              await eliminarItemCatalogo(aEliminar.id);
+              mostrar("Valor eliminado del catálogo.");
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : "Error al eliminar.";
+              mostrar(msg);
+            }
           }
           setAEliminar(null);
         }}

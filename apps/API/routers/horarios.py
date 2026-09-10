@@ -10,14 +10,9 @@ from apps.API.schemas.horarios import (
     UpdateHorarioRequest,
 )
 from apps.API.services import horarios_service
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/horarios", tags=["horarios"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.get(

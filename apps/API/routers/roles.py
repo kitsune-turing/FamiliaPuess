@@ -10,14 +10,9 @@ from apps.API.schemas.roles import (
     UpdateRolRequest,
 )
 from apps.API.services import roles_service
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/roles", tags=["roles"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.get(
@@ -106,7 +101,7 @@ async def delete_rol(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(require_permission("ROLES", "eliminar")),
 ) -> None:
-    await roles_service.deactivate_rol(
+    await roles_service.delete_rol(
         session,
         rol_id,
         user_id=int(current_user["sub"]),

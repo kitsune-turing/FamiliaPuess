@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
-import { useAuth } from "./context/AuthProvider";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { LoginPage } from "./pages/LoginPage";
 
@@ -30,13 +29,6 @@ function PageLoader() {
   );
 }
 
-/** Protege las rutas de administración: solo entra el súper administrador. */
-function RutaSuperAdmin() {
-  const { usuario } = useAuth();
-  if (usuario?.rolCodigo !== "SUPER_ADMIN") return <Navigate to="/panel" replace />;
-  return <Outlet />;
-}
-
 export function App() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -61,11 +53,7 @@ export function App() {
           <Route path="horarios" element={<HorariosPage />} />
           <Route path="configuracion" element={<ConfiguracionPage />} />
           <Route path="auditoria" element={<AuditoriaPage />} />
-
-          {/* Administración: reservado al súper administrador */}
-          <Route element={<RutaSuperAdmin />}>
-            <Route path="catalogos" element={<CatalogosPage />} />
-          </Route>
+          <Route path="catalogos" element={<CatalogosPage />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/panel" replace />} />

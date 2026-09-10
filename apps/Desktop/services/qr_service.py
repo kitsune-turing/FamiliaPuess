@@ -5,12 +5,11 @@ from __future__ import annotations
 from io import BytesIO
 
 import qrcode
+from PIL import Image
 from PySide6.QtCore import QByteArray
 from PySide6.QtGui import QPixmap
 
-# Colores de marca: el QR se dibuja en el café del proyecto sobre blanco.
 _COLOR_QR = "#3B1A0B"
-_COLOR_FONDO = "#FFFFFF"
 
 
 def build_qr_content(token: str, registro_url: str) -> str:
@@ -23,7 +22,7 @@ def build_qr_content(token: str, registro_url: str) -> str:
 
 
 def build_qr_pixmap(token: str, registro_url: str, tamano: int = 300) -> QPixmap:
-    """Devuelve el QR listo para pintarse en un QLabel."""
+    """Devuelve el QR con fondo transparente listo para pintarse en un QLabel."""
     codigo = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -33,10 +32,19 @@ def build_qr_pixmap(token: str, registro_url: str, tamano: int = 300) -> QPixmap
     codigo.add_data(build_qr_content(token, registro_url))
     codigo.make(fit=True)
 
-    imagen = codigo.make_image(fill_color=_COLOR_QR, back_color=_COLOR_FONDO)
+    imagen = codigo.make_image(fill_color=_COLOR_QR, back_color="white")
+    rgba = imagen.convert("RGBA")
+    datos = rgba.getdata()
+    nuevos = []
+    for r, g, b, a in datos:
+        if r > 240 and g > 240 and b > 240:
+            nuevos.append((r, g, b, 0))
+        else:
+            nuevos.append((r, g, b, a))
+    rgba.putdata(nuevos)
 
     buffer = BytesIO()
-    imagen.save(buffer, format="PNG")
+    rgba.save(buffer, format="PNG")
 
     pixmap = QPixmap()
     pixmap.loadFromData(QByteArray(buffer.getvalue()), "PNG")

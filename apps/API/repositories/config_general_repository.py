@@ -7,6 +7,14 @@ from apps.API.models.config_general import ConfigGeneral
 from shared.exceptions.configuration import ConfiguracionNoEncontradaError
 
 
+async def get_many(session: AsyncSession, claves: list[str]) -> dict[str, str]:
+    stmt = select(ConfigGeneral.clave, ConfigGeneral.valor).where(
+        ConfigGeneral.clave.in_(claves)
+    )
+    result = await session.execute(stmt)
+    return dict(result.all())
+
+
 async def get_valor(session: AsyncSession, clave: str) -> str:
     stmt = select(ConfigGeneral.valor).where(ConfigGeneral.clave == clave)
     result = await session.execute(stmt)

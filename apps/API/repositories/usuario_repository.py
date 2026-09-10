@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -144,3 +144,8 @@ async def count_super_admins_activos(
     )
     result = await session.execute(stmt)
     return result.scalar_one()
+
+
+async def hard_delete(session: AsyncSession, user_id: int) -> None:
+    stmt = delete(Usuario).where(Usuario.id == user_id)
+    await session.execute(stmt)

@@ -533,8 +533,6 @@ export interface EmpleadoApi {
   apellido: string;
   cargo: string;
   id_estado: number;
-  id_sede: number;
-  sede_nombre: string;
   created_at: string;
   updated_at: string;
 }
@@ -548,7 +546,6 @@ export async function crearEmpleado(data: {
   nombre: string;
   apellido: string;
   cargo: string;
-  id_sede: number;
 }): Promise<EmpleadoApi> {
   return peticion<EmpleadoApi>("/empleados", {
     method: "POST",
@@ -563,7 +560,6 @@ export async function actualizarEmpleado(
     nombre?: string;
     apellido?: string;
     cargo?: string;
-    id_sede?: number;
     updated_at: string;
   },
 ): Promise<EmpleadoApi> {
@@ -593,7 +589,7 @@ export interface SedeApi {
 }
 
 export async function listarSedes(): Promise<{ items: SedeApi[]; total: number }> {
-  return peticion<{ items: SedeApi[]; total: number }>("/sedes");
+  return peticion<{ items: SedeApi[]; total: number }>("/sedes?id_estado=1");
 }
 
 export async function crearSede(data: {
@@ -629,8 +625,8 @@ export async function activarSede(id: number): Promise<SedeApi> {
 export interface DispositivoApi {
   id: number;
   identificador: string;
-  id_sede: number;
-  sede_nombre: string;
+  id_sede: number | null;
+  sede_nombre: string | null;
   descripcion: string | null;
   id_estado: number;
   created_at: string;
@@ -638,7 +634,7 @@ export interface DispositivoApi {
 }
 
 export async function listarDispositivos(): Promise<{ items: DispositivoApi[]; total: number }> {
-  return peticion<{ items: DispositivoApi[]; total: number }>("/dispositivos");
+  return peticion<{ items: DispositivoApi[]; total: number }>("/dispositivos?id_estado=1");
 }
 
 export async function crearDispositivo(data: {
@@ -654,7 +650,7 @@ export async function crearDispositivo(data: {
 
 export async function actualizarDispositivo(
   id: number,
-  data: { identificador?: string; descripcion?: string; updated_at: string },
+  data: { identificador?: string; descripcion?: string; id_sede?: number | null; updated_at: string },
 ): Promise<DispositivoApi> {
   return peticion<DispositivoApi>(`/dispositivos/${id}`, {
     method: "PUT",
@@ -688,7 +684,7 @@ export interface UsuarioApi {
 }
 
 export async function listarUsuarios(): Promise<{ items: UsuarioApi[]; total: number }> {
-  return peticion<{ items: UsuarioApi[]; total: number }>("/usuarios");
+  return peticion<{ items: UsuarioApi[]; total: number }>("/usuarios?id_estado=1");
 }
 
 export async function crearUsuario(data: {
@@ -767,6 +763,102 @@ export async function listarReportesSemanales(): Promise<{ items: ReporteSemanal
   return peticion<{ items: ReporteSemanalApi[]; total: number }>("/reportes/semanales");
 }
 
+/* ------------------------------------------------- Registros asistencia -- */
+
+export interface RegistroAsistenciaApi {
+  id: number;
+  id_empleado: number;
+  empleado_nombre: string;
+  empleado_documento: string;
+  id_sede: number;
+  sede_nombre: string;
+  tipo_registro: string;
+  fecha_registro: string;
+  registrado_en: string;
+}
+
+export async function listarRegistrosAsistencia(params?: {
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  id_sede?: number;
+  id_empleado?: number;
+}): Promise<{ items: RegistroAsistenciaApi[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (params?.fecha_desde) qs.set("fecha_desde", params.fecha_desde);
+  if (params?.fecha_hasta) qs.set("fecha_hasta", params.fecha_hasta);
+  if (params?.id_sede) qs.set("id_sede", String(params.id_sede));
+  if (params?.id_empleado) qs.set("id_empleado", String(params.id_empleado));
+  const query = qs.toString();
+  return peticion<{ items: RegistroAsistenciaApi[]; total: number }>(
+    `/reportes/asistencia${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function descargarAsistenciaExcel(params?: {
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  id_sede?: number;
+}): Promise<Blob> {
+  const qs = new URLSearchParams();
+  if (params?.fecha_desde) qs.set("fecha_desde", params.fecha_desde);
+  if (params?.fecha_hasta) qs.set("fecha_hasta", params.fecha_hasta);
+  if (params?.id_sede) qs.set("id_sede", String(params.id_sede));
+  const query = qs.toString();
+
+  const token = leerToken();
+  const respuesta = await fetch(`${API_BASE}/reportes/asistencia/excel${query ? `?${query}` : ""}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!respuesta.ok) {
+    throw new Error("Error al descargar el archivo.");
+  }
+
+  return respuesta.blob();
+}
+
+/* ---------------------------------------------------------- Catálogos --- */
+
+export interface ItemCatalogoApi {
+  id: number;
+  catalogo: string;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listarCatalogo(tipo: string): Promise<ItemCatalogoApi[]> {
+  return peticion<ItemCatalogoApi[]>(`/catalogos/${tipo}`);
+}
+
+export async function crearItemCatalogo(
+  tipo: string,
+  data: { codigo: string; nombre: string; descripcion?: string },
+): Promise<ItemCatalogoApi> {
+  return peticion<ItemCatalogoApi>(`/catalogos/${tipo}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function actualizarItemCatalogo(
+  tipo: string,
+  id: number,
+  data: { codigo?: string; nombre?: string; descripcion?: string; activo?: boolean },
+): Promise<ItemCatalogoApi> {
+  return peticion<ItemCatalogoApi>(`/catalogos/${tipo}/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function eliminarItemCatalogoApi(tipo: string, id: number): Promise<void> {
+  await peticion<void>(`/catalogos/${tipo}/${id}`, { method: "DELETE" });
+}
+
 /* ----------------------------------------------------------- Horarios --- */
 
 export interface HorarioApi {
@@ -783,7 +875,7 @@ export interface HorarioApi {
 }
 
 export async function listarHorarios(): Promise<{ items: HorarioApi[]; total: number }> {
-  return peticion<{ items: HorarioApi[]; total: number }>("/horarios");
+  return peticion<{ items: HorarioApi[]; total: number }>("/horarios?solo_vigentes=true");
 }
 
 export async function crearHorario(data: {
@@ -819,4 +911,18 @@ export async function actualizarHorario(
 
 export async function eliminarHorarioApi(id: number): Promise<void> {
   await peticion<void>(`/horarios/${id}`, { method: "DELETE" });
+}
+
+/* ------------------------------------------------------- Configuración ---- */
+
+export async function obtenerConfigGeneral(): Promise<Record<string, string>> {
+  const res = await peticion<{ valores: Record<string, string> }>("/configuracion/general");
+  return res.valores;
+}
+
+export async function guardarConfigGeneral(valores: Record<string, string>): Promise<void> {
+  await peticion<unknown>("/configuracion/general", {
+    method: "PUT",
+    body: JSON.stringify({ valores }),
+  });
 }

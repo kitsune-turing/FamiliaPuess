@@ -689,6 +689,7 @@ select option:hover {
 .table__actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 

@@ -29,22 +29,28 @@ import {
   eliminarUsuarioApi,
   activarUsuario,
   listarRoles,
+  eliminarRolApi,
   listarPermisosRol,
   listarAuditoria,
   listarReportesSemanales,
+  listarRegistrosAsistencia,
+  listarCatalogo,
+  crearItemCatalogo,
+  actualizarItemCatalogo,
+  eliminarItemCatalogoApi,
   type EmpleadoApi,
   type SedeApi,
   type DispositivoApi,
   type UsuarioApi,
   type AuditoriaApi,
   type ReporteSemanalApi,
+  type RegistroAsistenciaApi,
+  type ItemCatalogoApi,
 } from "../services/adminApi";
 import type { PermisoModulo, RolApi } from "../types/admin";
 import { useAuth } from "./AuthProvider";
 import {
-  ITEMS_CATALOGO,
   PARAMETROS,
-  REGISTROS,
   SESIONES,
 } from "../data/initial";
 import type {
@@ -68,7 +74,7 @@ function mapEmpleado(e: EmpleadoApi): Trabajador {
     id: String(e.id),
     nombre: `${e.nombre} ${e.apellido}`,
     documento: e.documento,
-    sede: e.sede_nombre,
+    sede: "",
     cargo: e.cargo ?? "",
     correo: e.updated_at ?? "",
     telefono: "",
@@ -84,7 +90,7 @@ function mapSede(s: SedeApi, empleados: EmpleadoApi[], dispositivos: Dispositivo
     nombre: s.nombre,
     direccion: s.direccion,
     ciudad: s.updated_at,
-    trabajadores: empleados.filter((e) => e.id_sede === s.id && e.id_estado === 1).length,
+    trabajadores: 0,
     dispositivos: dispositivos.filter((d) => d.id_sede === s.id && d.id_estado === 1).length,
     activa: s.id_estado === 1,
     telefono: "",
@@ -97,7 +103,7 @@ function mapDispositivo(d: DispositivoApi): Dispositivo {
     id: String(d.id),
     nombre: d.descripcion ?? d.identificador,
     codigo: d.identificador,
-    sede: d.sede_nombre,
+    sede: d.sede_nombre ?? "",
     ultimaConexion: d.updated_at ?? "",
     estado: d.id_estado === 1 ? "en_linea" : "fuera_de_linea",
     version: "",
@@ -141,6 +147,39 @@ function mapReporteSemanal(r: ReporteSemanalApi): Reporte {
     estado: "completado",
   };
 }
+
+function mapRegistroAsistencia(r: RegistroAsistenciaApi): RegistroEntrada {
+  const hora = r.registrado_en ? new Date(r.registrado_en).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }) : "";
+  return {
+    id: String(r.id),
+    trabajador: r.empleado_nombre,
+    documento: r.empleado_documento,
+    sede: r.sede_nombre,
+    entrada: hora,
+    estado: r.tipo_registro === "TARDANZA" ? "tarde" : "a_tiempo",
+    dispositivo: "",
+    fecha: r.fecha_registro,
+  };
+}
+
+function mapItemCatalogo(item: ItemCatalogoApi, idx: number): ItemCatalogo {
+  return {
+    id: `${item.catalogo}-${item.id}`,
+    catalogo: item.catalogo as ItemCatalogo["catalogo"],
+    codigo: item.codigo,
+    nombre: item.nombre,
+    descripcion: item.descripcion ?? "",
+    orden: idx + 1,
+    activo: item.activo,
+  };
+}
+
+function catalogoNumericId(compositeId: string): number {
+  const parts = compositeId.split("-");
+  return Number(parts[parts.length - 1]);
+}
+
+const CATALOGO_TIPOS_API = ["cargos", "documentos", "motivos"] as const;
 
 const MODULO_CODIGO_A_NOMBRE: Record<string, string> = {
   DASHBOARD: "Dashboard",
@@ -212,13 +251,13 @@ interface DataContextValue {
   eliminarUsuario: (id: string) => Promise<void>;
 
   guardarRol: (rol: Rol) => void;
-  eliminarRol: (id: string) => void;
+  eliminarRol: (id: string) => Promise<void>;
 
   agregarReporte: (reporte: Reporte) => void;
   eliminarReporte: (id: string) => void;
 
-  guardarItemCatalogo: (item: ItemCatalogo) => void;
-  eliminarItemCatalogo: (id: string) => void;
+  guardarItemCatalogo: (item: ItemCatalogo) => Promise<void>;
+  eliminarItemCatalogo: (id: string) => Promise<void>;
 
   guardarParametro: (parametro: Parametro) => void;
   restablecerParametros: () => void;
@@ -240,10 +279,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [reportes, setReportes] = useState<Reporte[]>([]);
-  const [registros] = useState<RegistroEntrada[]>(REGISTROS);
+  const [registros, setRegistros] = useState<RegistroEntrada[]>([]);
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [sesiones, setSesiones] = useState<SesionActiva[]>(SESIONES);
-  const [itemsCatalogo, setItemsCatalogo] = useState<ItemCatalogo[]>(ITEMS_CATALOGO);
+  const [itemsCatalogo, setItemsCatalogo] = useState<ItemCatalogo[]>([]);
   const [parametros, setParametros] = useState<Parametro[]>(PARAMETROS);
   const [cargando, setCargando] = useState(false);
 
@@ -254,7 +293,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const cargarDatos = useCallback(async () => {
     setCargando(true);
     try {
-      const [empRes, sedeRes, dispRes, usrRes, rolRes, audRes, repRes] = await Promise.all([
+      const [empRes, sedeRes, dispRes, usrRes, rolRes, audRes, repRes, regRes] = await Promise.all([
         listarEmpleados().catch(() => ({ items: [] as EmpleadoApi[], total: 0 })),
         listarSedes().catch(() => ({ items: [] as SedeApi[], total: 0 })),
         listarDispositivos().catch(() => ({ items: [] as DispositivoApi[], total: 0 })),
@@ -262,6 +301,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         listarRoles().catch(() => [] as RolApi[]),
         listarAuditoria().catch(() => ({ items: [] as AuditoriaApi[], total: 0 })),
         listarReportesSemanales().catch(() => ({ items: [] as ReporteSemanalApi[], total: 0 })),
+        listarRegistrosAsistencia().catch(() => ({ items: [] as RegistroAsistenciaApi[], total: 0 })),
       ]);
 
       setRawEmpleados(empRes.items);
@@ -282,32 +322,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setRoles(rolesConPermisos);
       setAuditorias(audRes.items.map(mapAuditoria));
       setReportes(repRes.items.map(mapReporteSemanal));
+      setRegistros(regRes.items.map(mapRegistroAsistencia));
 
-      const cargosUnicos = Array.from(new Set(empRes.items.map((e) => e.cargo).filter(Boolean)));
-      setItemsCatalogo((prev) => {
-        const sinCargosViejos = prev.filter((i) => i.catalogo !== "cargos");
-        const nuevosCargos: ItemCatalogo[] = cargosUnicos.map((c, idx) => ({
-          id: `cargo-api-${idx}`,
-          catalogo: "cargos" as const,
-          codigo: c.toUpperCase().replace(/\s+/g, "_"),
-          nombre: c,
-          descripcion: "",
-          orden: idx + 1,
-          activo: true,
-        }));
-
-        const tiposReporteExistentes = prev.filter((i) => i.catalogo === "tipos_reporte");
-        const tiposReportePorDefecto: ItemCatalogo[] = tiposReporteExistentes.length > 0
-          ? []
-          : [
-              { id: "rep-tipo-1", catalogo: "tipos_reporte" as const, codigo: "ASISTENCIA_GENERAL", nombre: "Asistencia general", descripcion: "Reporte completo de entradas y ausencias.", orden: 1, activo: true },
-              { id: "rep-tipo-2", catalogo: "tipos_reporte" as const, codigo: "LLEGADAS_TARDE", nombre: "Llegadas tarde", descripcion: "Detalle de registros con entrada tardía.", orden: 2, activo: true },
-              { id: "rep-tipo-3", catalogo: "tipos_reporte" as const, codigo: "AUSENCIAS", nombre: "Ausencias", descripcion: "Trabajadores que no registraron entrada.", orden: 3, activo: true },
-              { id: "rep-tipo-4", catalogo: "tipos_reporte" as const, codigo: "POR_SEDE", nombre: "Reporte por sede", descripcion: "Asistencia agrupada por sede.", orden: 4, activo: true },
-            ];
-
-        return [...sinCargosViejos, ...nuevosCargos, ...tiposReportePorDefecto];
-      });
+      const catalogoResults = await Promise.all(
+        CATALOGO_TIPOS_API.map((tipo) =>
+          listarCatalogo(tipo)
+            .then((items) => items.map((item, idx) => mapItemCatalogo(item, idx)))
+            .catch(() => [] as ItemCatalogo[]),
+        ),
+      );
+      setItemsCatalogo(catalogoResults.flat());
     } catch {
       // Data stays empty on failure
     } finally {
@@ -366,8 +390,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const partes = trabajador.nombre.trim().split(/\s+/);
     const nombre = partes[0] ?? "";
     const apellido = partes.slice(1).join(" ") || nombre;
-    const sedeObj = sedes.find((s) => s.nombre === trabajador.sede);
-    const idSede = sedeObj ? Number(sedeObj.id) : 1;
 
     if (!trabajador.id || isNaN(numId)) {
       const nuevo = await crearEmpleado({
@@ -375,26 +397,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
         nombre,
         apellido,
         cargo: trabajador.cargo,
-        id_sede: idSede,
       });
       setTrabajadores((prev) => [mapEmpleado(nuevo), ...prev]);
     } else {
       const existente = trabajadores.find((t) => t.id === trabajador.id);
       if (existente && trabajador.activo !== existente.activo) {
-        const activado = await activarEmpleado(numId);
-        setTrabajadores((prev) => prev.map((t) => t.id === trabajador.id ? mapEmpleado(activado) : t));
+        if (trabajador.activo) {
+          const activado = await activarEmpleado(numId);
+          setTrabajadores((prev) => prev.map((t) => t.id === trabajador.id ? mapEmpleado(activado) : t));
+        } else {
+          await eliminarEmpleadoApi(numId);
+          const res = await listarEmpleados();
+          setTrabajadores(res.items.map(mapEmpleado));
+        }
+        return;
       }
       const actualizado = await actualizarEmpleado(numId, {
         documento: trabajador.documento,
         nombre,
         apellido,
         cargo: trabajador.cargo,
-        id_sede: idSede,
         updated_at: existente?.correo || new Date().toISOString(),
       });
       setTrabajadores((prev) => prev.map((t) => t.id === trabajador.id ? mapEmpleado(actualizado) : t));
     }
-  }, [sedes, trabajadores]);
+  }, [trabajadores]);
 
   const eliminarTrabajadorHandler = useCallback(async (id: string) => {
     await eliminarEmpleadoApi(Number(id));
@@ -405,30 +432,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const guardarDispositivoHandler = useCallback(async (dispositivo: Dispositivo) => {
     const numId = Number(dispositivo.id);
-    const sedeObj = sedes.find((s) => s.nombre === dispositivo.sede);
-    const idSede = sedeObj ? Number(sedeObj.id) : 1;
+    const sedeObj = dispositivo.sede ? sedes.find((s) => s.nombre === dispositivo.sede) : null;
+    const idSede: number | null = sedeObj ? Number(sedeObj.id) : null;
 
     if (!dispositivo.id || isNaN(numId)) {
       const nuevo = await crearDispositivo({
         identificador: dispositivo.codigo || dispositivo.nombre,
-        id_sede: idSede,
+        id_sede: idSede ?? 1,
         descripcion: dispositivo.nombre,
       });
       setDispositivos((prev) => [mapDispositivo(nuevo), ...prev]);
     } else {
       const existente = dispositivos.find((d) => d.id === dispositivo.id);
       if (existente && dispositivo.activo !== existente.activo) {
-        const activado = await activarDispositivo(numId);
-        setDispositivos((prev) => prev.map((d) => d.id === dispositivo.id ? mapDispositivo(activado) : d));
+        if (dispositivo.activo) {
+          const activado = await activarDispositivo(numId);
+          setDispositivos((prev) => prev.map((d) => d.id === dispositivo.id ? mapDispositivo(activado) : d));
+        } else {
+          await eliminarDispositivoApi(numId);
+          setDispositivos((prev) => prev.map((d) =>
+            d.id === dispositivo.id ? { ...d, activo: false, estado: "fuera_de_linea" } : d
+          ));
+        }
+        cargarDatos();
+        return;
       }
-      const actualizado = await actualizarDispositivo(numId, {
-        identificador: dispositivo.codigo,
-        descripcion: dispositivo.nombre,
+      const updateData: { identificador?: string; descripcion?: string; id_sede?: number | null; updated_at: string } = {
         updated_at: existente?.ultimaConexion || new Date().toISOString(),
-      });
+      };
+      if (dispositivo.codigo !== existente?.codigo) {
+        updateData.identificador = dispositivo.codigo;
+      }
+      if (dispositivo.nombre !== existente?.nombre) {
+        updateData.descripcion = dispositivo.nombre;
+      }
+      if (dispositivo.sede !== existente?.sede) {
+        updateData.id_sede = idSede;
+      }
+      const actualizado = await actualizarDispositivo(numId, updateData);
       setDispositivos((prev) => prev.map((d) => d.id === dispositivo.id ? mapDispositivo(actualizado) : d));
     }
-  }, [sedes]);
+    cargarDatos();
+  }, [sedes, dispositivos, cargarDatos]);
 
   const eliminarDispositivoHandler = useCallback(async (id: string) => {
     await eliminarDispositivoApi(Number(id));
@@ -511,13 +556,43 @@ export function DataProvider({ children }: { children: ReactNode }) {
       eliminarUsuario: eliminarUsuarioHandler,
 
       guardarRol: (rol) => setRoles((previos) => upsert(previos, rol)),
-      eliminarRol: (id) => setRoles((previos) => previos.filter((r) => r.id !== id)),
+      eliminarRol: async (id) => {
+        await eliminarRolApi(Number(id));
+        setRoles((previos) => previos.filter((r) => r.id !== id));
+      },
 
       agregarReporte: (reporte) => setReportes((previos) => [reporte, ...previos]),
       eliminarReporte: (id) => setReportes((previos) => previos.filter((r) => r.id !== id)),
 
-      guardarItemCatalogo: (item) => setItemsCatalogo((previos) => upsert(previos, item)),
-      eliminarItemCatalogo: (id) => setItemsCatalogo((previos) => previos.filter((i) => i.id !== id)),
+      guardarItemCatalogo: async (item) => {
+        const tipo = item.catalogo;
+        const numId = item.id ? catalogoNumericId(item.id) : NaN;
+        if (!item.id || isNaN(numId)) {
+          const nuevo = await crearItemCatalogo(tipo, {
+            codigo: item.codigo,
+            nombre: item.nombre,
+            descripcion: item.descripcion || undefined,
+          });
+          setItemsCatalogo((prev) => [mapItemCatalogo(nuevo, prev.length), ...prev]);
+        } else {
+          const updated = await actualizarItemCatalogo(tipo, numId, {
+            codigo: item.codigo,
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            activo: item.activo,
+          });
+          setItemsCatalogo((prev) =>
+            prev.map((i) => (i.id === item.id ? mapItemCatalogo(updated, 0) : i)),
+          );
+        }
+      },
+      eliminarItemCatalogo: async (id) => {
+        const item = itemsCatalogo.find((i) => i.id === id);
+        if (item) {
+          await eliminarItemCatalogoApi(item.catalogo, catalogoNumericId(id));
+        }
+        setItemsCatalogo((prev) => prev.filter((i) => i.id !== id));
+      },
 
       guardarParametro: (parametro) => setParametros((previos) => upsert(previos, parametro)),
       restablecerParametros: () => setParametros(PARAMETROS),

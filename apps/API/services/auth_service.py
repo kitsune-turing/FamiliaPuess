@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -27,10 +28,10 @@ from shared.constants.estado import EstadoCodigo
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.exceptions.auth import (
-    CuentaBloqueadaError,
+    ContrasenaIgualError,
     CredencialesInvalidasError,
+    CuentaBloqueadaError,
     RefreshTokenInvalidoError,
-    SesionExistenteError,
     SesionNoEncontradaError,
     TokenInvalidoError,
     UsuarioInactivoError,
@@ -127,11 +128,6 @@ async def login(
     settings = get_settings()
     fecha_expira = tz_now() + timedelta(minutes=settings.access_token_expire_minutes)
 
-    session_id_str = None
-    access_token = None
-    refresh_token = None
-
-    import uuid
     temp_session_id = str(uuid.uuid4())
 
     access_token = create_access_token(usuario.id, temp_session_id)
@@ -325,7 +321,6 @@ async def change_password(
         raise CredencialesInvalidasError()
 
     if current_password == new_password:
-        from shared.exceptions.auth import ContrasenaIgualError
         raise ContrasenaIgualError()
 
     new_hash = hash_password(new_password)

@@ -1,12 +1,20 @@
 from collections.abc import Sequence
 from datetime import datetime
+from enum import Enum
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from apps.API.models.dispositivo import Dispositivo
 from shared.utils.sql import escape_like
+
+
+class _Unset(Enum):
+    TOKEN = "UNSET"
+
+
+UNSET = _Unset.TOKEN
 
 
 async def get_by_id(session: AsyncSession, dispositivo_id: int) -> Dispositivo | None:
@@ -20,7 +28,11 @@ async def get_by_id(session: AsyncSession, dispositivo_id: int) -> Dispositivo |
 
 
 async def get_by_identificador(session: AsyncSession, identificador: str) -> Dispositivo | None:
-    stmt = select(Dispositivo).where(Dispositivo.identificador == identificador)
+    stmt = (
+        select(Dispositivo)
+        .options(joinedload(Dispositivo.sede))
+        .where(Dispositivo.identificador == identificador)
+    )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
@@ -64,7 +76,7 @@ async def create(
     session: AsyncSession,
     *,
     identificador: str,
-    id_sede: int,
+    id_sede: int | None,
     id_estado: int,
     descripcion: str | None = None,
     now: datetime | None = None,
@@ -88,7 +100,7 @@ async def update_dispositivo(
     dispositivo_id: int,
     *,
     identificador: str | None = None,
-    id_sede: int | None = None,
+    id_sede: int | None | _Unset = UNSET,
     id_estado: int | None = None,
     descripcion: str | None = None,
     now: datetime | None = None,
@@ -96,7 +108,7 @@ async def update_dispositivo(
     values: dict = {}
     if identificador is not None:
         values["identificador"] = identificador
-    if id_sede is not None:
+    if id_sede is not UNSET:
         values["id_sede"] = id_sede
     if id_estado is not None:
         values["id_estado"] = id_estado
@@ -118,3 +130,8 @@ async def count_by_estado(session: AsyncSession, id_estado: int) -> int:
     )
     result = await session.execute(stmt)
     return result.scalar_one()
+
+
+async def hard_delete(session: AsyncSession, dispositivo_id: int) -> None:
+    stmt = delete(Dispositivo).where(Dispositivo.id == dispositivo_id)
+    await session.execute(stmt)

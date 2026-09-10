@@ -2,22 +2,22 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.database.session import get_session
-from apps.API.schemas.registro import RegistroRequest, RegistroResponse, TokenValidarRequest, TokenValidarResponse
+from apps.API.schemas.registro import RegistroRequest, RegistroResponse, TokenValidarResponse
 from apps.API.services import registro_service
 
 router = APIRouter(prefix="/registro", tags=["registro"])
 
 
-@router.post(
-    "/validar",
+@router.get(
+    "/validar/{token}",
     response_model=TokenValidarResponse,
     status_code=status.HTTP_200_OK,
 )
 async def validar_token(
-    payload: TokenValidarRequest,
+    token: str,
     session: AsyncSession = Depends(get_session),
 ) -> TokenValidarResponse:
-    resultado = await registro_service.validar_token(session, payload.token)
+    resultado = await registro_service.validar_token(session, token)
     return TokenValidarResponse(
         token=resultado.token,
         sede_nombre=resultado.sede_nombre,

@@ -15,19 +15,17 @@ from apps.API.repositories import (
     auditoria_repository,
     cat_estado_repository,
     empleado_repository,
-    sede_repository,
 )
 from shared.constants.estado import EstadoCodigo
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
-from shared.exceptions.concurrencia import ConflictoConcurrenciaError
+from apps.API.utils.concurrency import check_concurrency
 from shared.exceptions.empleados import (
     DocumentoDuplicadoError,
     DocumentoFormatoInvalidoError,
     EmpleadoNoEncontradoError,
     NombreInvalidoError,
 )
-from shared.exceptions.sedes import SedeInactivaError, SedeNoEncontradaError
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +103,6 @@ async def create_empleado(
     nombre: str,
     apellido: str,
     cargo: str,
-    id_sede: int,
     user_id: int,
     ip_address: str | None = None,
 ) -> Empleado:
@@ -117,14 +114,7 @@ async def create_empleado(
     if existing is not None:
         raise DocumentoDuplicadoError(documento)
 
-    sede = await sede_repository.get_by_id(session, id_sede)
-    if sede is None:
-        raise SedeNoEncontradaError(id_sede)
-
     activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
-    if sede.id_estado != activo_id:
-        raise SedeInactivaError(id_sede)
-
     id_cargo = await _resolve_cargo_id(session, cargo)
     id_tipo_documento = _detect_tipo_documento(documento)
     timestamp = tz_now()
@@ -137,7 +127,6 @@ async def create_empleado(
         apellido=apellido,
         id_cargo=id_cargo,
         id_estado=activo_id,
-        id_sede_actual=id_sede,
         now=timestamp,
     )
 
@@ -152,7 +141,6 @@ async def create_empleado(
             "nombre": nombre,
             "apellido": apellido,
             "cargo": cargo,
-            "id_sede": id_sede,
         },
         ip_address=ip_address,
         timestamp_accion=timestamp,
@@ -170,7 +158,6 @@ async def update_empleado(
     nombre: str | None = None,
     apellido: str | None = None,
     cargo: str | None = None,
-    id_sede: int | None = None,
     updated_at: datetime,
     user_id: int,
     ip_address: str | None = None,
@@ -179,15 +166,13 @@ async def update_empleado(
     if empleado is None:
         raise EmpleadoNoEncontradoError(empleado_id)
 
-    if empleado.updated_at != updated_at:
-        raise ConflictoConcurrenciaError("empleado", empleado_id)
+    check_concurrency(empleado.updated_at, updated_at, "empleado", empleado_id)
 
     valor_anterior = {
         "documento": empleado.numero_documento,
         "nombre": empleado.nombre,
         "apellido": empleado.apellido,
         "cargo": empleado.cargo.nombre if empleado.cargo else "",
-        "id_sede": empleado.id_sede_actual,
     }
 
     if documento is not None:
@@ -202,16 +187,6 @@ async def update_empleado(
 
     if apellido is not None:
         _validar_nombre(apellido, "apellido")
-
-    if id_sede is not None and id_sede != empleado.id_sede_actual:
-        sede = await sede_repository.get_by_id(session, id_sede)
-        if sede is None:
-            raise SedeNoEncontradaError(id_sede)
-        activo_id = await cat_estado_repository.get_estado_id(
-            session, EstadoCodigo.ACTIVO
-        )
-        if sede.id_estado != activo_id:
-            raise SedeInactivaError(id_sede)
 
     id_cargo: int | None = None
     if cargo is not None:
@@ -231,7 +206,6 @@ async def update_empleado(
         apellido=apellido,
         id_cargo=id_cargo,
         id_estado=None,
-        id_sede_actual=id_sede,
         now=timestamp,
     )
 
@@ -244,8 +218,6 @@ async def update_empleado(
         valor_nuevo["apellido"] = apellido
     if cargo is not None:
         valor_nuevo["cargo"] = cargo
-    if id_sede is not None:
-        valor_nuevo["id_sede"] = id_sede
 
     await auditoria_repository.create(
         session,

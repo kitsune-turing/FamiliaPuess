@@ -36,7 +36,7 @@ async def get_all(
         ref = fecha_referencia if fecha_referencia is not None else date.today()
         stmt = stmt.where(Horario.vigente_desde <= ref)
         stmt = stmt.where(
-            (Horario.vigente_hasta.is_(None)) | (Horario.vigente_hasta >= ref)
+            (Horario.vigente_hasta.is_(None)) | (Horario.vigente_hasta > ref)
         )
     result = await session.execute(stmt)
     return result.scalars().unique().all()

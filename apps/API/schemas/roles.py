@@ -2,8 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-_UNSET = object()
-
 
 class CreateRolRequest(BaseModel):
     codigo: str = Field(..., min_length=1, max_length=30)

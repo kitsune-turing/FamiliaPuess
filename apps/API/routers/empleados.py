@@ -10,14 +10,9 @@ from apps.API.schemas.empleados import (
     UpdateEmpleadoRequest,
 )
 from apps.API.services import empleados_service
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/empleados", tags=["empleados"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.get(
@@ -77,7 +72,6 @@ async def create_empleado(
         nombre=payload.nombre,
         apellido=payload.apellido,
         cargo=payload.cargo,
-        id_sede=payload.id_sede,
         user_id=int(current_user["sub"]),
         ip_address=_extract_ip(request),
     )
@@ -109,9 +103,6 @@ async def update_empleado(
         kwargs["apellido"] = payload.apellido
     if "cargo" in payload.model_fields_set:
         kwargs["cargo"] = payload.cargo
-    if "id_sede" in payload.model_fields_set:
-        kwargs["id_sede"] = payload.id_sede
-
     empleado = await empleados_service.update_empleado(
         session, empleado_id, **kwargs
     )

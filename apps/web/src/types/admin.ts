@@ -214,7 +214,7 @@ export interface Pagina<T> {
 /* ---------------------------------------------------- Administración ---- */
 
 /** Catálogo maestro: listas de valores que alimentan los formularios. */
-export type CatalogoTipo = "cargos" | "documentos" | "motivos" | "tipos_reporte" | "estados_dispositivo";
+export type CatalogoTipo = "cargos" | "documentos" | "motivos";
 
 export interface ItemCatalogo {
   id: string;

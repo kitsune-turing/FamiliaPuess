@@ -96,7 +96,24 @@ CREATE TABLE cat_novedad (
 );
 COMMENT ON TABLE cat_novedad IS 'Catalogo de novedades (RF-046). Incluye color e icono para resaltado visual.';
 
--- [REV-03] 1.6 CAT_ESTADO_TOKEN - Estados del token QR
+-- 1.6 CAT_TIPO_DOCUMENTO
+CREATE TABLE cat_tipo_documento (
+    id          SERIAL          PRIMARY KEY,
+    codigo      VARCHAR(20)     NOT NULL,
+    nombre      VARCHAR(60)     NOT NULL,
+    id_estado   INTEGER         NOT NULL,
+    descripcion VARCHAR(255),
+    created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_cat_tipo_documento_codigo UNIQUE (codigo),
+    CONSTRAINT fk_cat_tipo_documento_estado FOREIGN KEY (id_estado) REFERENCES cat_estado(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT ck_cat_tipo_documento_codigo CHECK (codigo = UPPER(TRIM(codigo)))
+);
+COMMENT ON TABLE cat_tipo_documento IS 'Catalogo de tipos de documento de identidad.';
+CREATE INDEX idx_cat_tipo_documento_estado ON cat_tipo_documento(id_estado);
+
+-- [REV-03] 1.7 CAT_ESTADO_TOKEN - Estados del token QR
 -- Reemplaza el booleano `consumido` por estados extensibles.
 CREATE TABLE cat_estado_token (
     id          SERIAL          PRIMARY KEY,
@@ -130,11 +147,11 @@ CREATE INDEX idx_sede_estado ON sede(id_estado);
 -- [REV-12] Agregado ultimo_ping para monitoreo de conectividad.
 CREATE TABLE dispositivo (
     id              SERIAL          PRIMARY KEY,
-    id_sede         INTEGER         NOT NULL,
+    id_sede         INTEGER,
     identificador   VARCHAR(255)    NOT NULL,
     id_estado       INTEGER         NOT NULL,
     descripcion     VARCHAR(255),
-    ultimo_ping     TIMESTAMPTZ,    -- [REV-12] Ultimo contacto del dispositivo
+    ultimo_ping     TIMESTAMPTZ,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_dispositivo_sede   FOREIGN KEY (id_sede)   REFERENCES sede(id),
@@ -174,29 +191,36 @@ CREATE INDEX idx_usuario_estado ON usuario(id_estado);
 CREATE INDEX idx_usuario_login  ON usuario(username, id_estado);
 
 -- 2.4 EMPLEADO (RF-056 a RF-060)
--- [REV-01] Agregado id_sede_actual FK para saber donde trabaja hoy.
+-- Los empleados NO pertenecen a una sede fija; rotan entre sedes.
+-- La sede se determina por el dispositivo donde registran asistencia.
 CREATE TABLE empleado (
-    id               SERIAL          PRIMARY KEY,
-    nombre_completo  VARCHAR(200)    NOT NULL,
-    documento        VARCHAR(10)     NOT NULL,
-    id_cargo         INTEGER         NOT NULL,
-    id_estado        INTEGER         NOT NULL,
-    id_sede_actual   INTEGER,        -- [REV-01] Sede donde trabaja actualmente. NULL si no asignado.
-    created_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_empleado_cargo      FOREIGN KEY (id_cargo)      REFERENCES cat_cargo(id),
-    CONSTRAINT fk_empleado_estado     FOREIGN KEY (id_estado)     REFERENCES cat_estado(id),
-    CONSTRAINT fk_empleado_sede_actual FOREIGN KEY (id_sede_actual) REFERENCES sede(id),
-    CONSTRAINT uq_empleado_documento  UNIQUE (documento),
-    CONSTRAINT ck_empleado_documento  CHECK (documento ~ '^\d{6,10}$')
+    id                SERIAL          PRIMARY KEY,
+    id_tipo_documento INTEGER         NOT NULL,
+    numero_documento  VARCHAR(30)     NOT NULL,
+    nombre            VARCHAR(100)    NOT NULL,
+    apellido          VARCHAR(100)    NOT NULL,
+    id_cargo          INTEGER         NOT NULL,
+    id_estado         INTEGER         NOT NULL,
+    id_sede_actual    INTEGER,
+    created_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_empleado_tipo_documento FOREIGN KEY (id_tipo_documento) REFERENCES cat_tipo_documento(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_empleado_cargo      FOREIGN KEY (id_cargo)      REFERENCES cat_cargo(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_empleado_estado     FOREIGN KEY (id_estado)     REFERENCES cat_estado(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_empleado_sede_actual FOREIGN KEY (id_sede_actual) REFERENCES sede(id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT uq_empleado_documento  UNIQUE (id_tipo_documento, numero_documento),
+    CONSTRAINT ck_empleado_documento  CHECK (numero_documento ~ '^[A-Za-z0-9-]{4,30}$')
 );
 COMMENT ON TABLE empleado IS 'Empleados (RF-056 a RF-060). NO son usuarios. Rotan entre sedes.';
-COMMENT ON COLUMN empleado.id_sede_actual IS '[REV-01] Dato derivado del historial vigente (empleado_sede WHERE fecha_fin IS NULL). Debe mantenerse sincronizado mediante transaccion al cambiar de sede: UPDATE empleado + INSERT/UPDATE empleado_sede en una sola TX.';
-COMMENT ON COLUMN empleado.documento IS 'Cedula colombiana: solo digitos, 6-10 caracteres (RF-015).';
-CREATE INDEX idx_empleado_documento    ON empleado(documento);
+CREATE INDEX idx_empleado_documento    ON empleado(numero_documento);
+CREATE INDEX idx_empleado_tipo_doc     ON empleado(id_tipo_documento);
 CREATE INDEX idx_empleado_cargo        ON empleado(id_cargo);
 CREATE INDEX idx_empleado_estado       ON empleado(id_estado);
-CREATE INDEX idx_empleado_nombre       ON empleado(nombre_completo);
+CREATE INDEX idx_empleado_nombre       ON empleado(nombre, apellido);
 CREATE INDEX idx_empleado_sede_actual  ON empleado(id_sede_actual);
 
 -- [REV-02] 2.5 EMPLEADO_SEDE - Historial de rotacion entre sedes
@@ -373,6 +397,7 @@ CREATE INDEX idx_token_dispositivo   ON token_qr(id_dispositivo);
 CREATE TABLE asistencia (
     id                  BIGSERIAL       PRIMARY KEY,
     id_empleado         INTEGER         NOT NULL,
+    id_sede             INTEGER         NOT NULL,
     id_tipo_registro    INTEGER         NOT NULL,
     id_token            BIGINT          NOT NULL,
     fecha_registro      DATE            NOT NULL DEFAULT CURRENT_DATE,
@@ -380,7 +405,10 @@ CREATE TABLE asistencia (
     timestamp_registro  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     created_by          INTEGER,        -- [REV-15] NULL=auto, FK a usuario si registro manual
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_asistencia_empleado    FOREIGN KEY (id_empleado)      REFERENCES empleado(id),
+    CONSTRAINT fk_asistencia_empleado    FOREIGN KEY (id_empleado)      REFERENCES empleado(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_asistencia_sede        FOREIGN KEY (id_sede)          REFERENCES sede(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT fk_asistencia_tipo        FOREIGN KEY (id_tipo_registro) REFERENCES cat_tipo_registro(id),
     CONSTRAINT fk_asistencia_token       FOREIGN KEY (id_token)         REFERENCES token_qr(id),
     CONSTRAINT fk_asistencia_created_by  FOREIGN KEY (created_by)       REFERENCES usuario(id),
@@ -452,39 +480,138 @@ CREATE INDEX idx_auditoria_timestamp ON auditoria(timestamp_accion DESC);
 CREATE INDEX idx_auditoria_operacion ON auditoria(operacion, timestamp_accion DESC);
 
 -- ============================================================================
--- 7. DATOS INICIALES (SEED)
+-- 7. TRIGGERS - updated_at automatico
 -- ============================================================================
 
--- 7.1 Estados
+CREATE OR REPLACE FUNCTION fn_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_cat_estado_updated_at         BEFORE UPDATE ON cat_estado         FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_cat_rol_updated_at            BEFORE UPDATE ON cat_rol            FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_cat_cargo_updated_at          BEFORE UPDATE ON cat_cargo          FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_cat_tipo_registro_updated_at  BEFORE UPDATE ON cat_tipo_registro  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_cat_novedad_updated_at        BEFORE UPDATE ON cat_novedad        FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_cat_tipo_documento_updated_at BEFORE UPDATE ON cat_tipo_documento FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_sede_updated_at               BEFORE UPDATE ON sede               FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_dispositivo_updated_at        BEFORE UPDATE ON dispositivo        FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_usuario_updated_at            BEFORE UPDATE ON usuario            FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_empleado_updated_at           BEFORE UPDATE ON empleado           FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+CREATE TRIGGER trg_horario_updated_at            BEFORE UPDATE ON horario            FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+-- ============================================================================
+-- 8. DATOS INICIALES (SEED)
+-- ============================================================================
+
+-- 8.1 Estados
 INSERT INTO cat_estado (codigo, nombre, descripcion) VALUES
     ('ACTIVO',   'Activo',   'Registro habilitado y operativo'),
     ('INACTIVO', 'Inactivo', 'Registro deshabilitado, conserva historial');
 
--- 7.2 Roles
+-- 8.2 Roles
 INSERT INTO cat_rol (codigo, nombre, id_estado, descripcion) VALUES
     ('SUPER_ADMIN', 'Super Usuario',  1, 'Acceso total al sistema.'),
     ('ADMIN',       'Administrador',  1, 'Acceso operativo.');
 
--- 7.3 Tipos de registro
+-- 8.3 Tipos de registro
 INSERT INTO cat_tipo_registro (codigo, nombre, id_estado, descripcion) VALUES
     ('ENTRADA',  'Entrada',  1, 'Registro de entrada al punto de venta'),
     ('SALIDA',   'Salida',   1, 'Registro de salida del punto de venta'),
     ('ALMUERZO', 'Almuerzo', 1, 'Registro de salida/entrada a almuerzo'),
     ('DESCANSO', 'Descanso', 1, 'Registro de descanso');
 
--- 7.4 Novedades
+-- 8.4 Novedades
 INSERT INTO cat_novedad (codigo, nombre, id_estado, color, icono, descripcion) VALUES
     ('TARDANZA', 'Tardanza', 1, '#FF9800', 'clock-alert',    'Registro despues del horario + tolerancia'),
     ('AUSENCIA', 'Ausencia', 1, '#F44336', 'account-remove', 'Empleado activo sin registro en dia habil');
 
--- [REV-03] 7.5 Estados de token
+-- 8.5 Estados de token
 INSERT INTO cat_estado_token (codigo, nombre, descripcion) VALUES
     ('GENERADO', 'Generado', 'Token recien creado, pendiente de activacion'),
     ('ACTIVO',   'Activo',   'Token visible en pantalla, disponible para uso'),
     ('EXPIRADO', 'Expirado', 'Token cuyo tiempo de vigencia finalizo sin ser usado'),
     ('CONSUMIDO','Consumido','Token utilizado para un registro de asistencia');
 
--- 7.6 Modulos del sistema
+-- 8.6 Tipos de documento
+INSERT INTO cat_tipo_documento (codigo, nombre, id_estado, descripcion) VALUES
+    ('CC',        'Cedula de Ciudadania',              1, 'Documento de identidad para ciudadanos colombianos'),
+    ('PPT',       'Permiso por Proteccion Temporal',   1, 'Documento de identificacion para extranjeros con PPT'),
+    ('CE',        'Cedula de Extranjeria',             1, 'Documento de identificacion para extranjeros'),
+    ('PASAPORTE', 'Pasaporte',                         1, 'Documento de viaje e identificacion internacional'),
+    ('TI',        'Tarjeta de Identidad',              1, 'Documento de identidad para menores de edad'),
+    ('OTRO',      'Otro',                              1, 'Otro documento habilitado por la organizacion');
+
+-- 8.7 Cargos
+INSERT INTO cat_cargo (codigo, nombre, id_estado, descripcion) VALUES
+    ('CAJERA_PLANCHERA',             'Cajera-Planchera',                       1, 'Cargo operativo de caja y plancha'),
+    ('ADMINISTRADORA',               'Administradora',                         1, 'Administracion de sede'),
+    ('ADMINISTRADORA_PLANTA_CAJERA', 'Administradora de Planta-Cajera',        1, 'Administracion de planta y caja'),
+    ('DOMICILIARIO',                 'Domiciliario',                           1, 'Entrega de pedidos a domicilio'),
+    ('CAJERA_ADMINISTRADORA_EMP',    'Cajera-Administradora de Empanadas',     1, 'Operacion de caja y administracion de empanadas'),
+    ('ADMINISTRADOR',                'Administrador',                          1, 'Administracion de sede'),
+    ('CAJERA_VENDEDORA',             'Cajera-Vendedora',                       1, 'Operacion de caja y ventas'),
+    ('PRODUCCION_CAJERO_PLANCHERO',  'Produccion-Cajero-Planchero',            1, 'Produccion, caja y plancha'),
+    ('AUXILIAR_ADMINISTRATIVA',      'Auxiliar Administrativa',                1, 'Apoyo administrativo'),
+    ('PRODUCCION_PLANCHERO',         'Produccion-Planchero',                   1, 'Produccion y plancha'),
+    ('PLANCHERA',                    'Planchera',                              1, 'Operacion de plancha');
+
+-- 8.8 Sedes
+INSERT INTO sede (nombre, direccion, id_estado) VALUES
+    ('Sede Principal', 'Direccion pendiente de configurar', 1);
+    
+-- 8.9 Empleados
+-- id_tipo_documento: 1=CC, 2=PPT, 3=CE, 4=PASAPORTE
+-- id_cargo: 1=Cajera-Planchera, 2=Administradora, 3=Admin Planta-Cajera, 4=Domiciliario,
+--           5=Cajera-Admin Empanadas, 6=Administrador, 7=Cajero-Planchero, 8=Cajera-Vendedora,
+--           9=Produccion-Cajero-Planchero, 10=Auxiliar Admin, 11=Produccion-Planchero, 12=Planchera
+-- id_estado: 1=ACTIVO  |  id_sede_actual: NULL (empleados no pertenecen a una sede fija)
+INSERT INTO empleado (id_tipo_documento, numero_documento, nombre, apellido, id_cargo, id_estado) VALUES
+    (1, '1017162389', 'KAREN KATERINE',       'CACERES LEGUIZAMOM',     1,  1),
+    (1, '32259964',   'DIANA MARIA',          'VERA VERA',              2,  1),
+    (1, '1010092515', 'LUZ MIRIAM',           'DIAZ MARIN',             3,  1),
+    (1, '1066521844', 'YESI MILENA',          'SANTOS MORALES',         1,  1),
+    (1, '98560875',   'JUAN YENIFER',         'VILLEGAS AGUDELO',       4,  1),
+    (2, 'PPT-4883244','YESENIA COROMOTO',     'WSKANGA TALAVERA',       1,  1),
+    (1, '43987717',   'CLAUDIA YISLENA',      'BETANCUR MEJIA',         5,  1),
+    (1, '70581707',   'WBEIMAR ALBERTO',      'ROJAS FLOREZ',           6,  1),
+    (1, '71727115',   'ALEXANDER DE JESUS',   'VASQUEZ PEREZ',          7,  1),
+    (1, '1007565001', 'MELIDA GRACIELA',      'LUNA HERNANDEZ',         1,  1),
+    (1, '1052944618', 'YAIRA MARCELA',        'CABALLERO SANES',        1,  1),
+    (4, 'PP-5520466', 'IDEILYS JOSEFINA',     'GONZALEZ MOTA',          1,  1),
+    (1, '55307763',   'PAOLA TATIANA',        'TORRES CHAVEZ',          1,  1),
+    (1, '1077422496', 'DIANA MARCELA',        'PALACIO MORENO',         1,  1),
+    (1, '1062439514', 'KAROLAIN',             'ACOSTA PAEZ',            1,  1),
+    (1, '1128416993', 'CAROLINA',             'FRANCO FRANCO',          1,  1),
+    (1, '1045487664', 'LUISA FERNANDA',       'HOYOS CORDOBA',          1,  1),
+    (2, 'PPT-6785179','RHOANA CAROLINA',      'VALERO FERNANDEZ',       8,  1),
+    (1, '1036839962', 'LUIS ANGEL',            'QUINCHIA QUINCHIA',      9,  1),
+    (1, '1040749192', 'IVANNA JESSICA',        'TORO SEPULVEDA',        10, 1),
+    (1, '1100397404', 'LEONARDO DAVID',        'CAUSIL ROMERO',          7, 1),
+    (1, '1080424148', 'MELISA TATIANA',        'CANTILLO CAMPO',         1, 1),
+    (2, 'PPT-6112878','JOSVELY YARIANA',       'SILVA RODRIGUEZ',        1, 1),
+    (1, '1007908111', 'NESYI JULIBETH',        'RIVAS SANTACRUZ',        1, 1),
+    (2, 'PPT-1122732','GLAYSMAR ANDREINA',     'LEON MARTINEZ',          1, 1),
+    (1, '1001468396', 'MARIA CAMILA',          'MARULANDA HIGUITA',      1, 1),
+    (1, '1128463728', 'LUISA FERNANDA',        'MARULANDA HIGITA',       8, 1),
+    (1, '1152457741', 'YAQUELINE',             'MOSQUERA MOSQUERA',      1, 1),
+    (1, '1020450060', 'JESSICA',               'JARAMILLO OSORIO',       1, 1),
+    (1, '1027951743', 'YURI LIZETH',           'DUQUE PUERTA',           8, 1),
+    (1, '1036656758', 'LEIDY JOHANA',          'LOPEZ MAZO',             8, 1),
+    (1, '1002065376', 'YENY MARCELA',          'ECHAVARRIA ARENAS',      1, 1),
+    (1, '1128417603', 'TATIANA',               'OSPINA CARTAGENA',       1, 1),
+    (1, '1045326510', 'LUISA FERNANDA',        'GOMEZ ZUNIGA',           8, 1),
+    (1, '1000874534', 'MARLON ANDRES',         'RESTREPO RODRIGUEZ',    11, 1),
+    (1, '1128724391', 'YARIS',                 'RIVAS PALACIOS',         8, 1),
+    (1, '1096201360', 'LIZETH BELEN',          'CAMARON DELGADO',       12, 1),
+    (1, '1128278126', 'ALEJANDRA MARIA',       'ARANGO PUERTA',         12, 1),
+    (1, '1044910690', 'CAROL LIANNET',         'UTRIA SIERRA',           8, 1),
+    (1, '1034917645', 'Anderson',              'Gomez Tobon',            7, 1);
+
+-- 8.11 Modulos del sistema
 INSERT INTO modulo (codigo, nombre, descripcion) VALUES
     ('DASHBOARD',     'Dashboard',                'Panel principal con indicadores'),
     ('USUARIOS',      'Gestion de Usuarios',      'CRUD de usuarios administrativos'),
@@ -501,7 +628,7 @@ INSERT INTO modulo (codigo, nombre, descripcion) VALUES
     ('CALENDARIO',    'Calendario Laboral',       'Festivos y dias no laborales'),
     ('NOVEDADES',     'Deteccion de Novedades',   'Consulta de novedades de asistencia');
 
--- 7.7 Permisos (Super Usuario: todo con administrar)
+-- 8.12 Permisos (Super Usuario: todo con administrar)
 INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_escribir, puede_eliminar, puede_administrar)
 SELECT 1, id, TRUE, TRUE, TRUE, TRUE FROM modulo;
 
@@ -510,19 +637,24 @@ INSERT INTO permiso_rol (id_rol, id_modulo, puede_leer, puede_escribir, puede_el
 SELECT 2, id, TRUE, TRUE, TRUE, FALSE FROM modulo
 WHERE codigo IN ('DASHBOARD', 'EMPLEADOS', 'CARGOS', 'SEDES', 'DISPOSITIVOS', 'HORARIOS', 'REPORTES');
 
--- 7.8 Parametros iniciales (RF-085 a RF-090) + Personalizacion (RF-066)
+-- 8.13 Parametros iniciales (RF-085 a RF-090) + Personalizacion (RF-066)
 INSERT INTO config_general (categoria, clave, valor, tipo_dato, descripcion) VALUES
-    ('SISTEMA', 'QR_EXPIRACION_SEG',  '30',             'INTEGER', 'Vigencia del QR en segundos (RF-085)'),
-    ('SISTEMA', 'CODIGO_LONGITUD',    '6',              'INTEGER', 'Caracteres del codigo alfanumerico (RF-086)'),
-    ('SISTEMA', 'CODIGO_FORMATO',     'ALFANUMERICO',   'STRING',  'Formato del codigo: NUMERICO, ALFABETICO, ALFANUMERICO (RF-087)'),
-    ('SISTEMA', 'SESION_TIMEOUT_MIN', '15',             'INTEGER', 'Inactividad para cierre automatico (RF-088)'),
-    ('SISTEMA', 'ZONA_HORARIA',       'America/Bogota', 'STRING',  'Zona horaria del sistema (RF-089)'),
-    ('SISTEMA', 'FORMATO_FECHA',      'DD/MM/AAAA',     'STRING',  'Formato de fechas (RF-090)'),
+    ('SISTEMA', 'NOMBRE_EMPRESA',     'Familia Pues',   'STRING',  'Nombre de la empresa'),
+    ('SISTEMA', 'NIT',                '',                'STRING',  'NIT de la empresa'),
+    ('SISTEMA', 'IDIOMA',             'es-CO',           'STRING',  'Idioma del sistema'),
+    ('SISTEMA', 'TOLERANCIA_MIN',     '10',              'INTEGER', 'Tolerancia en minutos para registro de entrada'),
+    ('SISTEMA', 'QR_EXPIRACION_SEG',  '30',              'INTEGER', 'Vigencia del QR en segundos (RF-085)'),
+    ('SISTEMA', 'EXIGIR_CODIGO',      'false',           'BOOLEAN', 'Exigir codigo alfanumerico al registrarse'),
+    ('SISTEMA', 'CODIGO_LONGITUD',    '6',               'INTEGER', 'Caracteres del codigo alfanumerico (RF-086)'),
+    ('SISTEMA', 'CODIGO_FORMATO',     'ALFANUMERICO',    'STRING',  'Formato del codigo: NUMERICO, ALFABETICO, ALFANUMERICO (RF-087)'),
+    ('SISTEMA', 'SESION_TIMEOUT_MIN', '15',              'INTEGER', 'Inactividad para cierre automatico (RF-088)'),
+    ('SISTEMA', 'ZONA_HORARIA',       'America/Bogota',  'STRING',  'Zona horaria del sistema (RF-089)'),
+    ('SISTEMA', 'FORMATO_FECHA',      'DD/MM/AAAA',      'STRING',  'Formato de fechas (RF-090)'),
     ('PERSONALIZACION', 'LOGO_PRINCIPAL',  '', 'STRING', 'URL del logo principal de Familia Pues'),
     ('PERSONALIZACION', 'COLOR_PRIMARIO',  '', 'STRING', 'Color primario corporativo (hex)'),
     ('PERSONALIZACION', 'COLOR_SECUNDARIO','', 'STRING', 'Color secundario corporativo (hex)');
 
--- 7.9 Calendario laboral Colombia 2026
+-- 8.14 Calendario laboral Colombia 2026
 INSERT INTO calendario_laboral (fecha, tipo, descripcion) VALUES
     ('2026-01-01', 'FESTIVO', 'Ano Nuevo'),
     ('2026-01-12', 'FESTIVO', 'Dia de los Reyes Magos'),

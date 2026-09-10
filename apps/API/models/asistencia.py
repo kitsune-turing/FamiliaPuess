@@ -26,7 +26,7 @@ class Asistencia(Base):
     id_tipo_registro: Mapped[int] = mapped_column(
         ForeignKey("cat_tipo_registro.id"), nullable=False
     )
-    id_sede: Mapped[int] = mapped_column(ForeignKey("sede.id"), nullable=False)
+    id_sede: Mapped[int | None] = mapped_column(ForeignKey("sede.id"), nullable=True)
     fecha_registro: Mapped[date] = mapped_column(Date, nullable=False)
     registrado_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -22,8 +22,8 @@ class Empleado(Base):
     apellido: Mapped[str] = mapped_column(String(100), nullable=False)
     id_cargo: Mapped[int] = mapped_column(ForeignKey("cat_cargo.id"), nullable=False)
     id_estado: Mapped[int] = mapped_column(ForeignKey("cat_estado.id"), nullable=False)
-    id_sede_actual: Mapped[int] = mapped_column(
-        ForeignKey("sede.id"), nullable=False
+    id_sede_actual: Mapped[int | None] = mapped_column(
+        ForeignKey("sede.id"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

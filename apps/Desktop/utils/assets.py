@@ -14,11 +14,6 @@ _POPPINS_WEIGHTS = (
 )
 
 
-def assets_dir() -> Path:
-    """Carpeta raíz de recursos."""
-    return _ASSETS_DIR
-
-
 def icon_path(name: str) -> Path:
     """Ruta a un icono SVG, por ejemplo ``point.svg``."""
     return _ASSETS_DIR / "icons" / name

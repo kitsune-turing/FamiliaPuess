@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.models.cat_rol import CatRol
@@ -87,3 +87,8 @@ async def count_usuarios_by_rol(session: AsyncSession, rol_id: int) -> int:
     stmt = select(func.count()).select_from(Usuario).where(Usuario.id_rol == rol_id)
     result = await session.execute(stmt)
     return result.scalar_one()
+
+
+async def hard_delete(session: AsyncSession, rol_id: int) -> None:
+    stmt = delete(CatRol).where(CatRol.id == rol_id)
+    await session.execute(stmt)

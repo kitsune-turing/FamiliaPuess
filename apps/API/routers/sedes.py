@@ -10,14 +10,9 @@ from apps.API.schemas.sedes import (
     UpdateSedeRequest,
 )
 from apps.API.services import sedes_service
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/sedes", tags=["sedes"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.get(
@@ -107,13 +102,13 @@ async def update_sede(
     "/{sede_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def deactivate_sede(
+async def delete_sede(
     sede_id: int,
     request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(require_permission("SEDES", "eliminar")),
 ) -> None:
-    await sedes_service.deactivate_sede(
+    await sedes_service.delete_sede(
         session,
         sede_id,
         user_id=int(current_user["sub"]),

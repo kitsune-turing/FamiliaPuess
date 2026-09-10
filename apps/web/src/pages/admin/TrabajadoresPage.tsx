@@ -8,12 +8,10 @@ import {
   Modal,
   Pagination,
   SearchInput,
-  SelectField,
   Switch,
   TextField,
 } from "../../components/ui";
 import { DownloadIcon, EditIcon, PlusIcon, TrashIcon, UploadIcon } from "../../components/ui/Icons";
-import { useAuth } from "../../context/AuthProvider";
 import { useDatos } from "../../context/DataProvider";
 import { useToast } from "../../context/ToastProvider";
 import { usePaginacion } from "../../hooks";
@@ -36,8 +34,7 @@ const VACIO: Trabajador = {
 };
 
 export function TrabajadoresPage() {
-  const { trabajadores, sedes, guardarTrabajador, eliminarTrabajador } = useDatos();
-  const { sedeActiva } = useAuth();
+  const { trabajadores, guardarTrabajador, eliminarTrabajador } = useDatos();
   const { mostrar } = useToast();
   const [parametros, setParametros] = useSearchParams();
 
@@ -47,10 +44,9 @@ export function TrabajadoresPage() {
   const [importando, setImportando] = useState(false);
   const [errores, setErrores] = useState<Record<string, string>>({});
 
-  // Permite abrir los diálogos desde las acciones rápidas del dashboard.
   useEffect(() => {
     if (parametros.get("nuevo")) {
-      setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" });
+      setEditando({ ...VACIO });
       parametros.delete("nuevo");
       setParametros(parametros, { replace: true });
     }
@@ -59,20 +55,16 @@ export function TrabajadoresPage() {
       parametros.delete("importar");
       setParametros(parametros, { replace: true });
     }
-  }, [parametros, setParametros, sedes]);
+  }, [parametros, setParametros]);
 
   const filtrados = useMemo(
     () =>
-      trabajadores.filter((trabajador) => {
-        const porSede = sedeActiva === "Todas las sedes" || trabajador.sede === sedeActiva;
-        const porTexto =
-          coincide(trabajador.nombre, busqueda) ||
-          coincide(trabajador.documento, busqueda) ||
-          coincide(trabajador.cargo, busqueda) ||
-          coincide(trabajador.sede, busqueda);
-        return porSede && porTexto;
-      }),
-    [trabajadores, busqueda, sedeActiva],
+      trabajadores.filter((trabajador) =>
+        coincide(trabajador.nombre, busqueda) ||
+        coincide(trabajador.documento, busqueda) ||
+        coincide(trabajador.cargo, busqueda),
+      ),
+    [trabajadores, busqueda],
   );
 
   const paginacion = usePaginacion(filtrados, POR_PAGINA);
@@ -105,19 +97,16 @@ export function TrabajadoresPage() {
   const exportar = () => {
     descargarExcel(
       "trabajadores",
-      ["Trabajador", "Documento", "Sede", "Cargo", "Estado"],
+      ["Trabajador", "Documento", "Cargo", "Estado"],
       filtrados.map((t) => [
         t.nombre,
         t.documento,
-        t.sede,
         t.cargo,
         t.activo ? "Activo" : "Inactivo",
       ]),
     );
     mostrar("Listado exportado en Excel.");
   };
-
-  const opcionesSede = sedes.map((sede) => ({ valor: sede.nombre, etiqueta: sede.nombre }));
 
   return (
     <>
@@ -136,7 +125,7 @@ export function TrabajadoresPage() {
           <button
             type="button"
             className="btn btn--primary"
-            onClick={() => setEditando({ ...VACIO, sede: sedeActiva !== "Todas las sedes" ? sedeActiva : (sedes[0]?.nombre ?? "") })}
+            onClick={() => setEditando({ ...VACIO })}
           >
             <PlusIcon size={20} /> Nuevo trabajador
           </button>
@@ -154,7 +143,6 @@ export function TrabajadoresPage() {
               <tr>
                 <th>Trabajador</th>
                 <th>Documento</th>
-                <th>Sede</th>
                 <th>Cargo</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -162,7 +150,7 @@ export function TrabajadoresPage() {
             </thead>
             <tbody>
               {paginacion.visibles.length === 0 ? (
-                <EmptyRow columnas={6} mensaje={
+                <EmptyRow columnas={5} mensaje={
                     trabajadores.length === 0
                       ? "Aún no hay trabajadores registrados."
                       : "No hay trabajadores que coincidan con la búsqueda."
@@ -172,7 +160,6 @@ export function TrabajadoresPage() {
                   <tr key={trabajador.id}>
                     <td>{trabajador.nombre}</td>
                     <td>{trabajador.documento}</td>
-                    <td>{trabajador.sede}</td>
                     <td>{trabajador.cargo}</td>
                     <td>
                       <BadgeOutline tono={trabajador.activo ? "neutral" : "pink"}>
@@ -259,12 +246,6 @@ export function TrabajadoresPage() {
                 valor={editando.documento}
                 error={errores.documento}
                 alCambiar={(v) => setEditando({ ...editando, documento: v })}
-              />
-              <SelectField
-                etiqueta="Sede"
-                valor={editando.sede}
-                opciones={opcionesSede}
-                alCambiar={(v) => setEditando({ ...editando, sede: v })}
               />
               <TextField
                 etiqueta="Cargo"

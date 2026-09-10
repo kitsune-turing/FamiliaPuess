@@ -9,7 +9,6 @@ from apps.API.models.token_qr import TokenQR
 async def create(
     session: AsyncSession,
     *,
-    id_sede: int,
     id_dispositivo: int,
     id_estado_token: int,
     token: str,
@@ -18,7 +17,6 @@ async def create(
     expira_en: datetime,
 ) -> TokenQR:
     token_qr = TokenQR(
-        id_sede=id_sede,
         id_dispositivo=id_dispositivo,
         id_estado_token=id_estado_token,
         token=token,

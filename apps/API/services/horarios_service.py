@@ -194,9 +194,6 @@ async def update_horario(
     if horario is None:
         raise HorarioNoEncontradoError(horario_id)
 
-    if horario.vigente_hasta is not None and horario.vigente_hasta < date.today():
-        raise HorarioInmutableError(horario_id)
-
     if tolerancia_min is not None:
         _validar_tolerancia(tolerancia_min)
 
@@ -268,7 +265,7 @@ async def finalizar_horario(
         raise HorarioNoEncontradoError(horario_id)
 
     if horario.vigente_hasta is not None and horario.vigente_hasta < date.today():
-        raise HorarioInmutableError(horario_id)
+        return
 
     hoy = date.today()
     await horario_repository.set_vigente_hasta(session, horario_id, hoy)

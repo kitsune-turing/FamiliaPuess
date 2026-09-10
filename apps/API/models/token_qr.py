@@ -8,15 +8,13 @@ from sqlalchemy.types import DateTime
 
 from apps.API.models.base import Base
 from apps.API.models.dispositivo import Dispositivo
-from apps.API.models.sede import Sede
 
 
 class TokenQR(Base):
     __tablename__ = "token_qr"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    id_sede: Mapped[int] = mapped_column(ForeignKey("sede.id"), nullable=False)
-    id_dispositivo: Mapped[int] = mapped_column(ForeignKey("dispositivo.id"), nullable=False)
+    id_dispositivo: Mapped[int | None] = mapped_column(ForeignKey("dispositivo.id"), nullable=True)
     id_estado_token: Mapped[int] = mapped_column(
         ForeignKey("cat_estado_token.id"), nullable=False
     )
@@ -29,5 +27,4 @@ class TokenQR(Base):
     consumido_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ip_generacion: Mapped[str | None] = mapped_column(INET)
 
-    sede: Mapped[Sede] = relationship(lazy="joined")
     dispositivo: Mapped[Dispositivo] = relationship(lazy="joined")

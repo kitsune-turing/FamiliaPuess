@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   Badge,
   Card,
-  ConfirmDialog,
   DateRangeField,
   EmptyRow,
   Pagination,
@@ -14,33 +13,23 @@ import {
   DownloadIcon,
   FileCheckIcon,
   FilePlusIcon,
-  FileXIcon,
   FolderIcon,
   LoaderIcon,
-  TrashIcon,
 } from "../../components/ui/Icons";
 import { useDatos } from "../../context/DataProvider";
 import { useToast } from "../../context/ToastProvider";
 import { usePaginacion } from "../../hooks";
-import { descargarExcel, isoAFecha, porcentaje } from "../../lib/format";
-import type { EstadoReporte, Reporte } from "../../types/admin";
+import { isoAFecha, porcentaje } from "../../lib/format";
+import {
+  listarRegistrosAsistencia,
+  descargarAsistenciaExcel,
+  type RegistroAsistenciaApi,
+} from "../../services/adminApi";
 
-const POR_PAGINA = 5;
-
-const ETIQUETA_ESTADO: Record<EstadoReporte, string> = {
-  completado: "Completado",
-  procesando: "En proceso",
-  error: "Con errores",
-};
-
-const TONO_ESTADO: Record<EstadoReporte, "green" | "yellow" | "pink"> = {
-  completado: "green",
-  procesando: "yellow",
-  error: "pink",
-};
+const POR_PAGINA = 10;
 
 export function ReportesPage() {
-  const { reportes, sedes, registros, itemsCatalogo, agregarReporte, eliminarReporte } = useDatos();
+  const { sedes, registros } = useDatos();
   const { mostrar } = useToast();
 
   const [rango, setRango] = useState<RangoFechas>(() => {
@@ -52,76 +41,58 @@ export function ReportesPage() {
       hasta: hoy.toISOString().slice(0, 10),
     };
   });
-  const [tipo, setTipo] = useState("");
   const [sede, setSede] = useState("todas");
   const [generando, setGenerando] = useState(false);
-  const [aEliminar, setAEliminar] = useState<Reporte | null>(null);
-
-  // Los tipos disponibles se administran desde Catálogos › Tipos de reporte.
-  const tipos = useMemo(
-    () =>
-      itemsCatalogo
-        .filter((i) => i.catalogo === "tipos_reporte" && i.activo)
-        .sort((a, b) => a.orden - b.orden)
-        .map((i) => ({ valor: i.nombre, etiqueta: i.nombre })),
-    [itemsCatalogo],
-  );
+  const [resultados, setResultados] = useState<RegistroAsistenciaApi[]>([]);
+  const [consultado, setConsultado] = useState(false);
 
   const metricas = useMemo(() => {
-    const total = reportes.length;
-    return {
-      total,
-      completados: reportes.filter((r) => r.estado === "completado").length,
-      procesando: reportes.filter((r) => r.estado === "procesando").length,
-      error: reportes.filter((r) => r.estado === "error").length,
-    };
-  }, [reportes]);
+    const total = resultados.length;
+    const aTiempo = resultados.filter((r) => r.tipo_registro !== "TARDANZA").length;
+    const tardanzas = resultados.filter((r) => r.tipo_registro === "TARDANZA").length;
+    return { total, aTiempo, tardanzas };
+  }, [resultados]);
 
-  const paginacion = usePaginacion(reportes, POR_PAGINA);
+  const paginacion = usePaginacion(resultados, POR_PAGINA);
 
-  const generar = () => {
-    if (!tipo) {
-      mostrar("Configura primero los tipos de reporte en Catálogos.", "error");
-      return;
-    }
+  const generar = async () => {
     setGenerando(true);
-    // Simula el tiempo de procesamiento del backend.
-    window.setTimeout(() => {
-      agregarReporte({
-        id: `rep-${Date.now()}`,
-        nombre: tipo,
-        rango: `${isoAFecha(rango.desde)} - ${isoAFecha(rango.hasta)}`,
-        tipo,
-        generadoPor: "Admin General",
-        fechaHora: new Date().toLocaleString("es-CO", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        estado: "completado",
+    try {
+      const sedeObj = sede !== "todas" ? sedes.find((s) => s.nombre === sede) : null;
+      const datos = await listarRegistrosAsistencia({
+        fecha_desde: rango.desde || undefined,
+        fecha_hasta: rango.hasta || undefined,
+        id_sede: sedeObj ? Number(sedeObj.id) : undefined,
       });
+      setResultados(datos.items);
+      setConsultado(true);
+      mostrar(`${datos.total} registro(s) encontrados.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error al generar el reporte.";
+      mostrar(msg, "error");
+    } finally {
       setGenerando(false);
-      paginacion.irA(1);
-      mostrar("Reporte generado correctamente.");
-    }, 900);
+    }
   };
 
-  const descargar = (reporte: Reporte) => {
-    const filas = registros
-      .filter((r) => sede === "todas" || r.sede === sede)
-      .map((r) => [r.trabajador, r.documento, r.sede, r.entrada, r.estado, r.dispositivo, r.fecha]);
-    if (filas.length === 0) {
-      mostrar("No hay datos para descargar en el rango seleccionado.", "error");
-      return;
+  const descargar = async () => {
+    try {
+      const sedeObj = sede !== "todas" ? sedes.find((s) => s.nombre === sede) : null;
+      const blob = await descargarAsistenciaExcel({
+        fecha_desde: rango.desde || undefined,
+        fecha_hasta: rango.hasta || undefined,
+        id_sede: sedeObj ? Number(sedeObj.id) : undefined,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-asistencia-${rango.desde}-${rango.hasta}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      mostrar("Descarga iniciada.");
+    } catch {
+      mostrar("Error al descargar el archivo.", "error");
     }
-    descargarExcel(
-      reporte.tipo.toLowerCase().replace(/\s+/g, "-"),
-      ["Trabajador", "Documento", "Sede", "Entrada", "Estado", "Dispositivo", "Fecha"],
-      filas,
-    );
-    mostrar("Descarga iniciada.");
   };
 
   return (
@@ -131,47 +102,37 @@ export function ReportesPage() {
         <StatCard
           icono={<FolderIcon size={26} />}
           color="yellow"
-          etiqueta="Total reportes"
+          etiqueta="Registros encontrados"
           valor={metricas.total}
-          pista="En el periodo"
+          pista="En el periodo consultado"
         />
         <StatCard
           icono={<FileCheckIcon size={26} />}
           color="yellow"
-          etiqueta="Reportes completados"
-          valor={metricas.completados}
-          pista={`${porcentaje(metricas.completados, metricas.total)} del total`}
+          etiqueta="A tiempo"
+          valor={metricas.aTiempo}
+          pista={`${porcentaje(metricas.aTiempo, metricas.total)} del total`}
         />
         <StatCard
           icono={<LoaderIcon size={26} />}
           color="pink"
-          etiqueta="En procesamiento"
-          valor={metricas.procesando}
-          pista={`${porcentaje(metricas.procesando, metricas.total)} del total`}
+          etiqueta="Tardanzas"
+          valor={metricas.tardanzas}
+          pista={`${porcentaje(metricas.tardanzas, metricas.total)} del total`}
         />
         <StatCard
-          icono={<FileXIcon size={26} />}
+          icono={<FolderIcon size={26} />}
           color="pink"
-          etiqueta="Con errores"
-          valor={metricas.error}
-          pista={`${porcentaje(metricas.error, metricas.total)} del total`}
+          etiqueta="Registros del sistema"
+          valor={registros.length}
+          pista="Total de asistencias"
         />
       </div>
 
-      {/* ------------------------------------------- Generador de reportes */}
+      {/* ------------------------------------------- Filtros y acciones -- */}
       <Card>
         <div className="filters">
           <DateRangeField etiqueta="Rango de fechas" rango={rango} alCambiar={setRango} />
-          <SelectField
-            etiqueta="Tipo de reporte"
-            valor={tipo}
-            alCambiar={setTipo}
-            opciones={
-              tipos.length > 0
-                ? tipos
-                : [{ valor: "", etiqueta: "Sin tipos configurados" }]
-            }
-          />
           <SelectField
             etiqueta="Sede"
             valor={sede}
@@ -185,63 +146,60 @@ export function ReportesPage() {
             type="button"
             className="btn btn--primary"
             onClick={generar}
-            disabled={generando || tipos.length === 0}
+            disabled={generando}
           >
             {generando ? <span className="spinner" /> : <FilePlusIcon size={20} />}
-            {generando ? "Generando…" : "Generar reporte"}
+            {generando ? "Consultando…" : "Consultar"}
           </button>
+          {consultado && resultados.length > 0 && (
+            <button type="button" className="btn btn--soft" onClick={descargar}>
+              <DownloadIcon size={20} /> Descargar Excel
+            </button>
+          )}
         </div>
       </Card>
 
-      {/* ------------------------------------------ Reportes generados --- */}
+      {/* ------------------------------------------ Resultados ----------- */}
       <Card>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Reporte</th>
-                <th>Rango de fechas</th>
+                <th>Trabajador</th>
+                <th>Documento</th>
+                <th>Sede</th>
                 <th>Tipo</th>
-                <th>Generado por</th>
-                <th>Fecha/Hora</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th>Fecha</th>
+                <th>Hora</th>
               </tr>
             </thead>
             <tbody>
               {paginacion.visibles.length === 0 ? (
-                <EmptyRow columnas={7} mensaje="Todavía no se han generado reportes." />
+                <EmptyRow
+                  columnas={6}
+                  mensaje={
+                    consultado
+                      ? "No se encontraron registros en el periodo."
+                      : "Selecciona un rango de fechas y consulta."
+                  }
+                />
               ) : (
-                paginacion.visibles.map((reporte) => (
-                  <tr key={reporte.id}>
-                    <td>{reporte.nombre}</td>
-                    <td>{reporte.rango}</td>
-                    <td>{reporte.tipo}</td>
-                    <td>{reporte.generadoPor}</td>
-                    <td>{reporte.fechaHora}</td>
+                paginacion.visibles.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.empleado_nombre}</td>
+                    <td>{r.empleado_documento}</td>
+                    <td>{r.sede_nombre}</td>
                     <td>
-                      <Badge tono={TONO_ESTADO[reporte.estado]}>{ETIQUETA_ESTADO[reporte.estado]}</Badge>
+                      <Badge tono={r.tipo_registro === "TARDANZA" ? "yellow" : "green"}>
+                        {r.tipo_registro}
+                      </Badge>
                     </td>
+                    <td>{isoAFecha(r.fecha_registro)}</td>
                     <td>
-                      <div className="table__actions">
-                        <button
-                          type="button"
-                          className="btn btn--icon"
-                          aria-label={`Descargar ${reporte.nombre}`}
-                          disabled={reporte.estado !== "completado"}
-                          onClick={() => descargar(reporte)}
-                        >
-                          <DownloadIcon size={19} />
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--icon"
-                          aria-label={`Eliminar ${reporte.nombre}`}
-                          onClick={() => setAEliminar(reporte)}
-                        >
-                          <TrashIcon size={19} />
-                        </button>
-                      </div>
+                      {new Date(r.registrado_en).toLocaleTimeString("es-CO", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </td>
                   </tr>
                 ))
@@ -253,24 +211,10 @@ export function ReportesPage() {
         <Pagination
           pagina={paginacion.pagina}
           totalPaginas={paginacion.totalPaginas}
-          info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} reportes`}
+          info={`Mostrando ${paginacion.desde} a ${paginacion.hasta} de ${paginacion.total} registros`}
           irA={paginacion.irA}
         />
       </Card>
-
-      <ConfirmDialog
-        abierto={aEliminar !== null}
-        titulo="Eliminar reporte"
-        mensaje={`Se eliminará el reporte "${aEliminar?.nombre ?? ""}" del historial.`}
-        alCerrar={() => setAEliminar(null)}
-        alConfirmar={() => {
-          if (aEliminar) {
-            eliminarReporte(aEliminar.id);
-            mostrar("Reporte eliminado.");
-          }
-          setAEliminar(null);
-        }}
-      />
     </>
   );
 }

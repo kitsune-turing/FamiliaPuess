@@ -6,8 +6,6 @@ from PySide6.QtGui import QFontDatabase
 
 from apps.Desktop.utils.assets import font_paths
 
-FAMILIA_TIPOGRAFICA = "Poppins"
-
 
 def register_application_fonts() -> list[int]:
     """

@@ -150,13 +150,12 @@ class DesktopMainWindow(QWidget):
         textos = QVBoxLayout()
         textos.setContentsMargins(0, 0, 0, 0)
         textos.setSpacing(0)
-        textos.addWidget(
-            _etiqueta(
-                "Sede principal",
-                f"color: {AMARILLO}; font-size: 12px; font-weight: 600;"
-                " background: transparent; border: none;",
-            )
+        self._sede_label = _etiqueta(
+            "Sede",
+            f"color: {AMARILLO}; font-size: 12px; font-weight: 600;"
+            " background: transparent; border: none;",
         )
+        textos.addWidget(self._sede_label)
         # El identificador no se muestra completo: es un dato sensible.
         textos.addWidget(
             _etiqueta(
@@ -361,6 +360,26 @@ class DesktopMainWindow(QWidget):
         self._codigo_label.setText(token.codigo_alfa)
         self._segundos_restantes = self._segundos_hasta_expiracion(token)
         self._fijar_texto_temporizador(self._segundos_restantes)
+
+    def show_inactive(self, mensaje: str | None = None) -> None:
+        """Muestra que el dispositivo está esperando activación."""
+        self._qr_label.clear()
+        self._qr_label.setText("⏳")
+        self._qr_label.setStyleSheet(
+            f"background: {CREMA_CAJA}; border: none; border-radius: 10px;"
+            f" font-size: 64px; color: {CAFE};"
+        )
+        self._codigo_label.setText(mensaje or "ESPERANDO ACTIVACIÓN")
+        self._codigo_label.setStyleSheet(
+            f"background: {CREMA_CAJA}; color: {ROSA}; border-radius: 14px;"
+            " font-size: 18px; font-weight: 700; letter-spacing: 2px; padding: 16px 26px;"
+        )
+        self._fijar_texto_temporizador(0)
+        self._connection_label.setText("Pendiente de activación")
+        self._wifi_icon.setVisible(False)
+
+    def set_sede_nombre(self, nombre: str) -> None:
+        self._sede_label.setText(nombre)
 
     def set_connection_status(self, conectado: bool) -> None:
         """Refleja en el pie si el kiosco está hablando con la API."""

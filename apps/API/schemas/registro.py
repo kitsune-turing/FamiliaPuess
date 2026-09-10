@@ -3,10 +3,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class TokenValidarRequest(BaseModel):
-    token: str = Field(..., min_length=1)
-
-
 class TokenValidarResponse(BaseModel):
     token: str
     sede_nombre: str
@@ -23,7 +19,3 @@ class RegistroResponse(BaseModel):
     empleado_nombre: str
     sede_nombre: str
     registrado_en: datetime
-
-
-class RegistroErrorResponse(BaseModel):
-    detail: str

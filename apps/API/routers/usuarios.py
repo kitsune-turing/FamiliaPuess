@@ -10,15 +10,9 @@ from apps.API.schemas.usuarios import (
     UsuarioResponse,
 )
 from apps.API.services import usuarios_service
-from shared.exceptions.usuarios import AutoDesactivacionError
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.get(
@@ -117,20 +111,18 @@ async def update_usuario(
     "/{usuario_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def deactivate_usuario(
+async def delete_usuario(
     usuario_id: int,
     request: Request,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(require_permission("USUARIOS", "eliminar")),
 ) -> None:
-    is_self = await usuarios_service.deactivate_usuario(
+    await usuarios_service.delete_usuario(
         session,
         usuario_id,
         user_id=int(current_user["sub"]),
         ip_address=_extract_ip(request),
     )
-    if is_self:
-        raise AutoDesactivacionError()
 
 
 @router.post(

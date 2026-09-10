@@ -8,7 +8,6 @@ class CreateEmpleadoRequest(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=100)
     apellido: str = Field(..., min_length=1, max_length=100)
     cargo: str = Field(..., min_length=1, max_length=100)
-    id_sede: int = Field(..., gt=0)
 
 
 class UpdateEmpleadoRequest(BaseModel):
@@ -16,7 +15,6 @@ class UpdateEmpleadoRequest(BaseModel):
     nombre: str | None = Field(None, min_length=1, max_length=100)
     apellido: str | None = Field(None, min_length=1, max_length=100)
     cargo: str | None = Field(None, min_length=1, max_length=100)
-    id_sede: int | None = Field(None, gt=0)
     updated_at: datetime = Field(...)
 
 
@@ -27,8 +25,6 @@ class EmpleadoResponse(BaseModel):
     apellido: str
     cargo: str
     id_estado: int
-    id_sede: int
-    sede_nombre: str
     created_at: datetime
     updated_at: datetime
 
@@ -43,12 +39,6 @@ class EmpleadoResponse(BaseModel):
             apellido=empleado.apellido,
             cargo=empleado.cargo.nombre if empleado.cargo else "",
             id_estado=empleado.id_estado,
-            id_sede=empleado.id_sede_actual,
-            sede_nombre=(
-                empleado.sede_actual.nombre
-                if empleado.sede_actual
-                else "Sin asignar"
-            ),
             created_at=empleado.created_at,
             updated_at=empleado.updated_at,
         )

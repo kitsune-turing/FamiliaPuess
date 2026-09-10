@@ -37,12 +37,12 @@ const MENU_PRINCIPAL: Enlace[] = [
   { to: "/panel/usuarios", etiqueta: "Usuarios", Icono: UserCheckIcon },
   { to: "/panel/roles", etiqueta: "Roles y permisos", Icono: UserShieldIcon },
   { to: "/panel/configuracion", etiqueta: "Configuración", Icono: SettingsIcon },
-  { to: "/panel/auditoria", etiqueta: "Auditoría", Icono: ClipboardIcon },
 ];
 
 /** Bloque de administración: solo lo ve el súper administrador. */
 const MENU_ADMINISTRACION: Enlace[] = [
   { to: "/panel/catalogos", etiqueta: "Catálogos", Icono: CatalogIcon },
+  { to: "/panel/auditoria", etiqueta: "Auditoría", Icono: ClipboardIcon },
 ];
 
 function Enlaces({ enlaces, alCerrar }: { enlaces: Enlace[]; alCerrar: () => void }) {

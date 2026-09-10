@@ -13,7 +13,7 @@ class Dispositivo(Base):
     __tablename__ = "dispositivo"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    id_sede: Mapped[int] = mapped_column(ForeignKey("sede.id"), nullable=False)
+    id_sede: Mapped[int | None] = mapped_column(ForeignKey("sede.id"), nullable=True)
     identificador: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     id_estado: Mapped[int] = mapped_column(ForeignKey("cat_estado.id"), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(String(255))
@@ -25,4 +25,4 @@ class Dispositivo(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    sede: Mapped[Sede] = relationship(lazy="joined")
+    sede: Mapped[Sede | None] = relationship(lazy="joined")

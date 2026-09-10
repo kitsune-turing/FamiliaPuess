@@ -42,7 +42,3 @@ class NovedadResponse(BaseModel):
 class NovedadListResponse(BaseModel):
     items: list[NovedadResponse]
     total: int
-
-
-class DetectarNovedadRequest(BaseModel):
-    id_asistencia: int = Field(..., gt=0)

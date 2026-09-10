@@ -17,7 +17,7 @@ from apps.API.repositories import (
 from shared.constants.estado import EstadoCodigo
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
-from shared.exceptions.concurrencia import ConflictoConcurrenciaError
+from apps.API.utils.concurrency import check_concurrency
 from shared.exceptions.sedes import (
     SedeDireccionInvalidaError,
     SedeNoEncontradaError,
@@ -123,8 +123,7 @@ async def update_sede(
     if sede is None:
         raise SedeNoEncontradaError(sede_id)
 
-    if sede.updated_at != updated_at:
-        raise ConflictoConcurrenciaError("sede", sede_id)
+    check_concurrency(sede.updated_at, updated_at, "sede", sede_id)
 
     valor_anterior = {
         "nombre": sede.nombre,
@@ -173,7 +172,7 @@ async def update_sede(
     return updated
 
 
-async def deactivate_sede(
+async def delete_sede(
     session: AsyncSession,
     sede_id: int,
     *,
@@ -184,14 +183,7 @@ async def deactivate_sede(
     if sede is None:
         raise SedeNoEncontradaError(sede_id)
 
-    inactivo_id = await cat_estado_repository.get_estado_id(
-        session, EstadoCodigo.INACTIVO
-    )
     timestamp = tz_now()
-
-    await sede_repository.update_sede(
-        session, sede_id, id_estado=inactivo_id, now=timestamp
-    )
 
     await auditoria_repository.create(
         session,
@@ -201,13 +193,15 @@ async def deactivate_sede(
         operacion=OperacionAuditoria.DELETE,
         valor_anterior={
             "nombre": sede.nombre,
-            "id_estado": sede.id_estado,
+            "direccion": sede.direccion,
         },
         ip_address=ip_address,
         timestamp_accion=timestamp,
     )
 
-    logger.info("Sede desactivada: id=%d, nombre=%s", sede_id, sede.nombre)
+    await sede_repository.hard_delete(session, sede_id)
+
+    logger.info("Sede eliminada: id=%d, nombre=%s", sede_id, sede.nombre)
 
 
 async def activate_sede(

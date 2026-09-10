@@ -21,7 +21,7 @@ from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.constants.rol import RolCodigo
 from shared.exceptions.roles import RolNoEncontradoError
-from shared.exceptions.concurrencia import ConflictoConcurrenciaError
+from apps.API.utils.concurrency import check_concurrency
 from shared.exceptions.usuarios import (
     AutoDesactivacionError,
     CorreoDuplicadoError,
@@ -135,8 +135,7 @@ async def update_usuario(
     if usuario is None:
         raise UsuarioNoEncontradoError(usuario_id)
 
-    if usuario.updated_at != updated_at:
-        raise ConflictoConcurrenciaError("usuario", usuario_id)
+    check_concurrency(usuario.updated_at, updated_at, "usuario", usuario_id)
 
     valor_anterior = {
         "nombre": usuario.nombre,
@@ -203,14 +202,17 @@ async def update_usuario(
     return updated
 
 
-async def deactivate_usuario(
+async def delete_usuario(
     session: AsyncSession,
     usuario_id: int,
     *,
     user_id: int,
     ip_address: str | None = None,
 ) -> bool:
-    """Deactivate a user. Returns True if the user deactivated themselves."""
+    """Hard-delete a user. Returns True if the user deleted themselves."""
+    if user_id == usuario_id:
+        raise AutoDesactivacionError()
+
     usuario = await usuario_repository.get_by_id(session, usuario_id)
     if usuario is None:
         raise UsuarioNoEncontradoError(usuario_id)
@@ -221,21 +223,13 @@ async def deactivate_usuario(
 
     rol = await cat_rol_repository.get_by_id(session, usuario.id_rol)
     if rol is not None and rol.codigo == RolCodigo.SUPER_ADMIN:
-        super_admin_rol = rol
         count = await usuario_repository.count_super_admins_activos(
-            session, activo_id, super_admin_rol.id
+            session, activo_id, rol.id
         )
         if count <= 1:
             raise UltimoSuperAdminError()
 
-    inactivo_id = await cat_estado_repository.get_estado_id(
-        session, EstadoCodigo.INACTIVO
-    )
     timestamp = tz_now()
-
-    await usuario_repository.update_usuario(
-        session, usuario_id, id_estado=inactivo_id, now=timestamp
-    )
 
     await auditoria_repository.create(
         session,
@@ -246,22 +240,17 @@ async def deactivate_usuario(
         valor_anterior={
             "username": usuario.username,
             "nombre": usuario.nombre,
-            "id_estado": usuario.id_estado,
+            "correo": usuario.correo,
+            "id_rol": usuario.id_rol,
         },
         ip_address=ip_address,
         timestamp_accion=timestamp,
     )
 
-    await sesion_usuario_repository.deactivate_all_for_user(
-        session, usuario_id, timestamp
-    )
+    await usuario_repository.hard_delete(session, usuario_id)
 
-    is_self = user_id == usuario_id
-    if is_self:
-        logger.info("Usuario desactivo su propia cuenta: id=%d", usuario_id)
-
-    logger.info("Usuario desactivado: id=%d, username=%s", usuario_id, usuario.username)
-    return is_self
+    logger.info("Usuario eliminado: id=%d, username=%s", usuario_id, usuario.username)
+    return False
 
 
 async def activate_usuario(

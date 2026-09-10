@@ -23,6 +23,7 @@ from apps.API.routers.reportes import router as reportes_router
 from apps.API.routers.sedes import router as sedes_router
 from apps.API.routers.permisos import router as permisos_router
 from apps.API.routers.roles import router as roles_router
+from apps.API.routers.catalogos import router as catalogos_router
 from apps.API.routers.usuarios import router as usuarios_router
 from shared.exceptions.attendance import AsistenciaDuplicadaError
 from shared.exceptions.auth import (
@@ -63,6 +64,7 @@ from shared.exceptions.device import (
     DispositivoNoAutorizadoError,
     DispositivoNoEncontradoError,
     DispositivoNoEncontradoPorIdError,
+    FueraDeHorarioError,
     IdentificadorDuplicadoError,
     IdentificadorFormatoInvalidoError,
     SedeYaTieneDispositivoError,
@@ -169,6 +171,7 @@ app.add_middleware(
 
 app.include_router(auditoria_router)
 app.include_router(auth_router)
+app.include_router(catalogos_router)
 app.include_router(configuracion_router)
 app.include_router(dashboard_router)
 app.include_router(desktop_router)
@@ -183,415 +186,102 @@ app.include_router(roles_router)
 app.include_router(permisos_router)
 app.include_router(usuarios_router)
 
-
-@app.exception_handler(ConflictoConcurrenciaError)
-async def handle_conflicto_concurrencia(
-    request: Request, exc: ConflictoConcurrenciaError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": "El recurso fue modificado por otro usuario"})
-
-
-@app.exception_handler(EmpleadoNoEncontradoError)
-async def handle_empleado_no_encontrado_crud(
-    request: Request, exc: EmpleadoNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(DocumentoDuplicadoError)
-async def handle_documento_duplicado(
-    request: Request, exc: DocumentoDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(DocumentoFormatoInvalidoError)
-@app.exception_handler(NombreInvalidoError)
-async def handle_empleado_validacion(
-    request: Request, exc: Exception
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(SedeNoEncontradaError)
-async def handle_sede_no_encontrada(
-    request: Request, exc: SedeNoEncontradaError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(SedeInactivaError)
-async def handle_sede_inactiva(
-    request: Request, exc: SedeInactivaError
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(SedeNombreDuplicadoError)
-async def handle_sede_nombre_duplicado(
-    request: Request, exc: SedeNombreDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(SedeDireccionInvalidaError)
-@app.exception_handler(SedeNombreInvalidoError)
-async def handle_sede_validacion(
-    request: Request, exc: Exception
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(DispositivoNoEncontradoError)
-async def handle_dispositivo_no_encontrado(
-    request: Request, exc: DispositivoNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(DispositivoNoAutorizadoError)
-async def handle_dispositivo_no_autorizado(
-    request: Request, exc: DispositivoNoAutorizadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(DispositivoNoEncontradoPorIdError)
-async def handle_dispositivo_no_encontrado_por_id(
-    request: Request, exc: DispositivoNoEncontradoPorIdError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(IdentificadorDuplicadoError)
-async def handle_identificador_duplicado(
-    request: Request, exc: IdentificadorDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(IdentificadorFormatoInvalidoError)
-async def handle_identificador_formato_invalido(
-    request: Request, exc: IdentificadorFormatoInvalidoError
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(SedeYaTieneDispositivoError)
-async def handle_sede_ya_tiene_dispositivo(
-    request: Request, exc: SedeYaTieneDispositivoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(SetupIncompletoError)
-async def handle_setup_incompleto(
-    request: Request, exc: SetupIncompletoError
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(EstadoNoEncontradoError)
-@app.exception_handler(ConfiguracionNoEncontradaError)
-async def handle_configuracion_invalida(request: Request, exc: Exception) -> JSONResponse:
-    return JSONResponse(status_code=500, content={"detail": "Error de configuracion interna"})
-
-
-@app.exception_handler(TokenNoEncontradoError)
-@app.exception_handler(TokenFormatoInvalidoError)
-async def handle_token_invalido(request: Request, exc: Exception) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(TokenExpiradoError)
-@app.exception_handler(TokenConsumidoError)
-async def handle_token_expirado(request: Request, exc: Exception) -> JSONResponse:
-    return JSONResponse(status_code=410, content={"detail": str(exc)})
-
-
-@app.exception_handler(SedeNoDisponibleError)
-async def handle_sede_no_disponible(
-    request: Request, exc: SedeNoDisponibleError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(EmpleadoNoRegistradoError)
-async def handle_empleado_no_registrado(
-    request: Request, exc: EmpleadoNoRegistradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(EmpleadoInactivoError)
-async def handle_empleado_inactivo(
-    request: Request, exc: EmpleadoInactivoError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(CodigoAlfaInvalidoError)
-async def handle_codigo_invalido(
-    request: Request, exc: CodigoAlfaInvalidoError
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(DispositivoTokenNoAutorizadoError)
-async def handle_dispositivo_token_no_autorizado(
-    request: Request, exc: DispositivoTokenNoAutorizadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(AsistenciaDuplicadaError)
-async def handle_asistencia_duplicada(
-    request: Request, exc: AsistenciaDuplicadaError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(CredencialesInvalidasError)
-async def handle_credenciales_invalidas(
-    request: Request, exc: CredencialesInvalidasError
-) -> JSONResponse:
-    return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-
-@app.exception_handler(UsuarioInactivoError)
-async def handle_usuario_inactivo(
-    request: Request, exc: UsuarioInactivoError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(CuentaBloqueadaError)
-async def handle_cuenta_bloqueada(
-    request: Request, exc: CuentaBloqueadaError
-) -> JSONResponse:
-    return JSONResponse(status_code=429, content={"detail": str(exc)})
-
-
-@app.exception_handler(SesionExistenteError)
-async def handle_sesion_existente(
-    request: Request, exc: SesionExistenteError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(TokenInvalidoError)
-async def handle_auth_token_invalido(
-    request: Request, exc: TokenInvalidoError
-) -> JSONResponse:
-    return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-
-@app.exception_handler(RefreshTokenInvalidoError)
-async def handle_refresh_token_invalido(
-    request: Request, exc: RefreshTokenInvalidoError
-) -> JSONResponse:
-    return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-
-@app.exception_handler(SesionNoEncontradaError)
-async def handle_sesion_no_encontrada(
-    request: Request, exc: SesionNoEncontradaError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(PermisoInsuficienteError)
-async def handle_permiso_insuficiente(
-    request: Request, exc: PermisoInsuficienteError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(CambioContrasenaRequeridoError)
-async def handle_cambio_contrasena(
-    request: Request, exc: CambioContrasenaRequeridoError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(ContrasenaIgualError)
-async def handle_contrasena_igual(
-    request: Request, exc: ContrasenaIgualError
-) -> JSONResponse:
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
-@app.exception_handler(RolNoEncontradoError)
-async def handle_rol_no_encontrado(
-    request: Request, exc: RolNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(RolCodigoDuplicadoError)
-async def handle_rol_codigo_duplicado(
-    request: Request, exc: RolCodigoDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(RolProtegidoError)
-async def handle_rol_protegido(
-    request: Request, exc: RolProtegidoError
-) -> JSONResponse:
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-
-@app.exception_handler(RolTieneUsuariosError)
-async def handle_rol_tiene_usuarios(
-    request: Request, exc: RolTieneUsuariosError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(PermisoNoEncontradoError)
-async def handle_permiso_no_encontrado(
-    request: Request, exc: PermisoNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(PermisoDuplicadoError)
-async def handle_permiso_duplicado(
-    request: Request, exc: PermisoDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(ModuloNoEncontradoError)
-async def handle_modulo_no_encontrado(
-    request: Request, exc: ModuloNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(UsuarioNoEncontradoError)
-async def handle_usuario_no_encontrado(
-    request: Request, exc: UsuarioNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(CorreoDuplicadoError)
-async def handle_correo_duplicado(
-    request: Request, exc: CorreoDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(UsernameDuplicadoError)
-async def handle_username_duplicado(
-    request: Request, exc: UsernameDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(UltimoSuperAdminError)
-async def handle_ultimo_super_admin(
-    request: Request, exc: UltimoSuperAdminError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(AutoDesactivacionError)
-async def handle_auto_desactivacion(
-    request: Request, exc: AutoDesactivacionError
-) -> JSONResponse:
-    return JSONResponse(status_code=200, content={"detail": str(exc)})
-
-
-@app.exception_handler(RolInactivoError)
-async def handle_rol_inactivo(
-    request: Request, exc: RolInactivoError
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(HorarioNoEncontradoError)
-async def handle_horario_no_encontrado(
-    request: Request, exc: HorarioNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(HorarioSolapamientoError)
-async def handle_horario_solapamiento(
-    request: Request, exc: HorarioSolapamientoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(HorarioInmutableError)
-async def handle_horario_inmutable(
-    request: Request, exc: HorarioInmutableError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(HorarioVigenciaInvalidaError)
-@app.exception_handler(HorarioToleranciaInvalidaError)
-async def handle_horario_validacion(
-    request: Request, exc: Exception
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(NovedadNoEncontradaError)
-async def handle_novedad_no_encontrada(
-    request: Request, exc: NovedadNoEncontradaError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(TipoNovedadNoEncontradoError)
-async def handle_tipo_novedad_no_encontrado(
-    request: Request, exc: TipoNovedadNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=500, content={"detail": "Error de configuracion interna"})
-
-
-@app.exception_handler(SedesSinHorarioError)
-async def handle_sedes_sin_horario(
-    request: Request, exc: SedesSinHorarioError
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(ReporteNoEncontradoError)
-async def handle_reporte_no_encontrado(
-    request: Request, exc: ReporteNoEncontradoError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
-
-
-@app.exception_handler(RangoFechasInvalidoError)
-async def handle_rango_fechas_invalido(
-    request: Request, exc: RangoFechasInvalidoError
-) -> JSONResponse:
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-
-@app.exception_handler(ReporteDuplicadoError)
-async def handle_reporte_duplicado(
-    request: Request, exc: ReporteDuplicadoError
-) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-
-@app.exception_handler(ReporteGeneracionError)
-async def handle_reporte_generacion(
-    request: Request, exc: ReporteGeneracionError
-) -> JSONResponse:
-    return JSONResponse(status_code=500, content={"detail": "Error interno al generar el reporte"})
-
-
-@app.exception_handler(ReporteSinDatosError)
-async def handle_reporte_sin_datos(
-    request: Request, exc: ReporteSinDatosError
-) -> JSONResponse:
-    return JSONResponse(status_code=404, content={"detail": str(exc)})
+# ── Exception handlers ──────────────────────────────────────────────────
+# Each tuple: (status_code, exception_class, optional fixed message).
+# When message is None, str(exc) is used.
+
+_EXCEPTION_MAP: list[tuple[int, type[Exception], str | None]] = [
+    # Concurrencia
+    (409, ConflictoConcurrenciaError, "El recurso fue modificado por otro usuario"),
+    # Empleados
+    (404, EmpleadoNoEncontradoError, None),
+    (409, DocumentoDuplicadoError, None),
+    (422, DocumentoFormatoInvalidoError, None),
+    (422, NombreInvalidoError, None),
+    # Sedes
+    (404, SedeNoEncontradaError, None),
+    (422, SedeInactivaError, None),
+    (409, SedeNombreDuplicadoError, None),
+    (422, SedeDireccionInvalidaError, None),
+    (422, SedeNombreInvalidoError, None),
+    # Dispositivos
+    (404, DispositivoNoEncontradoError, None),
+    (403, DispositivoNoAutorizadoError, None),
+    (404, DispositivoNoEncontradoPorIdError, None),
+    (409, IdentificadorDuplicadoError, None),
+    (422, IdentificadorFormatoInvalidoError, None),
+    (409, SedeYaTieneDispositivoError, None),
+    (403, FueraDeHorarioError, None),
+    # Configuración
+    (422, SetupIncompletoError, None),
+    (500, EstadoNoEncontradoError, "Error de configuracion interna"),
+    (500, ConfiguracionNoEncontradaError, "Error de configuracion interna"),
+    # Tokens / registro
+    (404, TokenNoEncontradoError, None),
+    (404, TokenFormatoInvalidoError, None),
+    (410, TokenExpiradoError, None),
+    (410, TokenConsumidoError, None),
+    (403, SedeNoDisponibleError, None),
+    (404, EmpleadoNoRegistradoError, None),
+    (403, EmpleadoInactivoError, None),
+    (422, CodigoAlfaInvalidoError, None),
+    (403, DispositivoTokenNoAutorizadoError, None),
+    (409, AsistenciaDuplicadaError, None),
+    # Auth
+    (401, CredencialesInvalidasError, None),
+    (403, UsuarioInactivoError, None),
+    (429, CuentaBloqueadaError, None),
+    (409, SesionExistenteError, None),
+    (401, TokenInvalidoError, None),
+    (401, RefreshTokenInvalidoError, None),
+    (404, SesionNoEncontradaError, None),
+    (403, PermisoInsuficienteError, None),
+    (403, CambioContrasenaRequeridoError, None),
+    (400, ContrasenaIgualError, None),
+    # Roles
+    (404, RolNoEncontradoError, None),
+    (409, RolCodigoDuplicadoError, None),
+    (403, RolProtegidoError, None),
+    (409, RolTieneUsuariosError, None),
+    # Permisos
+    (404, PermisoNoEncontradoError, None),
+    (409, PermisoDuplicadoError, None),
+    (404, ModuloNoEncontradoError, None),
+    # Usuarios
+    (404, UsuarioNoEncontradoError, None),
+    (409, CorreoDuplicadoError, None),
+    (409, UsernameDuplicadoError, None),
+    (409, UltimoSuperAdminError, None),
+    (200, AutoDesactivacionError, None),
+    (422, RolInactivoError, None),
+    # Horarios
+    (404, HorarioNoEncontradoError, None),
+    (409, HorarioSolapamientoError, None),
+    (409, HorarioInmutableError, None),
+    (422, HorarioVigenciaInvalidaError, None),
+    (422, HorarioToleranciaInvalidaError, None),
+    # Novedades
+    (404, NovedadNoEncontradaError, None),
+    (500, TipoNovedadNoEncontradoError, "Error de configuracion interna"),
+    (422, SedesSinHorarioError, None),
+    # Reportes
+    (404, ReporteNoEncontradoError, None),
+    (422, RangoFechasInvalidoError, None),
+    (409, ReporteDuplicadoError, None),
+    (500, ReporteGeneracionError, "Error interno al generar el reporte"),
+    (404, ReporteSinDatosError, None),
+]
+
+for _status, _exc_cls, _fixed_msg in _EXCEPTION_MAP:
+
+    def _make_handler(
+        status: int, fixed_msg: str | None
+    ):
+        async def _handler(request: Request, exc: Exception) -> JSONResponse:
+            return JSONResponse(
+                status_code=status,
+                content={"detail": fixed_msg or str(exc)},
+            )
+        return _handler
+
+    app.add_exception_handler(_exc_cls, _make_handler(_status, _fixed_msg))

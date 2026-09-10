@@ -35,6 +35,14 @@ class IdentificadorFormatoInvalidoError(Exception):
         )
 
 
+class FueraDeHorarioError(Exception):
+    def __init__(self, identificador: str) -> None:
+        self.identificador = identificador
+        super().__init__(
+            f"Fuera del horario de registro para el dispositivo '{identificador}'"
+        )
+
+
 class SedeYaTieneDispositivoError(Exception):
     def __init__(self, sede_id: int) -> None:
         self.sede_id = sede_id

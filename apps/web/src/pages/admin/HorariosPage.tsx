@@ -233,16 +233,15 @@ export function HorariosPage() {
                 <th>Sede</th>
                 <th>Entrada</th>
                 <th>Salida</th>
-                <th>Tolerancia</th>
                 <th>Vigencia</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando ? (
-                <EmptyRow columnas={7} mensaje="Cargando horarios…" />
+                <EmptyRow columnas={6} mensaje="Cargando horarios…" />
               ) : visibles.length === 0 ? (
-                <EmptyRow columnas={7} mensaje="No hay horarios registrados." />
+                <EmptyRow columnas={6} mensaje="No hay horarios registrados." />
               ) : (
                   visibles.map((h) => (
                     <tr key={h.id}>
@@ -250,13 +249,12 @@ export function HorariosPage() {
                       <td>{h.sede}</td>
                       <td>{h.horaEntrada}</td>
                       <td>{h.horaSalida || "—"}</td>
-                      <td>{h.toleranciaMin} min</td>
                       <td>
                         {h.vigenteDesde}
                         {h.vigenteHasta ? ` – ${h.vigenteHasta}` : " – vigente"}
                       </td>
                       <td>
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <div className="table__actions">
                           <button
                             type="button"
                             className="btn btn--icon"
@@ -346,30 +344,18 @@ export function HorariosPage() {
 
             <div className="modal__grid">
               <TextField
-                etiqueta="Tolerancia (minutos)"
-                tipo="number"
-                valor={String(editando.toleranciaMin)}
-                alCambiar={(v) =>
-                  setEditando({
-                    ...editando,
-                    toleranciaMin: parseInt(v, 10) || 0,
-                  })
-                }
-              />
-              <TextField
                 etiqueta="Vigente desde *"
                 tipo="date"
                 valor={editando.vigenteDesde}
                 alCambiar={(v) => setEditando({ ...editando, vigenteDesde: v })}
               />
+              <TextField
+                etiqueta="Vigente hasta (opcional)"
+                tipo="date"
+                valor={editando.vigenteHasta}
+                alCambiar={(v) => setEditando({ ...editando, vigenteHasta: v })}
+              />
             </div>
-
-            <TextField
-              etiqueta="Vigente hasta (opcional)"
-              tipo="date"
-              valor={editando.vigenteHasta}
-              alCambiar={(v) => setEditando({ ...editando, vigenteHasta: v })}
-            />
           </>
         ) : null}
       </Modal>

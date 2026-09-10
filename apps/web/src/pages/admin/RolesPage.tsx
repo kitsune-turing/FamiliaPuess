@@ -216,16 +216,20 @@ export function RolesPage() {
       descripcion: editando.descripcion.trim(),
       id: editando.id || `rol-${Date.now()}`,
     });
-    auditar(esNuevo ? "Crear" : "Actualizar", `${esNuevo ? "Creó" : "Actualizó"} el rol “${nombre}”`);
+    auditar(esNuevo ? "Crear" : "Actualizar", `${esNuevo ? "Creó" : "Actualizó"} el rol "${nombre}"`);
     setEditando(null);
     mostrar(esNuevo ? "Rol creado." : "Rol actualizado.");
   };
 
-  const confirmarEliminar = () => {
+  const confirmarEliminar = async () => {
     if (!aEliminar) return;
-    eliminarRol(aEliminar.id);
-    auditar("Eliminar", `Eliminó el rol “${aEliminar.nombre}”`);
-    mostrar("Rol eliminado.");
+    try {
+      await eliminarRol(aEliminar.id);
+      auditar("Eliminar", `Eliminó el rol "${aEliminar.nombre}"`);
+      mostrar("Rol eliminado.");
+    } catch (e) {
+      mostrar(e instanceof Error ? e.message : "Error al eliminar el rol.", "error");
+    }
     setAEliminar(null);
   };
 
@@ -568,7 +572,7 @@ export function RolesPage() {
       <ConfirmDialog
         abierto={aEliminar !== null}
         titulo="Eliminar rol"
-        mensaje={`Se eliminará el rol “${aEliminar?.nombre ?? ""}” y su configuración de permisos. Esta acción no se puede deshacer.`}
+        mensaje={`Se eliminará el rol "${aEliminar?.nombre ?? ""}" y su configuración de permisos. Esta acción no se puede deshacer.`}
         alCerrar={() => setAEliminar(null)}
         alConfirmar={confirmarEliminar}
       />

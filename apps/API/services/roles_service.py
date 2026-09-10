@@ -17,7 +17,7 @@ from shared.constants.estado import EstadoCodigo
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.constants.rol import RolCodigo
-from shared.exceptions.concurrencia import ConflictoConcurrenciaError
+from apps.API.utils.concurrency import check_concurrency
 from shared.exceptions.roles import (
     RolCodigoDuplicadoError,
     RolNoEncontradoError,
@@ -95,8 +95,7 @@ async def update_rol(
     if rol is None:
         raise RolNoEncontradoError(rol_id)
 
-    if rol.updated_at != updated_at:
-        raise ConflictoConcurrenciaError("rol", rol_id)
+    check_concurrency(rol.updated_at, updated_at, "rol", rol_id)
 
     valor_anterior = {
         "nombre": rol.nombre,
@@ -135,7 +134,7 @@ async def update_rol(
     return updated
 
 
-async def deactivate_rol(
+async def delete_rol(
     session: AsyncSession,
     rol_id: int,
     *,
@@ -153,12 +152,7 @@ async def deactivate_rol(
     if user_count > 0:
         raise RolTieneUsuariosError(rol.codigo)
 
-    inactivo_id = await cat_estado_repository.get_estado_id(
-        session, EstadoCodigo.INACTIVO
-    )
     timestamp = tz_now()
-
-    await cat_rol_repository.deactivate(session, rol_id, inactivo_id, now=timestamp)
 
     await auditoria_repository.create(
         session,
@@ -171,4 +165,6 @@ async def deactivate_rol(
         timestamp_accion=timestamp,
     )
 
-    logger.info("Rol desactivado: id=%d, codigo=%s", rol_id, rol.codigo)
+    await cat_rol_repository.hard_delete(session, rol_id)
+
+    logger.info("Rol eliminado: id=%d, codigo=%s", rol_id, rol.codigo)

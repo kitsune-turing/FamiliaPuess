@@ -10,14 +10,9 @@ from apps.API.schemas.permisos import (
     UpdatePermisoRequest,
 )
 from apps.API.services import permisos_service
+from apps.API.utils.request import extract_ip as _extract_ip
 
 router = APIRouter(prefix="/roles/{rol_id}/permisos", tags=["permisos"])
-
-
-def _extract_ip(request: Request) -> str | None:
-    if request.client:
-        return request.client.host
-    return None
 
 
 def _to_response(p) -> PermisoRolResponse:

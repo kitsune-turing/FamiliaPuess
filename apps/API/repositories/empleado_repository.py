@@ -74,7 +74,6 @@ async def create(
     apellido: str,
     id_cargo: int,
     id_estado: int,
-    id_sede_actual: int,
     now: datetime | None = None,
 ) -> Empleado:
     empleado = Empleado(
@@ -84,7 +83,6 @@ async def create(
         apellido=apellido,
         id_cargo=id_cargo,
         id_estado=id_estado,
-        id_sede_actual=id_sede_actual,
     )
     if now is not None:
         empleado.created_at = now
@@ -121,8 +119,6 @@ async def update_empleado(
         values["id_cargo"] = id_cargo
     if id_estado is not None:
         values["id_estado"] = id_estado
-    if id_sede_actual is not None:
-        values["id_sede_actual"] = id_sede_actual
     if now is not None:
         values["updated_at"] = now
     if not values:

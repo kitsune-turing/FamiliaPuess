@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.models.sede import Sede
@@ -93,3 +93,8 @@ async def count_by_estado(session: AsyncSession, id_estado: int) -> int:
     )
     result = await session.execute(stmt)
     return result.scalar_one()
+
+
+async def hard_delete(session: AsyncSession, sede_id: int) -> None:
+    stmt = delete(Sede).where(Sede.id == sede_id)
+    await session.execute(stmt)

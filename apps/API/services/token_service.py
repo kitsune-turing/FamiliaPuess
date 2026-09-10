@@ -9,13 +9,18 @@ from apps.API.repositories import (
     cat_estado_token_repository,
     config_general_repository,
     dispositivo_repository,
+    horario_repository,
     token_qr_repository,
 )
 from apps.API.utils.codigo_generator import generate_codigo
 from apps.API.utils.token_generator import generate_token_value
 from shared.constants.estado import EstadoCodigo
 from shared.constants.estado_token import EstadoTokenCodigo
-from shared.exceptions.device import DispositivoNoAutorizadoError, DispositivoNoEncontradoError
+from shared.exceptions.device import (
+    DispositivoNoAutorizadoError,
+    DispositivoNoEncontradoError,
+    FueraDeHorarioError,
+)
 
 CLAVE_QR_EXPIRACION_SEG = "QR_EXPIRACION_SEG"
 CLAVE_CODIGO_LONGITUD = "CODIGO_LONGITUD"
@@ -38,8 +43,29 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         raise DispositivoNoEncontradoError(dispositivo_identificador)
 
     activo_id = await cat_estado_repository.get_estado_id(session, EstadoCodigo.ACTIVO)
-    if dispositivo.id_estado != activo_id or dispositivo.sede.id_estado != activo_id:
+    if (
+        dispositivo.id_estado != activo_id
+        or dispositivo.sede is None
+        or dispositivo.sede.id_estado != activo_id
+    ):
         raise DispositivoNoAutorizadoError(dispositivo_identificador)
+
+    ahora = timezone.now()
+
+    horarios = await horario_repository.get_all(
+        session,
+        id_sede=dispositivo.id_sede,
+        solo_vigentes=True,
+        fecha_referencia=ahora.date(),
+    )
+    if horarios:
+        dentro_de_ventana = any(
+            ahora <= datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
+            + timedelta(minutes=h.tolerancia_min)
+            for h in horarios
+        )
+        if not dentro_de_ventana:
+            raise FueraDeHorarioError(dispositivo_identificador)
 
     expiracion_seg = int(
         await config_general_repository.get_valor(session, CLAVE_QR_EXPIRACION_SEG)
@@ -49,8 +75,7 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
     )
     codigo_formato = await config_general_repository.get_valor(session, CLAVE_CODIGO_FORMATO)
 
-    generado_en = timezone.now()
-    expira_en = generado_en + timedelta(seconds=expiracion_seg)
+    expira_en = ahora + timedelta(seconds=expiracion_seg)
 
     token_value = generate_token_value()
     codigo_alfa = generate_codigo(codigo_formato, codigo_longitud)
@@ -61,18 +86,17 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
 
     await token_qr_repository.create(
         session,
-        id_sede=dispositivo.id_sede,
         id_dispositivo=dispositivo.id,
         id_estado_token=estado_token_activo_id,
         token=token_value,
         codigo_alfa=codigo_alfa,
-        generado_en=generado_en,
+        generado_en=ahora,
         expira_en=expira_en,
     )
 
     return TokenGenerado(
         token=token_value,
         codigo_alfa=codigo_alfa,
-        generado_en=generado_en,
+        generado_en=ahora,
         expira_en=expira_en,
     )
