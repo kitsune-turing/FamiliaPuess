@@ -553,6 +553,7 @@ INSERT INTO cat_cargo (codigo, nombre, id_estado, descripcion) VALUES
     ('DOMICILIARIO',                 'Domiciliario',                           1, 'Entrega de pedidos a domicilio'),
     ('CAJERA_ADMINISTRADORA_EMP',    'Cajera-Administradora de Empanadas',     1, 'Operacion de caja y administracion de empanadas'),
     ('ADMINISTRADOR',                'Administrador',                          1, 'Administracion de sede'),
+    ('CAJERO_PLANCHERO',             'Cajero-Planchero',                       1, 'Cargo operativo de caja y plancha (masculino)'),
     ('CAJERA_VENDEDORA',             'Cajera-Vendedora',                       1, 'Operacion de caja y ventas'),
     ('PRODUCCION_CAJERO_PLANCHERO',  'Produccion-Cajero-Planchero',            1, 'Produccion, caja y plancha'),
     ('AUXILIAR_ADMINISTRATIVA',      'Auxiliar Administrativa',                1, 'Apoyo administrativo'),
