@@ -1,0 +1,5 @@
+class EstadoTokenCodigo:
+    GENERADO = "GENERADO"
+    ACTIVO = "ACTIVO"
+    EXPIRADO = "EXPIRADO"
+    CONSUMIDO = "CONSUMIDO"

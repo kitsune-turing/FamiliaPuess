@@ -1,0 +1,123 @@
+-- Reset empleado table to match database.sql (source of truth).
+-- The running DB was modified to use split fields (nombre/apellido, id_tipo_documento/numero_documento)
+-- but database.sql defines nombre_completo + documento.
+-- This migration reverts to the correct schema.
+
+BEGIN;
+
+-- 1. Clear referencing data (no attendance/novelty data exists)
+DELETE FROM empleado_sede;
+DELETE FROM empleado;
+
+-- 2. Drop modified columns and constraints
+ALTER TABLE empleado DROP CONSTRAINT IF EXISTS uq_empleado_documento;
+ALTER TABLE empleado DROP CONSTRAINT IF EXISTS ck_empleado_documento;
+ALTER TABLE empleado DROP CONSTRAINT IF EXISTS fk_empleado_tipo_documento;
+DROP INDEX IF EXISTS idx_empleado_tipo_doc;
+DROP INDEX IF EXISTS idx_empleado_documento;
+DROP INDEX IF EXISTS idx_empleado_nombre;
+
+ALTER TABLE empleado DROP COLUMN IF EXISTS id_tipo_documento;
+ALTER TABLE empleado DROP COLUMN IF EXISTS numero_documento;
+ALTER TABLE empleado DROP COLUMN IF EXISTS nombre;
+ALTER TABLE empleado DROP COLUMN IF EXISTS apellido;
+
+-- 3. Add back original columns per database.sql
+ALTER TABLE empleado ADD COLUMN nombre_completo VARCHAR(200) NOT NULL DEFAULT '';
+ALTER TABLE empleado ADD COLUMN documento VARCHAR(20) NOT NULL DEFAULT '';
+ALTER TABLE empleado ALTER COLUMN nombre_completo DROP DEFAULT;
+ALTER TABLE empleado ALTER COLUMN documento DROP DEFAULT;
+
+-- 4. Make id_sede_actual nullable (per database.sql)
+ALTER TABLE empleado ALTER COLUMN id_sede_actual DROP NOT NULL;
+
+-- 5. Recreate indexes and constraints per database.sql
+CREATE INDEX idx_empleado_documento ON empleado(documento);
+CREATE INDEX idx_empleado_nombre ON empleado(nombre_completo);
+ALTER TABLE empleado ADD CONSTRAINT uq_empleado_documento UNIQUE (documento);
+
+-- 6. Drop cat_tipo_documento (not in database.sql)
+DROP TABLE IF EXISTS cat_tipo_documento CASCADE;
+
+-- 7. Insert cargos
+WITH estado AS (SELECT id FROM cat_estado WHERE codigo = 'ACTIVO'),
+cargos(nombre) AS (VALUES
+  ('CAJERA-PLANCHERA'), ('ADMINISTRADORA'), ('ADMINISTRADORA DE PLANTA-CAJERA'),
+  ('DOMICILIARIO'), ('CAJERA-ADMINISTRADORA DE EMPANADAS'), ('ADMINISTRADOR'),
+  ('CAJERO-PLANCHERO'), ('CAJERA-VENDEDORA'), ('PRODUCCION-CAJERO-PLANCHERO'),
+  ('AUXILIAR ADMINISTRATIVA'), ('CAJERA VENDEDORA'), ('PRODUCCION-PLANCHERO'), ('PLANCHERA')
+)
+INSERT INTO cat_cargo (codigo, nombre, id_estado)
+SELECT UPPER(REPLACE(REPLACE(REPLACE(LEFT(nombre, 30), ' ', '_'), '-', '_'), ',', '')), nombre, estado.id
+FROM cargos CROSS JOIN estado
+ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre;
+
+-- 8. Insert 39 workers
+WITH datos(documento, nombre_completo, cargo) AS (VALUES
+  ('1017162389','KAREN KATERINE CACERES LEGUIZAMOM','CAJERA-PLANCHERA'),
+  ('32259964','DIANA MARIA VERA VERA','ADMINISTRADORA'),
+  ('1010092515','LUZ MIRIAM DIAZ MARIN','ADMINISTRADORA DE PLANTA-CAJERA'),
+  ('1066521844','YESI MILENA SANTOS MORALES','CAJERA-PLANCHERA'),
+  ('98560875','JUAN YENIFER VILLEGAS AGUDELO','DOMICILIARIO'),
+  ('PPT-4883244','YESENIA COROMOTO WSKANGA TALAVERA','CAJERA-PLANCHERA'),
+  ('43987717','CLAUDIA YISLENA BETANCUR MEJIA','CAJERA-ADMINISTRADORA DE EMPANADAS'),
+  ('70581707','WBEIMAR ALBERTO ROJAS FLOREZ','ADMINISTRADOR'),
+  ('71727115','ALEXANDER DE JESUS VASQUEZ PEREZ','CAJERO-PLANCHERO'),
+  ('1007565001','MELIDA GRACIELA LUNA HERNANDEZ','CAJERA-PLANCHERA'),
+  ('1052944618','YAIRA MARCELA CABALLERO SANES','CAJERA-PLANCHERA'),
+  ('PP-5520466','IDEILYS JOSEFINA GONZALEZ MOTA','CAJERA-PLANCHERA'),
+  ('55307763','PAOLA TATIANA TORRES CHAVEZ','CAJERA-PLANCHERA'),
+  ('1077422496','DIANA MARCELA PALACIO MORENO','CAJERA-PLANCHERA'),
+  ('1062439514','KAROLAIN ACOSTA PAEZ','CAJERA-PLANCHERA'),
+  ('1128416993','CAROLINA FRANCO FRANCO','CAJERA-PLANCHERA'),
+  ('1045487664','LUISA FERNANDA HOYOS CORDOBA','CAJERA-PLANCHERA'),
+  ('PPT-6785179','RHOANA CAROLINA VALERO FERNANDEZ','CAJERA-VENDEDORA'),
+  ('1036839962','LUIS ANGEL QUINCHIA QUINCHIA','PRODUCCION-CAJERO-PLANCHERO'),
+  ('1040749192','IVANNA JESSICA TORO SEPULVEDA','AUXILIAR ADMINISTRATIVA'),
+  ('1100397404','LEONARDO DAVID CAUSIL ROMERO','CAJERO-PLANCHERO'),
+  ('1080424148','MELISA TATIANA CANTILLO CAMPO','CAJERA-PLANCHERA'),
+  ('PPT-6112878','JOSVELY YARIANA SILVA RODRIGUEZ','CAJERA-PLANCHERA'),
+  ('1007908111','NESYI JULIBETH RIVAS SANTACRUZ','CAJERA-PLANCHERA'),
+  ('PPT-1122732','GLAYSMAR ANDREINA LEON MARTINEZ','CAJERA-PLANCHERA'),
+  ('1001468396','MARIA CAMILA MARULANDA HIGUITA','CAJERA-PLANCHERA'),
+  ('1128463728','LUISA FERNANDA MARULANDA HIGITA','CAJERA VENDEDORA'),
+  ('1152457741','YAQUELINE MOSQUERA MOSQUERA','CAJERA-PLANCHERA'),
+  ('1020450060','JESSICA JARAMILLO OSORIO','CAJERA-PLANCHERA'),
+  ('1027951743','YURI LIZETH DUQUE PUERTA','CAJERA VENDEDORA'),
+  ('1036656758','LEIDY JOHANA LOPEZ MAZO','CAJERA VENDEDORA'),
+  ('1002065376','YENY MARCELA ECHAVARRIA ARENAS','CAJERA-PLANCHERA'),
+  ('1128417603','TATIANA OSPINA CARTAGENA','CAJERA-PLANCHERA'),
+  ('1045326510','LUISA FERNANDA GOMEZ ZUNIGA','CAJERA VENDEDORA'),
+  ('1000874534','MARLON ANDRES RESTREPO RODRIGUEZ','PRODUCCION-PLANCHERO'),
+  ('1128724391','YARIS RIVAS PALACIOS','CAJERA VENDEDORA'),
+  ('1096201360','LIZETH BELEN CAMARON DELGADO','PLANCHERA'),
+  ('1128278126','ALEJANDRA MARIA ARANGO PUERTA','PLANCHERA'),
+  ('1044910690','CAROL LIANNET UTRIA SIERRA','CAJERA VENDEDORA')
+),
+refs AS (
+  SELECT d.*, c.id AS id_cargo, e.id AS id_estado, s.id AS id_sede
+  FROM datos d
+  JOIN cat_cargo c ON c.nombre = d.cargo
+  JOIN cat_estado e ON e.codigo = 'ACTIVO'
+  JOIN sede s ON s.nombre = 'Sede Principal'
+)
+INSERT INTO empleado (documento, nombre_completo, id_cargo, id_estado, id_sede_actual)
+SELECT documento, nombre_completo, id_cargo, id_estado, id_sede FROM refs
+ON CONFLICT (documento) DO UPDATE SET
+  nombre_completo = EXCLUDED.nombre_completo,
+  id_cargo = EXCLUDED.id_cargo,
+  id_estado = EXCLUDED.id_estado,
+  id_sede_actual = EXCLUDED.id_sede_actual,
+  updated_at = NOW();
+
+-- 9. Insert empleado_sede records
+INSERT INTO empleado_sede (id_empleado, id_sede)
+SELECT e.id, e.id_sede_actual
+FROM empleado e
+WHERE e.id_sede_actual IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM empleado_sede es
+    WHERE es.id_empleado = e.id AND es.fecha_fin IS NULL
+  );
+
+COMMIT;

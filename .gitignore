@@ -1,0 +1,105 @@
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+.pyre/
+.pytype/
+
+# Node / frontend
+node_modules/
+.npm/
+.pnpm-store/
+.parcel-cache/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+vite.svg
+
+# Desktop / PySide6 / Qt
+*.ui.autosave
+*.qrc.autosave
+qt_temp/
+qtcache/
+
+# Local git worktrees
+.worktrees/
+
+# Databases and local data
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.psql
+*.dump
+*.sql.backup
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# Logs and runtime artifacts from common tooling
+*.pid
+*.seed
+*.sock
+
+# Local assistant and process docs (do not push)
+.claude/
+CLAUDE.md
+claude.md
+git-flow-team.md
+
+docker-compose.yml
+.dockerignore
+docker
