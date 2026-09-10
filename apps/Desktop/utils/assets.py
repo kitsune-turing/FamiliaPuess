@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+if getattr(sys, "frozen", False):
+    _ASSETS_DIR = Path(sys._MEIPASS) / "apps" / "Desktop" / "assets"
+else:
+    _ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 _POPPINS_WEIGHTS = (
     "Poppins-Regular.ttf",

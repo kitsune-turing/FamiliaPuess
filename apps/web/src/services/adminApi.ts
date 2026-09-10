@@ -634,7 +634,7 @@ export interface DispositivoApi {
 }
 
 export async function listarDispositivos(): Promise<{ items: DispositivoApi[]; total: number }> {
-  return peticion<{ items: DispositivoApi[]; total: number }>("/dispositivos?id_estado=1");
+  return peticion<{ items: DispositivoApi[]; total: number }>("/dispositivos");
 }
 
 export async function crearDispositivo(data: {

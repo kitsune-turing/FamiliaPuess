@@ -9,7 +9,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if getattr(sys, "frozen", False):
+    _PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(_PROJECT_ROOT / ".env")
 
 from apps.Desktop.api.token_client import (
