@@ -1,0 +1,67 @@
+/* ==========================================================================
+   Familia Puess — Tokens de diseño
+   Valores muestreados directamente de los mockups de Figma.
+   ========================================================================== */
+
+:root {
+  /* ---- Marca ---- */
+  --fp-brown: #401801;
+  --fp-brown-soft: #4b1f06;
+  --fp-brown-deep: #2d1101;
+  --fp-pink: #f24976;
+  --fp-pink-hover: #e03566;
+  --fp-pink-soft: #fde8ee;
+  --fp-pink-softer: #fdf1f4;
+  --fp-yellow: #f2a20c;
+  --fp-yellow-soft: #fdf0d8;
+
+  /* ---- Superficies ---- */
+  --fp-bg: #fdf8f3;
+  --fp-surface: #ffffff;
+  --fp-surface-alt: #fbf6f4;
+  --fp-border: #ece4dd;
+  --fp-border-strong: #401801;
+  --fp-border-input: #401801;
+
+  /* ---- Texto ---- */
+  --fp-text: #2f2c29;
+  --fp-text-body: #3f3e3c;
+  --fp-text-muted: #8b8681;
+  --fp-text-faint: #a9a29c;
+  --fp-text-on-dark: #ffffff;
+  --fp-text-on-dark-muted: #e6d8cd;
+
+  /* ---- Estados / badges ---- */
+  --fp-green: #71ba5a;
+  --fp-green-bg: #e9f5e4;
+  --fp-green-strong: #4ea832;
+  --fp-orange: #f27907;
+  --fp-orange-bg: #fbd8b1;
+  --fp-purple: #6366f1;
+  --fp-purple-bg: #dfe0fd;
+  --fp-rose-bg: #fac2d3;
+  --fp-rose-text: #e8447a;
+
+  /* ---- Gráficas ---- */
+  --fp-chart-green: #6cbf5f;
+  --fp-chart-green-light: #a9dc9c;
+  --fp-chart-pink: #f24976;
+  --fp-chart-yellow: #f2a20c;
+  --fp-chart-cream: #f0e0c0;
+
+  /* ---- Geometría ---- */
+  --fp-r-sm: 8px;
+  --fp-r-md: 12px;
+  --fp-r-lg: 16px;
+  --fp-r-xl: 20px;
+  --fp-r-pill: 999px;
+
+  --fp-sidebar-w: 280px;
+  --fp-topbar-h: 92px;
+
+  --fp-shadow-card: 0 1px 2px rgba(64, 24, 1, 0.04), 0 6px 18px rgba(64, 24, 1, 0.04);
+  --fp-shadow-pop: 0 10px 30px rgba(64, 24, 1, 0.14);
+  --fp-shadow-pink: 0 6px 16px rgba(242, 73, 118, 0.28);
+
+  --fp-t: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
