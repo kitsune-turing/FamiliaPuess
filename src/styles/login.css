@@ -1,0 +1,354 @@
+.login-page {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ---------- Left panel ---------- */
+
+.login-panel-left {
+  display: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-panel-left__bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* ---------- Right panel ---------- */
+
+.login-panel-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fbefde;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---------- Mazorcas ---------- */
+
+.login-mazorca {
+  position: absolute;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-mazorca--top-right {
+  width: 200px;
+  top: -60px;
+  right: -20px;
+  transform: rotate(-136deg);
+}
+
+.login-mazorca--bottom-right {
+  width: 260px;
+  bottom: -40px;
+  right: -40px;
+  transform: rotate(-42deg);
+}
+
+/* ---------- Card ---------- */
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 30px;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 540px;
+  padding: 48px 56px 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ---------- Brand ---------- */
+
+.login-marca {
+  width: 200px;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+  font-style: italic;
+  font-size: 17px;
+  color: #401801;
+  letter-spacing: 1.8px;
+  margin-bottom: 36px;
+}
+
+/* ---------- Form ---------- */
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Field group ---------- */
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-field__label {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  color: #000;
+}
+
+.login-field__input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #401801;
+  border-radius: 7px;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+.login-field__icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.login-field__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-size: 17px;
+  color: #000;
+  background: transparent;
+}
+
+.login-field__input::placeholder {
+  color: #808080;
+}
+
+/* ---------- Options row ---------- */
+
+.login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.login-remember__checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #401801;
+  cursor: pointer;
+}
+
+.login-remember__text {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #000;
+  user-select: none;
+}
+
+.login-forgot {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #f24976;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.login-forgot:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Submit button ---------- */
+
+.login-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 24px;
+  padding: 18px 24px;
+  background-color: #f24976;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-submit:hover {
+  background-color: #d93d66;
+}
+
+.login-submit:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.login-submit__text {
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+/* ---------- Error message ---------- */
+
+.login-error {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: #d32f2f;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* ---------- Loading spinner ---------- */
+
+.login-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: login-spin 0.7s linear infinite;
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Responsive ---------- */
+
+@media (min-width: 1024px) {
+  .login-panel-left {
+    display: block;
+    width: 40%;
+    max-width: 500px;
+    flex-shrink: 0;
+  }
+
+  .login-mazorca--top-right {
+    width: 240px;
+  }
+
+  .login-mazorca--bottom-right {
+    width: 320px;
+  }
+
+  .login-card {
+    padding: 52px 64px 56px;
+  }
+
+  .login-marca {
+    width: 220px;
+  }
+
+  .login-subtitle {
+    font-size: 18px;
+  }
+
+  .login-field__label {
+    font-size: 16px;
+  }
+
+  .login-field__input {
+    font-size: 18px;
+  }
+
+  .login-remember__text,
+  .login-forgot {
+    font-size: 15px;
+  }
+
+  .login-submit__text {
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 32px 24px 36px;
+    border-radius: 20px;
+  }
+
+  .login-marca {
+    width: 160px;
+  }
+
+  .login-subtitle {
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+
+  .login-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .login-field__input {
+    font-size: 15px;
+  }
+
+  .login-submit {
+    padding: 14px 20px;
+  }
+
+  .login-submit__text {
+    font-size: 14px;
+  }
+
+  .login-mazorca--top-right {
+    width: 140px;
+  }
+
+  .login-mazorca--bottom-right {
+    width: 180px;
+  }
+}
+
+@media (max-width: 380px) {
+  .login-card {
+    padding: 24px 16px 28px;
+  }
+
+  .login-panel-right {
+    padding: 16px;
+  }
+}
