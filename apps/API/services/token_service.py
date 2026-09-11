@@ -86,6 +86,7 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
 
     await token_qr_repository.create(
         session,
+        id_sede=dispositivo.id_sede,
         id_dispositivo=dispositivo.id,
         id_estado_token=estado_token_activo_id,
         token=token_value,
