@@ -60,7 +60,8 @@ def get_device_id() -> str:
             save_device_id(stored)
             return stored
 
-    new_id = platform.node() or "DESKTOP"
+    hostname = platform.node() or "DESKTOP"
+    new_id = hostname if len(hostname) >= 5 else f"DESK-{hostname}"
     save_device_id(new_id)
     return new_id
 
