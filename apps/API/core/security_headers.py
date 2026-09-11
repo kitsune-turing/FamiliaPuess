@@ -1,15 +1,31 @@
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+_SECURITY_HEADERS = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"referrer-policy", b"strict-origin-when-cross-origin"),
+    (b"x-xss-protection", b"1; mode=block"),
+    (b"cache-control", b"no-store"),
+    (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+]
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        return response
+class SecurityHeadersMiddleware:
+    """Pure ASGI middleware — does not interfere with CORSMiddleware."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers.extend(_SECURITY_HEADERS)
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)

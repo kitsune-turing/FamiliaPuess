@@ -288,3 +288,14 @@ for _status, _exc_cls, _fixed_msg in _EXCEPTION_MAP:
         return _handler
 
     app.add_exception_handler(_exc_cls, _make_handler(_status, _fixed_msg))
+
+
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Error interno del servidor"},
+    )
+
+
+app.add_exception_handler(Exception, _unhandled_exception_handler)
