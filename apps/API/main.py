@@ -124,17 +124,20 @@ async def _seed_superadmin() -> None:
     from apps.API.database.session import _session_factory
     from apps.API.security.password import hash_password
 
-    async with _session_factory() as session:
-        pw_hash = hash_password("Admin123!")
-        for uname in ("superadmin", "admin"):
-            row = (await session.execute(text("SELECT id FROM usuario WHERE username = :u"), {"u": uname})).first()
-            if row:
-                await session.execute(
-                    text("UPDATE usuario SET password_hash = :h, debe_cambiar_pw = false WHERE username = :u"),
-                    {"h": pw_hash, "u": uname},
-                )
-        await session.commit()
-        logger.info("dev passwords reset (Admin123!)")
+    try:
+        async with _session_factory() as session:
+            pw_hash = hash_password("Admin123!")
+            for uname in ("superadmin", "admin"):
+                row = (await session.execute(text("SELECT id FROM usuario WHERE username = :u"), {"u": uname})).first()
+                if row:
+                    await session.execute(
+                        text("UPDATE usuario SET password_hash = :h, debe_cambiar_pw = false WHERE username = :u"),
+                        {"h": pw_hash, "u": uname},
+                    )
+            await session.commit()
+            logger.info("dev passwords reset (Admin123!)")
+    except Exception:
+        logger.warning("Could not seed superadmin — database tables may not exist yet. Run the database.sql script first.")
 
 
 @app.on_event("startup")
