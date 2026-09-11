@@ -1,0 +1,44 @@
+[project]
+name = "familia-puess-api"
+version = "0.1.0"
+description = "Sistema de Control de Asistencia - Familia Puess (API)"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic-settings>=2.5",
+    "pydantic[email]>=2.0",
+    "tzdata>=2024.1",
+    "sqlalchemy>=2.0",
+    "asyncpg>=0.29",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "argon2-cffi>=23.1",
+    "python-jose[cryptography]>=3.4.0",
+    "openpyxl>=3.1",
+    "email-validator>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "pytest-qt>=4.4",
+    "httpx>=0.27",
+]
+desktop = [
+    "pyside6>=6.7",
+    "qrcode[pil]>=7.4",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["apps*", "shared*"]
