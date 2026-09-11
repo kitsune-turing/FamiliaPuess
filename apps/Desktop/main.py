@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -9,8 +10,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("desktop")
+
 if getattr(sys, "frozen", False):
     _PROJECT_ROOT = Path(sys.executable).resolve().parent
+    # SSL certs for httpx inside PyInstaller bundle
+    _cert_file = Path(sys._MEIPASS) / "certifi" / "cacert.pem"
+    if _cert_file.is_file():
+        os.environ.setdefault("SSL_CERT_FILE", str(_cert_file))
 else:
     _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(_PROJECT_ROOT / ".env")
@@ -27,21 +35,25 @@ from apps.Desktop.workers.token_rotation_worker import TokenRotationWorker
 
 API_BASE_URL = os.getenv("DESKTOP_API_BASE_URL", "https://process-api.familiapues.com")
 REGISTRO_PUBLICO_URL = os.getenv(
-    "DESKTOP_REGISTRO_URL", "http://localhost:5173/registro"
+    "DESKTOP_REGISTRO_PUBLICO_URL",
+    os.getenv("DESKTOP_REGISTRO_URL", "https://imputar.familiapuess.com/registro"),
 )
 
 
 def _ensure_registered(cliente: TokenClient) -> None:
     """Register the device if this is the first install (device not in API)."""
     try:
-        cliente.consultar_estado()
+        estado = cliente.consultar_estado()
+        logger.info("Dispositivo ya registrado: %s (activo=%s)", estado.identificador, estado.activo)
     except DeviceNotFoundError:
+        logger.info("Dispositivo no encontrado, registrando...")
         try:
-            cliente.registrar()
-        except TokenClientError:
-            pass
-    except TokenClientError:
-        pass
+            estado = cliente.registrar()
+            logger.info("Dispositivo registrado: id=%s", estado.id)
+        except TokenClientError as e:
+            logger.error("No se pudo registrar el dispositivo: %s", e)
+    except TokenClientError as e:
+        logger.error("Error consultando estado del dispositivo: %s", e)
 
 
 def main() -> int:
@@ -56,6 +68,11 @@ def main() -> int:
 
     dispositivo_id = get_device_id()
     api_key = get_api_key()
+
+    logger.info("API: %s", API_BASE_URL)
+    logger.info("Registro URL: %s", REGISTRO_PUBLICO_URL)
+    logger.info("Dispositivo: %s", dispositivo_id)
+    logger.info("API key configurada: %s", "sí" if api_key else "NO")
 
     window = DesktopMainWindow(
         registro_publico_url=REGISTRO_PUBLICO_URL,

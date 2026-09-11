@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from PySide6.QtCore import QObject, QTimer, Signal
+
+logger = logging.getLogger("desktop.worker")
 
 from apps.Desktop.api.token_client import (
     AuthenticationError,
@@ -59,10 +62,12 @@ class TokenRotationWorker(QObject):
         try:
             recibido = self._client.solicitar_token()
         except AuthenticationError:
+            logger.error("API key inválida")
             self.token_error.emit("API key inválida. Revise la variable DESKTOP_API_KEY.")
             self._programar(self._fallback_interval_seconds)
             return
         except DeviceNotFoundError:
+            logger.warning("Dispositivo no registrado, entrando en polling")
             self.token_error.emit(
                 "Dispositivo no registrado. Contacte al administrador."
             )
@@ -70,19 +75,23 @@ class TokenRotationWorker(QObject):
             self._programar(INTERVALO_POLLING_INACTIVO_SEGUNDOS)
             return
         except FueraDeHorarioError:
+            logger.info("Fuera de horario")
             self.fuera_de_horario.emit()
             self._fuera_horario = True
             self._programar(INTERVALO_FUERA_HORARIO_SEGUNDOS)
             return
         except DeviceInactiveError:
+            logger.info("Dispositivo inactivo, verificando razón")
             self._check_inactive_reason()
             return
         except TokenClientError as error:
+            logger.error("Error solicitando token: %s", error)
             self.token_error.emit(str(error))
             self._programar(self._fallback_interval_seconds)
             return
 
         self._fuera_horario = False
+        logger.info("Token recibido: %s (expira %s)", recibido.codigo_alfa, recibido.expira_en)
         self.token_ready.emit(recibido)
         self._programar(self._next_interval_seconds(recibido))
 

@@ -4,10 +4,15 @@
 import os
 from pathlib import Path
 
+import certifi
+
 HERE = Path(SPECPATH).resolve()
 PROJECT_ROOT = HERE.parents[1]  # FamiliaPuess/
 
 block_cipher = None
+
+# Bundle certifi's CA certs so httpx can verify SSL in the frozen app
+_certifi_pem = certifi.where()
 
 a = Analysis(
     [str(HERE / "main.py")],
@@ -17,10 +22,12 @@ a = Analysis(
         (str(HERE / "assets" / "icons"), os.path.join("apps", "Desktop", "assets", "icons")),
         (str(HERE / "assets" / "images"), os.path.join("apps", "Desktop", "assets", "images")),
         (str(HERE / "assets" / "fonts"), os.path.join("apps", "Desktop", "assets", "fonts")),
+        (_certifi_pem, "certifi"),
     ],
     hiddenimports=[
         "PySide6.QtSvgWidgets",
         "PySide6.QtSvg",
+        "certifi",
     ],
     hookspath=[],
     hooksconfig={},
