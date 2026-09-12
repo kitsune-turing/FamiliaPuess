@@ -164,9 +164,16 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 _settings = get_settings()
+_PRODUCTION_ORIGINS = [
+    "https://imputar.familiapues.com",
+    "https://panel.familiapues.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+_all_origins = list({*_settings.cors_origins, *_PRODUCTION_ORIGINS})
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_settings.cors_origins,
+    allow_origins=_all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
