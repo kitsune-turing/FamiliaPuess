@@ -467,7 +467,7 @@ CREATE TABLE auditoria (
         'INSERT', 'UPDATE', 'DELETE',
         'LOGIN', 'LOGOUT', 'LOGIN_FALLIDO',
         'CAMBIO_CONTRASENA', 'CAMBIO_PERMISOS',
-        'RESTABLECIMIENTO_PW'
+        'RESTABLECIMIENTO_PW', 'ACCESO_NO_AUTORIZADO'
     ))
 );
 COMMENT ON TABLE auditoria IS '[REV-10] Auditoria extendida: CRUD + acciones administrativas (login, logout, contrasena, permisos).';

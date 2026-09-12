@@ -71,17 +71,20 @@ def require_permission(modulo_codigo: str, operacion: str) -> Callable:
             if allowed:
                 return current_user
 
-        ip_address = request.client.host if request.client else None
-        await auditoria_repository.create(
-            session,
-            id_usuario=user_id,
-            recurso=RecursoAuditoria.SEGURIDAD,
-            id_recurso=None,
-            operacion=OperacionAuditoria.ACCESO_NO_AUTORIZADO,
-            ip_address=ip_address,
-            detalle=f"Acceso denegado a {modulo_codigo}/{operacion}",
-            timestamp_accion=tz_now(),
-        )
+        try:
+            ip_address = request.client.host if request.client else None
+            await auditoria_repository.create(
+                session,
+                id_usuario=user_id,
+                recurso=RecursoAuditoria.SEGURIDAD,
+                id_recurso=None,
+                operacion=OperacionAuditoria.ACCESO_NO_AUTORIZADO,
+                ip_address=ip_address,
+                detalle=f"Acceso denegado a {modulo_codigo}/{operacion}",
+                timestamp_accion=tz_now(),
+            )
+        except Exception:
+            await session.rollback()
 
         raise PermisoInsuficienteError(modulo_codigo, operacion)
 
