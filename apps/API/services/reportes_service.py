@@ -193,7 +193,7 @@ def generar_excel(
     for row_idx, asistencia in enumerate(asistencias, start=2):
         novedad = novedades_map.get(asistencia.id)
 
-        ws.cell(row=row_idx, column=1, value=_safe_cell(asistencia.empleado.documento))
+        ws.cell(row=row_idx, column=1, value=_safe_cell(asistencia.empleado.numero_documento))
         ws.cell(
             row=row_idx,
             column=2,

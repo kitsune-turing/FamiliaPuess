@@ -34,7 +34,7 @@ class RegistroReporteResponse(BaseModel):
             id=asistencia.id,
             id_empleado=asistencia.id_empleado,
             empleado_nombre=f"{asistencia.empleado.nombre} {asistencia.empleado.apellido}",
-            empleado_documento=asistencia.empleado.documento,
+            empleado_documento=asistencia.empleado.numero_documento,
             id_sede=asistencia.id_sede,
             sede_nombre=asistencia.sede.nombre,
             tipo_registro=asistencia.tipo_registro.nombre,

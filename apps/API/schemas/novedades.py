@@ -26,7 +26,7 @@ class NovedadResponse(BaseModel):
             id=novedad.id,
             id_empleado=novedad.id_empleado,
             empleado_nombre=novedad.empleado.nombre,
-            empleado_documento=novedad.empleado.documento,
+            empleado_documento=novedad.empleado.numero_documento,
             id_tipo_novedad=novedad.id_tipo_novedad,
             tipo_codigo=novedad.tipo_novedad.codigo,
             tipo_nombre=novedad.tipo_novedad.nombre,
