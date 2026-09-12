@@ -7,6 +7,7 @@ _SECURITY_HEADERS = [
     (b"x-xss-protection", b"1; mode=block"),
     (b"cache-control", b"no-store"),
     (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+    (b"strict-transport-security", b"max-age=63072000; includeSubDomains"),
 ]
 
 
