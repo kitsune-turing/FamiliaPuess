@@ -480,6 +480,21 @@ CREATE INDEX idx_auditoria_timestamp ON auditoria(timestamp_accion DESC);
 CREATE INDEX idx_auditoria_operacion ON auditoria(operacion, timestamp_accion DESC);
 
 -- ============================================================================
+-- 6B. REPORTE SEMANAL
+-- ============================================================================
+
+CREATE TABLE reporte_semanal (
+    id               SERIAL          PRIMARY KEY,
+    fecha_inicio     DATE            NOT NULL,
+    fecha_fin        DATE            NOT NULL,
+    total_registros  INTEGER         NOT NULL DEFAULT 0,
+    total_novedades  INTEGER         NOT NULL DEFAULT 0,
+    created_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_reporte_semanal_periodo UNIQUE (fecha_inicio, fecha_fin)
+);
+COMMENT ON TABLE reporte_semanal IS 'Reportes semanales de asistencia generados automaticamente.';
+
+-- ============================================================================
 -- 7. TRIGGERS - updated_at automatico
 -- ============================================================================
 
