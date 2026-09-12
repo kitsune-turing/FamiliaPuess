@@ -157,9 +157,12 @@ export function RegistroPage() {
                 className="field-group__input"
                 type="text"
                 inputMode="numeric"
+                pattern="[0-9A-Za-z\-]{4,30}"
+                maxLength={30}
+                minLength={4}
                 placeholder="1234567819"
                 value={documento}
-                onChange={(e) => setDocumento(e.target.value)}
+                onChange={(e) => setDocumento(e.target.value.replace(/[^0-9A-Za-z-]/g, ""))}
                 required
                 disabled={isSubmitting}
                 autoComplete="off"
@@ -177,9 +180,12 @@ export function RegistroPage() {
                 id="codigo"
                 className="field-group__input"
                 type="text"
+                pattern="[A-Z0-9]{4,10}"
+                maxLength={10}
+                minLength={4}
                 placeholder="7K2P9A"
                 value={codigoAlfa}
-                onChange={(e) => setCodigoAlfa(e.target.value.toUpperCase())}
+                onChange={(e) => setCodigoAlfa(e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase())}
                 required
                 disabled={isSubmitting}
                 autoComplete="off"
