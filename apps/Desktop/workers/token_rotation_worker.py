@@ -21,6 +21,7 @@ from apps.Desktop.api.token_client import (
 INTERVALO_POR_DEFECTO_SEGUNDOS = 30
 INTERVALO_POLLING_INACTIVO_SEGUNDOS = 15
 INTERVALO_FUERA_HORARIO_SEGUNDOS = 300
+INTERVALO_CHECK_USADO_SEGUNDOS = 3
 
 
 class TokenRotationWorker(QObject):
@@ -41,18 +42,45 @@ class TokenRotationWorker(QObject):
         self._fallback_interval_seconds = fallback_interval_seconds
         self._polling_inactive = False
         self._fuera_horario = False
+        self._current_token_value: str | None = None
 
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._rotar)
+
+        self._usage_timer = QTimer(self)
+        self._usage_timer.timeout.connect(self._check_token_used)
 
     def start(self) -> None:
         self._rotar()
 
     def stop(self) -> None:
         self._timer.stop()
+        self._usage_timer.stop()
+
+    def _start_usage_polling(self) -> None:
+        self._usage_timer.start(INTERVALO_CHECK_USADO_SEGUNDOS * 1000)
+
+    def _stop_usage_polling(self) -> None:
+        self._usage_timer.stop()
+
+    def _check_token_used(self) -> None:
+        if not self._current_token_value:
+            return
+        try:
+            used = self._client.check_token_used(self._current_token_value)
+        except Exception:
+            return
+        if used:
+            logger.info("Token consumed by registration, rotating immediately")
+            self._stop_usage_polling()
+            self._timer.stop()
+            self._rotar()
 
     def _rotar(self) -> None:
+        self._stop_usage_polling()
+        self._current_token_value = None
+
         if self._polling_inactive:
             self._check_activation()
             return
@@ -91,9 +119,11 @@ class TokenRotationWorker(QObject):
             return
 
         self._fuera_horario = False
+        self._current_token_value = recibido.token
         logger.info("Token recibido: %s (expira %s)", recibido.codigo_alfa, recibido.expira_en)
         self.token_ready.emit(recibido)
         self._programar(self._next_interval_seconds(recibido))
+        self._start_usage_polling()
 
     def _check_horario(self) -> None:
         try:

@@ -165,3 +165,17 @@ class TokenClient:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise TokenClientError(f"Respuesta inesperada de la API: {error}") from error
+
+    def check_token_used(self, token_value: str) -> bool:
+        """Returns True if the token has been consumed by a registration."""
+        try:
+            respuesta = httpx.get(
+                f"{self._base_url}/desktop/tokens/{token_value}/used",
+                headers=self._headers(),
+                timeout=self._timeout,
+            )
+            if respuesta.status_code == 200:
+                return respuesta.json().get("used", False)
+        except httpx.HTTPError:
+            pass
+        return False
