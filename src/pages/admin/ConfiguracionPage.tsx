@@ -19,6 +19,7 @@ export function ConfiguracionPage() {
   const [toleranciaMin, setToleranciaMin] = useState("");
   const [duracionQr, setDuracionQr] = useState("");
   const [exigirCodigo, setExigirCodigo] = useState(false);
+  const [exigirSalida, setExigirSalida] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -30,6 +31,7 @@ export function ConfiguracionPage() {
       setToleranciaMin(v.TOLERANCIA_MIN ?? "");
       setDuracionQr(v.QR_EXPIRACION_SEG ?? "");
       setExigirCodigo(v.EXIGIR_CODIGO === "true");
+      setExigirSalida(v.EXIGIR_SALIDA === "true");
     } catch {
       mostrar("No se pudo cargar la configuración.", "error");
     } finally {
@@ -52,6 +54,7 @@ export function ConfiguracionPage() {
         TOLERANCIA_MIN: toleranciaMin,
         QR_EXPIRACION_SEG: duracionQr,
         EXIGIR_CODIGO: exigirCodigo ? "true" : "false",
+        EXIGIR_SALIDA: exigirSalida ? "true" : "false",
       });
       mostrar("Configuración guardada.");
     } catch {
@@ -161,6 +164,16 @@ export function ConfiguracionPage() {
               </p>
             </div>
             <Switch marcado={exigirCodigo} etiqueta="Exigir código alfanumérico" alCambiar={setExigirCodigo} />
+          </div>
+          <div className="setting-row" style={{ marginTop: 12 }}>
+            <div>
+              <p className="setting-row__label">Exigir registro de salida</p>
+              <p className="setting-row__hint">
+                El trabajador debe registrar tanto su entrada como su salida cada día.
+                Si está desactivado, solo se requiere el registro de entrada.
+              </p>
+            </div>
+            <Switch marcado={exigirSalida} etiqueta="Exigir registro de salida" alCambiar={setExigirSalida} />
           </div>
         </div>
       </Card>
