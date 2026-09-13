@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal, Slot
 
 logger = logging.getLogger("desktop.worker")
 
@@ -22,6 +22,29 @@ INTERVALO_POR_DEFECTO_SEGUNDOS = 30
 INTERVALO_POLLING_INACTIVO_SEGUNDOS = 15
 INTERVALO_FUERA_HORARIO_SEGUNDOS = 300
 INTERVALO_CHECK_USADO_SEGUNDOS = 3
+
+
+class _UsageCheckSignals(QObject):
+    used = Signal()
+
+
+class _UsageCheckRunnable(QRunnable):
+    """Checks token usage in a background thread to avoid blocking the UI."""
+
+    def __init__(self, client, token_value: str) -> None:
+        super().__init__()
+        self.signals = _UsageCheckSignals()
+        self._client = client
+        self._token_value = token_value
+        self.setAutoDelete(True)
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            if self._client.check_token_used(self._token_value):
+                self.signals.used.emit()
+        except Exception:
+            pass
 
 
 class TokenRotationWorker(QObject):
@@ -43,13 +66,16 @@ class TokenRotationWorker(QObject):
         self._polling_inactive = False
         self._fuera_horario = False
         self._current_token_value: str | None = None
+        self._checking = False
 
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._rotar)
 
         self._usage_timer = QTimer(self)
-        self._usage_timer.timeout.connect(self._check_token_used)
+        self._usage_timer.timeout.connect(self._dispatch_usage_check)
+
+        self._pool = QThreadPool.globalInstance()
 
     def start(self) -> None:
         self._rotar()
@@ -59,23 +85,35 @@ class TokenRotationWorker(QObject):
         self._usage_timer.stop()
 
     def _start_usage_polling(self) -> None:
+        self._checking = False
         self._usage_timer.start(INTERVALO_CHECK_USADO_SEGUNDOS * 1000)
 
     def _stop_usage_polling(self) -> None:
         self._usage_timer.stop()
+        self._checking = False
 
-    def _check_token_used(self) -> None:
+    def _dispatch_usage_check(self) -> None:
+        if not self._current_token_value or self._checking:
+            return
+        self._checking = True
+        runnable = _UsageCheckRunnable(self._client, self._current_token_value)
+        runnable.signals.used.connect(self._on_token_used)
+        self._pool.start(runnable)
+        # Reset _checking after a short delay so next timer tick can dispatch
+        QTimer.singleShot(2000, self._reset_checking)
+
+    def _reset_checking(self) -> None:
+        self._checking = False
+
+    @Slot()
+    def _on_token_used(self) -> None:
         if not self._current_token_value:
             return
-        try:
-            used = self._client.check_token_used(self._current_token_value)
-        except Exception:
-            return
-        if used:
-            logger.info("Token consumed by registration, rotating immediately")
-            self._stop_usage_polling()
-            self._timer.stop()
-            self._rotar()
+        logger.info("Token consumido por un registro, rotando inmediatamente")
+        self._stop_usage_polling()
+        self._timer.stop()
+        self._current_token_value = None
+        self._rotar()
 
     def _rotar(self) -> None:
         self._stop_usage_polling()
