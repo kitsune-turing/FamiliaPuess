@@ -7,6 +7,8 @@ class TokenValidarResponse(BaseModel):
     token: str
     sede_nombre: str
     exigir_codigo: bool
+    exigir_salida: bool
+    tipo_registro: str
 
 
 class RegistroRequest(BaseModel):
@@ -20,3 +22,4 @@ class RegistroResponse(BaseModel):
     empleado_nombre: str
     sede_nombre: str
     registrado_en: datetime
+    tipo_registro: str

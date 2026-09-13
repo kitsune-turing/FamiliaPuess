@@ -24,6 +24,7 @@ _CLAVES_EDITABLES = [
     ConfigClave.TOLERANCIA_MIN,
     ConfigClave.QR_EXPIRACION_SEG,
     ConfigClave.EXIGIR_CODIGO,
+    ConfigClave.EXIGIR_SALIDA,
 ]
 
 

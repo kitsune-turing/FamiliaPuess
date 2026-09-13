@@ -22,6 +22,8 @@ async def validar_token(
         token=resultado.token,
         sede_nombre=resultado.sede_nombre,
         exigir_codigo=resultado.exigir_codigo,
+        exigir_salida=resultado.exigir_salida,
+        tipo_registro=resultado.tipo_registro,
     )
 
 
@@ -45,4 +47,5 @@ async def registrar_asistencia(
         empleado_nombre=resultado.empleado_nombre,
         sede_nombre=resultado.sede_nombre,
         registrado_en=resultado.registrado_en,
+        tipo_registro=resultado.tipo_registro,
     )

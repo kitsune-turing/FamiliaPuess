@@ -16,6 +16,7 @@ from apps.API.utils.codigo_generator import generate_codigo
 from apps.API.utils.token_generator import generate_token_value
 from shared.constants.estado import EstadoCodigo
 from shared.constants.estado_token import EstadoTokenCodigo
+from shared.constants.tipo_registro import TipoRegistroCodigo
 from shared.exceptions.device import (
     DispositivoNoAutorizadoError,
     DispositivoNoEncontradoError,
@@ -26,6 +27,12 @@ CLAVE_QR_EXPIRACION_SEG = "QR_EXPIRACION_SEG"
 CLAVE_CODIGO_LONGITUD = "CODIGO_LONGITUD"
 CLAVE_CODIGO_FORMATO = "CODIGO_FORMATO"
 CLAVE_EXIGIR_CODIGO = "EXIGIR_CODIGO"
+CLAVE_EXIGIR_SALIDA = "EXIGIR_SALIDA"
+
+
+async def _leer_bool(session: AsyncSession, clave: str) -> bool:
+    raw = await config_general_repository.get_valor(session, clave)
+    return raw.lower() in ("true", "1", "si", "sí")
 
 
 @dataclass(frozen=True)
@@ -35,6 +42,8 @@ class TokenGenerado:
     generado_en: datetime
     expira_en: datetime
     exigir_codigo: bool
+    exigir_salida: bool
+    tipo_registro: str
 
 
 async def generate_token(session: AsyncSession, dispositivo_identificador: str) -> TokenGenerado:
@@ -53,6 +62,7 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         raise DispositivoNoAutorizadoError(dispositivo_identificador)
 
     ahora = timezone.now()
+    exigir_salida = await _leer_bool(session, CLAVE_EXIGIR_SALIDA)
 
     horarios = await horario_repository.get_all(
         session,
@@ -60,13 +70,28 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         solo_vigentes=True,
         fecha_referencia=ahora.date(),
     )
+
+    tipo_registro = TipoRegistroCodigo.ENTRADA
     if horarios:
-        dentro_de_ventana = any(
-            ahora <= datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
-            + timedelta(minutes=h.tolerancia_min)
-            for h in horarios
-        )
-        if not dentro_de_ventana:
+        en_ventana_entrada = False
+        en_ventana_salida = False
+        for h in horarios:
+            entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
+            limite_entrada = entrada_dt + timedelta(minutes=h.tolerancia_min)
+            if ahora <= limite_entrada:
+                en_ventana_entrada = True
+
+            if exigir_salida and h.hora_salida is not None:
+                salida_dt = datetime.combine(ahora.date(), h.hora_salida, tzinfo=ahora.tzinfo)
+                limite_salida = salida_dt + timedelta(minutes=h.tolerancia_min)
+                if entrada_dt < ahora <= limite_salida:
+                    en_ventana_salida = True
+
+        if en_ventana_entrada:
+            tipo_registro = TipoRegistroCodigo.ENTRADA
+        elif en_ventana_salida:
+            tipo_registro = TipoRegistroCodigo.SALIDA
+        else:
             raise FueraDeHorarioError(dispositivo_identificador)
 
     expiracion_seg = int(
@@ -77,8 +102,7 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
     )
     codigo_formato = await config_general_repository.get_valor(session, CLAVE_CODIGO_FORMATO)
 
-    exigir_codigo_raw = await config_general_repository.get_valor(session, CLAVE_EXIGIR_CODIGO)
-    exigir_codigo = exigir_codigo_raw.lower() in ("true", "1", "si", "sí")
+    exigir_codigo = await _leer_bool(session, CLAVE_EXIGIR_CODIGO)
 
     expira_en = ahora + timedelta(seconds=expiracion_seg)
 
@@ -106,4 +130,6 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         generado_en=ahora,
         expira_en=expira_en,
         exigir_codigo=exigir_codigo,
+        exigir_salida=exigir_salida,
+        tipo_registro=tipo_registro,
     )

@@ -13,3 +13,5 @@ class TokenGenerarResponse(BaseModel):
     generado_en: datetime
     expira_en: datetime
     exigir_codigo: bool
+    exigir_salida: bool
+    tipo_registro: str

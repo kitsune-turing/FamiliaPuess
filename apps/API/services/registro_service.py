@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from apps.API.repositories import (
     cat_tipo_registro_repository,
     config_general_repository,
     empleado_repository,
+    horario_repository,
     token_qr_repository,
 )
 from shared.constants.estado import EstadoCodigo
@@ -31,11 +32,38 @@ from shared.exceptions.registration import (
 
 TOKEN_MIN_LENGTH = 10
 CLAVE_EXIGIR_CODIGO = "EXIGIR_CODIGO"
+CLAVE_EXIGIR_SALIDA = "EXIGIR_SALIDA"
 
 
-async def _leer_exigir_codigo(session: AsyncSession) -> bool:
-    raw = await config_general_repository.get_valor(session, CLAVE_EXIGIR_CODIGO)
+async def _leer_bool(session: AsyncSession, clave: str) -> bool:
+    raw = await config_general_repository.get_valor(session, clave)
     return raw.lower() in ("true", "1", "si", "sí")
+
+
+def _determinar_tipo_registro(
+    ahora: datetime,
+    horarios,
+    exigir_salida: bool,
+) -> str:
+    """Determines whether the current time falls in an entry or exit window."""
+    if not exigir_salida or not horarios:
+        return TipoRegistroCodigo.ENTRADA
+
+    for h in horarios:
+        entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
+        limite_entrada = entrada_dt + timedelta(minutes=h.tolerancia_min)
+        if ahora <= limite_entrada:
+            return TipoRegistroCodigo.ENTRADA
+
+    for h in horarios:
+        if h.hora_salida is not None:
+            salida_dt = datetime.combine(ahora.date(), h.hora_salida, tzinfo=ahora.tzinfo)
+            limite_salida = salida_dt + timedelta(minutes=h.tolerancia_min)
+            entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
+            if entrada_dt < ahora <= limite_salida:
+                return TipoRegistroCodigo.SALIDA
+
+    return TipoRegistroCodigo.ENTRADA
 
 
 @dataclass(frozen=True)
@@ -43,6 +71,8 @@ class TokenValidado:
     token: str
     sede_nombre: str
     exigir_codigo: bool
+    exigir_salida: bool
+    tipo_registro: str
 
 
 @dataclass(frozen=True)
@@ -50,10 +80,10 @@ class RegistroExitoso:
     empleado_nombre: str
     sede_nombre: str
     registrado_en: datetime
+    tipo_registro: str
 
 
 async def validar_token(session: AsyncSession, token_value: str) -> TokenValidado:
-    """Validates token for initial page access (HU-REG-001, 002, 003)."""
     if not token_value or len(token_value) < TOKEN_MIN_LENGTH:
         raise TokenFormatoInvalidoError()
 
@@ -76,8 +106,24 @@ async def validar_token(session: AsyncSession, token_value: str) -> TokenValidad
     if sede is None or sede.id_estado != activo_id:
         raise SedeNoDisponibleError()
 
-    exigir_codigo = await _leer_exigir_codigo(session)
-    return TokenValidado(token=token_value, sede_nombre=sede.nombre, exigir_codigo=exigir_codigo)
+    exigir_codigo = await _leer_bool(session, CLAVE_EXIGIR_CODIGO)
+    exigir_salida = await _leer_bool(session, CLAVE_EXIGIR_SALIDA)
+
+    horarios = await horario_repository.get_all(
+        session,
+        id_sede=sede.id,
+        solo_vigentes=True,
+        fecha_referencia=ahora.date(),
+    )
+    tipo_registro = _determinar_tipo_registro(ahora, horarios, exigir_salida)
+
+    return TokenValidado(
+        token=token_value,
+        sede_nombre=sede.nombre,
+        exigir_codigo=exigir_codigo,
+        exigir_salida=exigir_salida,
+        tipo_registro=tipo_registro,
+    )
 
 
 async def registrar_asistencia(
@@ -87,7 +133,6 @@ async def registrar_asistencia(
     documento: str,
     codigo_alfa: str,
 ) -> RegistroExitoso:
-    """Full registration flow (HU-REG-008 through 013)."""
     if not token_value or len(token_value) < TOKEN_MIN_LENGTH:
         raise TokenFormatoInvalidoError()
 
@@ -118,7 +163,7 @@ async def registrar_asistencia(
     if empleado.id_estado != activo_id:
         raise EmpleadoInactivoError()
 
-    exigir_codigo = await _leer_exigir_codigo(session)
+    exigir_codigo = await _leer_bool(session, CLAVE_EXIGIR_CODIGO)
     if exigir_codigo and token_qr.codigo_alfa != codigo_alfa:
         raise CodigoAlfaInvalidoError()
 
@@ -139,8 +184,17 @@ async def registrar_asistencia(
     if not consumed:
         raise TokenConsumidoError()
 
-    tipo_entrada_id = await cat_tipo_registro_repository.get_tipo_registro_id(
-        session, TipoRegistroCodigo.ENTRADA
+    exigir_salida = await _leer_bool(session, CLAVE_EXIGIR_SALIDA)
+    horarios = await horario_repository.get_all(
+        session,
+        id_sede=token_qr.dispositivo.id_sede,
+        solo_vigentes=True,
+        fecha_referencia=ahora.date(),
+    )
+    tipo_codigo = _determinar_tipo_registro(ahora, horarios, exigir_salida)
+
+    tipo_id = await cat_tipo_registro_repository.get_tipo_registro_id(
+        session, tipo_codigo
     )
 
     fecha_hoy = ahora.date()
@@ -149,7 +203,7 @@ async def registrar_asistencia(
         session,
         id_empleado=empleado.id,
         fecha=fecha_hoy,
-        id_tipo_registro=tipo_entrada_id,
+        id_tipo_registro=tipo_id,
     )
     if duplicado is not None:
         raise AsistenciaDuplicadaError(
@@ -162,7 +216,7 @@ async def registrar_asistencia(
             session,
             id_empleado=empleado.id,
             id_token_qr=token_qr.id,
-            id_tipo_registro=tipo_entrada_id,
+            id_tipo_registro=tipo_id,
             id_sede=token_qr.dispositivo.id_sede,
             fecha_registro=fecha_hoy,
             registrado_en=ahora,
@@ -177,4 +231,5 @@ async def registrar_asistencia(
         empleado_nombre=f"{empleado.nombre} {empleado.apellido}",
         sede_nombre=sede.nombre,
         registrado_en=ahora,
+        tipo_registro=tipo_codigo,
     )
