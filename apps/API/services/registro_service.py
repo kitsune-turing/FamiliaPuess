@@ -10,6 +10,7 @@ from apps.API.repositories import (
     cat_estado_repository,
     cat_estado_token_repository,
     cat_tipo_registro_repository,
+    config_general_repository,
     empleado_repository,
     token_qr_repository,
 )
@@ -29,12 +30,19 @@ from shared.exceptions.registration import (
 )
 
 TOKEN_MIN_LENGTH = 10
+CLAVE_EXIGIR_CODIGO = "EXIGIR_CODIGO"
+
+
+async def _leer_exigir_codigo(session: AsyncSession) -> bool:
+    raw = await config_general_repository.get_valor(session, CLAVE_EXIGIR_CODIGO)
+    return raw.lower() in ("true", "1", "si", "sí")
 
 
 @dataclass(frozen=True)
 class TokenValidado:
     token: str
     sede_nombre: str
+    exigir_codigo: bool
 
 
 @dataclass(frozen=True)
@@ -68,7 +76,8 @@ async def validar_token(session: AsyncSession, token_value: str) -> TokenValidad
     if sede is None or sede.id_estado != activo_id:
         raise SedeNoDisponibleError()
 
-    return TokenValidado(token=token_value, sede_nombre=sede.nombre)
+    exigir_codigo = await _leer_exigir_codigo(session)
+    return TokenValidado(token=token_value, sede_nombre=sede.nombre, exigir_codigo=exigir_codigo)
 
 
 async def registrar_asistencia(
@@ -109,7 +118,8 @@ async def registrar_asistencia(
     if empleado.id_estado != activo_id:
         raise EmpleadoInactivoError()
 
-    if token_qr.codigo_alfa != codigo_alfa:
+    exigir_codigo = await _leer_exigir_codigo(session)
+    if exigir_codigo and token_qr.codigo_alfa != codigo_alfa:
         raise CodigoAlfaInvalidoError()
 
     if token_qr.dispositivo.id_estado != activo_id:

@@ -25,6 +25,7 @@ from shared.exceptions.device import (
 CLAVE_QR_EXPIRACION_SEG = "QR_EXPIRACION_SEG"
 CLAVE_CODIGO_LONGITUD = "CODIGO_LONGITUD"
 CLAVE_CODIGO_FORMATO = "CODIGO_FORMATO"
+CLAVE_EXIGIR_CODIGO = "EXIGIR_CODIGO"
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class TokenGenerado:
     codigo_alfa: str
     generado_en: datetime
     expira_en: datetime
+    exigir_codigo: bool
 
 
 async def generate_token(session: AsyncSession, dispositivo_identificador: str) -> TokenGenerado:
@@ -75,10 +77,13 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
     )
     codigo_formato = await config_general_repository.get_valor(session, CLAVE_CODIGO_FORMATO)
 
+    exigir_codigo_raw = await config_general_repository.get_valor(session, CLAVE_EXIGIR_CODIGO)
+    exigir_codigo = exigir_codigo_raw.lower() in ("true", "1", "si", "sí")
+
     expira_en = ahora + timedelta(seconds=expiracion_seg)
 
     token_value = generate_token_value()
-    codigo_alfa = generate_codigo(codigo_formato, codigo_longitud)
+    codigo_alfa = generate_codigo(codigo_formato, codigo_longitud) if exigir_codigo else ""
 
     estado_token_activo_id = await cat_estado_token_repository.get_estado_token_id(
         session, EstadoTokenCodigo.ACTIVO
@@ -100,4 +105,5 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         codigo_alfa=codigo_alfa,
         generado_en=ahora,
         expira_en=expira_en,
+        exigir_codigo=exigir_codigo,
     )

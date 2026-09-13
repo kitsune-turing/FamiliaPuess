@@ -102,6 +102,7 @@ async def generar_token(
         codigo_alfa=generado.codigo_alfa,
         generado_en=generado.generado_en,
         expira_en=generado.expira_en,
+        exigir_codigo=generado.exigir_codigo,
     )
 
 

@@ -21,6 +21,7 @@ async def validar_token(
     return TokenValidarResponse(
         token=resultado.token,
         sede_nombre=resultado.sede_nombre,
+        exigir_codigo=resultado.exigir_codigo,
     )
 
 

@@ -12,3 +12,4 @@ class TokenGenerarResponse(BaseModel):
     codigo_alfa: str
     generado_en: datetime
     expira_en: datetime
+    exigir_codigo: bool
