@@ -643,6 +643,10 @@ export async function activarDispositivo(id: number): Promise<DispositivoApi> {
   return peticion<DispositivoApi>(`/dispositivos/${id}/activar`, { method: "POST" });
 }
 
+export async function desactivarDispositivo(id: number): Promise<DispositivoApi> {
+  return peticion<DispositivoApi>(`/dispositivos/${id}/desactivar`, { method: "POST" });
+}
+
 /* ----------------------------------------------------------- Usuarios --- */
 
 export interface UsuarioApi {
@@ -852,7 +856,7 @@ export interface HorarioApi {
 }
 
 export async function listarHorarios(): Promise<{ items: HorarioApi[]; total: number }> {
-  return peticion<{ items: HorarioApi[]; total: number }>("/horarios?solo_vigentes=true");
+  return peticion<{ items: HorarioApi[]; total: number }>("/horarios");
 }
 
 export async function crearHorario(data: {

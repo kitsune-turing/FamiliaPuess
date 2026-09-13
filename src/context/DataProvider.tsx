@@ -23,6 +23,7 @@ import {
   actualizarDispositivo,
   eliminarDispositivoApi,
   activarDispositivo,
+  desactivarDispositivo,
   listarUsuarios,
   crearUsuario,
   actualizarUsuario,
@@ -449,10 +450,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const activado = await activarDispositivo(numId);
           setDispositivos((prev) => prev.map((d) => d.id === dispositivo.id ? mapDispositivo(activado) : d));
         } else {
-          await eliminarDispositivoApi(numId);
-          setDispositivos((prev) => prev.map((d) =>
-            d.id === dispositivo.id ? { ...d, activo: false, estado: "fuera_de_linea" } : d
-          ));
+          const desactivado = await desactivarDispositivo(numId);
+          setDispositivos((prev) => prev.map((d) => d.id === dispositivo.id ? mapDispositivo(desactivado) : d));
         }
         cargarDatos();
         return;
