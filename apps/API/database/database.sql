@@ -683,6 +683,7 @@ INSERT INTO config_general (categoria, clave, valor, tipo_dato, descripcion) VAL
     ('SISTEMA', 'TOLERANCIA_MIN',     '10',              'INTEGER', 'Tolerancia en minutos para registro de entrada'),
     ('SISTEMA', 'QR_EXPIRACION_SEG',  '30',              'INTEGER', 'Vigencia del QR en segundos (RF-085)'),
     ('SISTEMA', 'EXIGIR_CODIGO',      'false',           'BOOLEAN', 'Exigir codigo alfanumerico al registrarse'),
+    ('SISTEMA', 'EXIGIR_SALIDA',      'false',           'BOOLEAN', 'Exigir registro de salida'),
     ('SISTEMA', 'CODIGO_LONGITUD',    '6',               'INTEGER', 'Caracteres del codigo alfanumerico (RF-086)'),
     ('SISTEMA', 'CODIGO_FORMATO',     'ALFANUMERICO',    'STRING',  'Formato del codigo: NUMERICO, ALFABETICO, ALFANUMERICO (RF-087)'),
     ('SISTEMA', 'SESION_TIMEOUT_MIN', '15',              'INTEGER', 'Inactividad para cierre automatico (RF-088)'),
