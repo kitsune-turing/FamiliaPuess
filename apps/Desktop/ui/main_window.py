@@ -233,14 +233,13 @@ class DesktopMainWindow(QWidget):
         logos.setStyleSheet("background: transparent;")
         caja.addWidget(logos)
 
-        caja.addWidget(
-            _etiqueta(
-                "Código de validación",
-                f"color: {CAFE_OSCURO}; font-size: 14px; font-weight: 700;"
-                " background: transparent;",
-                centrado,
-            )
+        self._codigo_titulo = _etiqueta(
+            "Código de validación",
+            f"color: {CAFE_OSCURO}; font-size: 14px; font-weight: 700;"
+            " background: transparent;",
+            centrado,
         )
+        caja.addWidget(self._codigo_titulo)
 
         self._codigo_label = QLabel("--------")
         self._codigo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -357,7 +356,15 @@ class DesktopMainWindow(QWidget):
         self._qr_label.setPixmap(
             build_qr_pixmap(token.token, self._registro_publico_url, TAMANO_QR)
         )
-        self._codigo_label.setText(token.codigo_alfa)
+
+        if token.exigir_codigo:
+            self._codigo_titulo.setVisible(True)
+            self._codigo_label.setVisible(True)
+            self._codigo_label.setText(token.codigo_alfa)
+        else:
+            self._codigo_titulo.setVisible(False)
+            self._codigo_label.setVisible(False)
+
         self._segundos_restantes = self._segundos_hasta_expiracion(token)
         self._fijar_texto_temporizador(self._segundos_restantes)
 

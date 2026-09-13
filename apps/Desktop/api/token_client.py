@@ -38,6 +38,7 @@ class TokenRecibido:
     codigo_alfa: str
     generado_en: datetime
     expira_en: datetime
+    exigir_codigo: bool
 
 
 @dataclass(frozen=True)
@@ -162,6 +163,7 @@ class TokenClient:
                 codigo_alfa=datos["codigo_alfa"],
                 generado_en=datetime.fromisoformat(datos["generado_en"]),
                 expira_en=datetime.fromisoformat(datos["expira_en"]),
+                exigir_codigo=datos.get("exigir_codigo", True),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise TokenClientError(f"Respuesta inesperada de la API: {error}") from error
