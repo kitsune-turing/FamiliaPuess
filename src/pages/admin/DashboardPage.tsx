@@ -13,7 +13,6 @@ import {
   MonitorIcon,
   FileIcon,
   PlusIcon,
-  UploadIcon,
   UsersIcon,
 } from "../../components/ui/Icons";
 import { useAuth } from "../../context/AuthProvider";
@@ -217,13 +216,6 @@ export function DashboardPage() {
               onClick={() => navegar("/panel/trabajadores?nuevo=1")}
             >
               <PlusIcon size={20} /> Registrar trabajador
-            </button>
-            <button
-              type="button"
-              className="btn btn--soft"
-              onClick={() => navegar("/panel/trabajadores?importar=1")}
-            >
-              <UploadIcon size={20} /> Importar trabajadores
             </button>
             <button type="button" className="btn btn--soft" onClick={() => navegar("/panel/reportes")}>
               <FileIcon size={20} /> Generar reporte

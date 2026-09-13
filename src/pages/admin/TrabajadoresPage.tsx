@@ -11,7 +11,7 @@ import {
   Switch,
   TextField,
 } from "../../components/ui";
-import { DownloadIcon, EditIcon, PlusIcon, TrashIcon, UploadIcon } from "../../components/ui/Icons";
+import { DownloadIcon, EditIcon, PlusIcon, TrashIcon } from "../../components/ui/Icons";
 import { useDatos } from "../../context/DataProvider";
 import { useToast } from "../../context/ToastProvider";
 import { usePaginacion } from "../../hooks";
@@ -41,18 +41,12 @@ export function TrabajadoresPage() {
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<Trabajador | null>(null);
   const [aEliminar, setAEliminar] = useState<Trabajador | null>(null);
-  const [importando, setImportando] = useState(false);
   const [errores, setErrores] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (parametros.get("nuevo")) {
       setEditando({ ...VACIO });
       parametros.delete("nuevo");
-      setParametros(parametros, { replace: true });
-    }
-    if (parametros.get("importar")) {
-      setImportando(true);
-      parametros.delete("importar");
       setParametros(parametros, { replace: true });
     }
   }, [parametros, setParametros]);
@@ -119,9 +113,6 @@ export function TrabajadoresPage() {
             placeholder="Buscar trabajador"
             etiquetaAccesible="Buscar trabajador por nombre, documento o cargo"
           />
-          <button type="button" className="btn btn--ghost" onClick={() => setImportando(true)}>
-            <UploadIcon size={20} /> Importar
-          </button>
           <button
             type="button"
             className="btn btn--primary"
@@ -268,41 +259,6 @@ export function TrabajadoresPage() {
             </div>
           </>
         ) : null}
-      </Modal>
-
-      <Modal
-        abierto={importando}
-        titulo="Importar trabajadores"
-        subtitulo="Carga un archivo CSV con las columnas: nombre, documento, sede, cargo, correo."
-        alCerrar={() => setImportando(false)}
-        pie={
-          <>
-            <button type="button" className="btn btn--neutral" onClick={() => setImportando(false)}>
-              Cancelar
-            </button>
-            <button type="button" className="btn btn--primary" onClick={exportar}>
-              Descargar plantilla
-            </button>
-          </>
-        }
-      >
-        <input
-          type="file"
-          accept=".csv"
-          className="input"
-          style={{ paddingTop: 11 }}
-          aria-label="Archivo CSV"
-          onChange={(e) => {
-            const archivo = e.target.files?.[0];
-            if (archivo) {
-              mostrar(`Archivo "${archivo.name}" listo para procesar.`, "info");
-              setImportando(false);
-            }
-          }}
-        />
-        <p style={{ fontSize: 13.5, color: "var(--fp-text-muted)", lineHeight: 1.6 }}>
-          Los registros duplicados por documento se actualizan en lugar de crearse de nuevo.
-        </p>
       </Modal>
 
       <ConfirmDialog

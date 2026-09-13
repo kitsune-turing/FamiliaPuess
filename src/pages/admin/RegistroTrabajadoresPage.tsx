@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Badge,
@@ -19,7 +19,6 @@ import {
   EyeIcon,
   MoreIcon,
   PlusIcon,
-  UploadIcon,
   UserCheckIcon,
   UsersIcon,
 } from "../../components/ui/Icons";
@@ -105,7 +104,6 @@ export function RegistroTrabajadoresPage() {
     useDatos();
   const { mostrar } = useToast();
   const [parametros, setParametros] = useSearchParams();
-  const inputArchivo = useRef<HTMLInputElement | null>(null);
 
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<Trabajador | null>(null);
@@ -117,11 +115,6 @@ export function RegistroTrabajadoresPage() {
     if (parametros.get("nuevo")) {
       setEditando({ ...VACIO });
       parametros.delete("nuevo");
-      setParametros(parametros, { replace: true });
-    }
-    if (parametros.get("importar")) {
-      inputArchivo.current?.click();
-      parametros.delete("importar");
       setParametros(parametros, { replace: true });
     }
   }, [parametros, setParametros]);
@@ -195,19 +188,6 @@ export function RegistroTrabajadoresPage() {
 
   return (
     <>
-      <input
-        ref={inputArchivo}
-        type="file"
-        accept=".csv"
-        className="sr-only"
-        aria-label="Archivo CSV de trabajadores"
-        onChange={(e) => {
-          const archivo = e.target.files?.[0];
-          if (archivo) mostrar(`Archivo "${archivo.name}" listo para procesar.`, "info");
-          e.target.value = "";
-        }}
-      />
-
       {/* ------------------------------------------------------- Métricas -- */}
       <div className="stat-grid">
         <StatCard
@@ -242,9 +222,6 @@ export function RegistroTrabajadoresPage() {
             placeholder="Buscar trabajador"
             etiquetaAccesible="Buscar trabajador por nombre o documento"
           />
-          <button type="button" className="btn btn--ghost" onClick={() => inputArchivo.current?.click()}>
-            <UploadIcon size={20} /> Importar
-          </button>
           <button
             type="button"
             className="btn btn--primary"
