@@ -233,6 +233,15 @@ class DesktopMainWindow(QWidget):
         logos.setStyleSheet("background: transparent;")
         caja.addWidget(logos)
 
+        self._tipo_registro_label = _etiqueta(
+            "",
+            f"background: {ROSA}; color: {BLANCO}; border-radius: 14px;"
+            " font-size: 16px; font-weight: 700; letter-spacing: 2px; padding: 10px 24px;",
+            centrado,
+        )
+        self._tipo_registro_label.setVisible(False)
+        caja.addWidget(self._tipo_registro_label)
+
         self._codigo_titulo = _etiqueta(
             "Código de validación",
             f"color: {CAFE_OSCURO}; font-size: 14px; font-weight: 700;"
@@ -364,6 +373,20 @@ class DesktopMainWindow(QWidget):
         else:
             self._codigo_titulo.setVisible(False)
             self._codigo_label.setVisible(False)
+
+        if token.tipo_registro == "SALIDA":
+            self._tipo_registro_label.setText("REGISTRO DE SALIDA")
+            self._tipo_registro_label.setStyleSheet(
+                f"background: {AMARILLO}; color: {CAFE_OSCURO}; border-radius: 14px;"
+                " font-size: 16px; font-weight: 700; letter-spacing: 2px; padding: 10px 24px;"
+            )
+        else:
+            self._tipo_registro_label.setText("REGISTRO DE ENTRADA")
+            self._tipo_registro_label.setStyleSheet(
+                f"background: {ROSA}; color: {BLANCO}; border-radius: 14px;"
+                " font-size: 16px; font-weight: 700; letter-spacing: 2px; padding: 10px 24px;"
+            )
+        self._tipo_registro_label.setVisible(True)
 
         self._segundos_restantes = self._segundos_hasta_expiracion(token)
         self._fijar_texto_temporizador(self._segundos_restantes)
