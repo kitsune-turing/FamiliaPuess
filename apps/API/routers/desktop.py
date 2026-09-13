@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.database.session import get_session
 from apps.API.dependencies.desktop_auth import require_desktop_api_key
-from apps.API.repositories import cat_estado_repository, dispositivo_repository
+from apps.API.repositories import cat_estado_repository, dispositivo_repository, token_qr_repository
 from apps.API.schemas.dispositivos import DispositivoResponse
 from apps.API.schemas.token_qr import TokenGenerarRequest, TokenGenerarResponse
 from apps.API.services import dispositivos_service, token_service
@@ -17,6 +17,10 @@ router = APIRouter(prefix="/desktop", tags=["desktop"])
 class DesktopRegisterRequest(BaseModel):
     identificador: str = Field(..., min_length=5, max_length=255)
     descripcion: str | None = Field(None, max_length=255)
+
+
+class TokenUsedResponse(BaseModel):
+    used: bool
 
 
 class DesktopStatusResponse(BaseModel):
@@ -99,3 +103,19 @@ async def generar_token(
         generado_en=generado.generado_en,
         expira_en=generado.expira_en,
     )
+
+
+@router.get(
+    "/tokens/{token_value}/used",
+    response_model=TokenUsedResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def check_token_used(
+    token_value: str,
+    session: AsyncSession = Depends(get_session),
+    _api_key: str = Depends(require_desktop_api_key),
+) -> TokenUsedResponse:
+    token_qr = await token_qr_repository.get_by_token(session, token_value)
+    if token_qr is None:
+        return TokenUsedResponse(used=True)
+    return TokenUsedResponse(used=token_qr.consumido_en is not None)
