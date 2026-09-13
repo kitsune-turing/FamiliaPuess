@@ -264,12 +264,6 @@ async def finalizar_horario(
     if horario is None:
         raise HorarioNoEncontradoError(horario_id)
 
-    if horario.vigente_hasta is not None and horario.vigente_hasta < date.today():
-        return
-
-    hoy = date.today()
-    await horario_repository.set_vigente_hasta(session, horario_id, hoy)
-
     timestamp = tz_now()
 
     await auditoria_repository.create(
@@ -283,15 +277,14 @@ async def finalizar_horario(
             "nombre": horario.nombre,
             "hora_entrada": str(horario.hora_entrada),
             "tolerancia_min": horario.tolerancia_min,
+            "vigente_desde": str(horario.vigente_desde),
             "vigente_hasta": str(horario.vigente_hasta) if horario.vigente_hasta else None,
         },
-        valor_nuevo={"vigente_hasta": str(hoy)},
+        valor_nuevo=None,
         ip_address=ip_address,
         timestamp_accion=timestamp,
     )
 
-    logger.info(
-        "Horario finalizado: id=%d, vigente_hasta=%s",
-        horario_id,
-        hoy,
-    )
+    await horario_repository.hard_delete(session, horario_id)
+
+    logger.info("Horario eliminado: id=%d", horario_id)

@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import date, datetime, time
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -98,4 +98,9 @@ async def set_vigente_hasta(
         .where(Horario.id == horario_id)
         .values(vigente_hasta=vigente_hasta)
     )
+    await session.execute(stmt)
+
+
+async def hard_delete(session: AsyncSession, horario_id: int) -> None:
+    stmt = delete(Horario).where(Horario.id == horario_id)
     await session.execute(stmt)
