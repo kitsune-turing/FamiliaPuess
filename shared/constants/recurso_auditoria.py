@@ -12,3 +12,4 @@ class RecursoAuditoria:
     NOVEDAD = "NOVEDAD"
     REPORTE = "REPORTE"
     SEGURIDAD = "SEGURIDAD"
+    CATALOGO = "CATALOGO"

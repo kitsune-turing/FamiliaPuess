@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.API.core import timezone
 from apps.API.repositories import (
     asistencia_repository,
+    auditoria_repository,
     cat_estado_repository,
     cat_estado_token_repository,
     cat_tipo_registro_repository,
@@ -15,6 +16,8 @@ from apps.API.repositories import (
     horario_repository,
     token_qr_repository,
 )
+from shared.constants.operacion_auditoria import OperacionAuditoria
+from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.constants.estado import EstadoCodigo
 from shared.constants.estado_token import EstadoTokenCodigo
 from shared.constants.tipo_registro import TipoRegistroCodigo
@@ -212,7 +215,7 @@ async def registrar_asistencia(
         )
 
     try:
-        await asistencia_repository.create(
+        asistencia = await asistencia_repository.create(
             session,
             id_empleado=empleado.id,
             id_token_qr=token_qr.id,
@@ -226,6 +229,24 @@ async def registrar_asistencia(
             hora_anterior=ahora,
             sede_anterior=sede.nombre,
         )
+
+    await auditoria_repository.create(
+        session,
+        id_usuario=None,
+        recurso=RecursoAuditoria.ASISTENCIA,
+        id_recurso=str(asistencia.id),
+        operacion=OperacionAuditoria.INSERT,
+        detalle=f"{empleado.nombre} {empleado.apellido} - {tipo_codigo} en {sede.nombre}",
+        valor_nuevo={
+            "empleado_documento": documento,
+            "empleado_nombre": f"{empleado.nombre} {empleado.apellido}",
+            "sede": sede.nombre,
+            "tipo_registro": tipo_codigo,
+            "fecha": str(fecha_hoy),
+            "hora": ahora.strftime("%H:%M:%S"),
+        },
+        timestamp_accion=ahora,
+    )
 
     return RegistroExitoso(
         empleado_nombre=f"{empleado.nombre} {empleado.apellido}",
