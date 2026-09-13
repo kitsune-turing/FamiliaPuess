@@ -300,3 +300,42 @@ async def activate_dispositivo(
     logger.info("Dispositivo reactivado: id=%d", dispositivo_id)
     updated = await dispositivo_repository.get_by_id(session, dispositivo_id)
     return updated
+
+
+async def deactivate_dispositivo(
+    session: AsyncSession,
+    dispositivo_id: int,
+    *,
+    user_id: int,
+    ip_address: str | None = None,
+) -> Dispositivo:
+    dispositivo = await dispositivo_repository.get_by_id(session, dispositivo_id)
+    if dispositivo is None:
+        raise DispositivoNoEncontradoPorIdError(dispositivo_id)
+
+    inactivo_id = await cat_estado_repository.get_estado_id(
+        session, EstadoCodigo.INACTIVO
+    )
+
+    timestamp = tz_now()
+
+    await dispositivo_repository.update_dispositivo(
+        session, dispositivo_id, id_estado=inactivo_id, now=timestamp
+    )
+
+    await auditoria_repository.create(
+        session,
+        id_usuario=user_id,
+        recurso=RecursoAuditoria.DISPOSITIVO,
+        id_recurso=str(dispositivo_id),
+        operacion=OperacionAuditoria.UPDATE,
+        valor_anterior={"id_estado": dispositivo.id_estado},
+        valor_nuevo={"id_estado": inactivo_id},
+        detalle="Desactivacion de dispositivo",
+        ip_address=ip_address,
+        timestamp_accion=timestamp,
+    )
+
+    logger.info("Dispositivo desactivado: id=%d", dispositivo_id)
+    updated = await dispositivo_repository.get_by_id(session, dispositivo_id)
+    return updated

@@ -139,3 +139,23 @@ async def activate_dispositivo(
         ip_address=_extract_ip(request),
     )
     return DispositivoResponse.from_model(dispositivo)
+
+
+@router.post(
+    "/{dispositivo_id}/desactivar",
+    response_model=DispositivoResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def deactivate_dispositivo(
+    dispositivo_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: dict = Depends(require_permission("DISPOSITIVOS", "escribir")),
+) -> DispositivoResponse:
+    dispositivo = await dispositivos_service.deactivate_dispositivo(
+        session,
+        dispositivo_id,
+        user_id=int(current_user["sub"]),
+        ip_address=_extract_ip(request),
+    )
+    return DispositivoResponse.from_model(dispositivo)
