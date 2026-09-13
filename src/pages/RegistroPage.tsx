@@ -12,10 +12,10 @@ import "../styles/registro.css";
 type PageState =
   | { kind: "loading" }
   | { kind: "invalid"; message: string }
-  | { kind: "form"; token: string; sedeNombre: string }
-  | { kind: "submitting"; token: string; sedeNombre: string }
+  | { kind: "form"; token: string; sedeNombre: string; exigirCodigo: boolean }
+  | { kind: "submitting"; token: string; sedeNombre: string; exigirCodigo: boolean }
   | { kind: "success"; empleadoNombre: string; sedeNombre: string; registradoEn: string }
-  | { kind: "error"; message: string; token: string; sedeNombre: string };
+  | { kind: "error"; message: string; token: string; sedeNombre: string; exigirCodigo: boolean };
 
 function MazorcaDecorations() {
   return (
@@ -48,7 +48,7 @@ export function RegistroPage() {
     validarToken(token)
       .then((result) => {
         if (!cancelled) {
-          setState({ kind: "form", token: result.token, sedeNombre: result.sede_nombre });
+          setState({ kind: "form", token: result.token, sedeNombre: result.sede_nombre, exigirCodigo: result.exigir_codigo ?? true });
         }
       })
       .catch((err: Error) => {
@@ -65,10 +65,10 @@ export function RegistroPage() {
       e.preventDefault();
       if (state.kind !== "form" && state.kind !== "error") return;
 
-      const { token, sedeNombre } = state;
-      setState({ kind: "submitting", token, sedeNombre });
+      const { token, sedeNombre, exigirCodigo } = state;
+      setState({ kind: "submitting", token, sedeNombre, exigirCodigo });
 
-      registrarAsistencia({ token, documento, codigo_alfa: codigoAlfa })
+      registrarAsistencia({ token, documento, ...(exigirCodigo ? { codigo_alfa: codigoAlfa } : {}) })
         .then((result) => {
           setState({
             kind: "success",
@@ -81,7 +81,7 @@ export function RegistroPage() {
           });
         })
         .catch((err: Error) => {
-          setState({ kind: "error", message: err.message, token, sedeNombre });
+          setState({ kind: "error", message: err.message, token, sedeNombre, exigirCodigo });
         });
     },
     [state, documento, codigoAlfa],
@@ -132,6 +132,7 @@ export function RegistroPage() {
   }
 
   const formSede = state.sedeNombre;
+  const exigirCodigo = state.exigirCodigo;
   const isSubmitting = state.kind === "submitting";
 
   return (
@@ -170,28 +171,30 @@ export function RegistroPage() {
             </div>
           </div>
 
-          <div className="field-group">
-            <label className="field-group__label" htmlFor="codigo">
-              Codigo alfanumerico
-            </label>
-            <div className="field-group__input-wrapper">
-              <img src={keyIcon} alt="" className="field-group__icon field-group__icon--muted" />
-              <input
-                id="codigo"
-                className="field-group__input"
-                type="text"
-                pattern="[A-Z0-9]{4,10}"
-                maxLength={10}
-                minLength={4}
-                placeholder="7K2P9A"
-                value={codigoAlfa}
-                onChange={(e) => setCodigoAlfa(e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase())}
-                required
-                disabled={isSubmitting}
-                autoComplete="off"
-              />
+          {exigirCodigo && (
+            <div className="field-group">
+              <label className="field-group__label" htmlFor="codigo">
+                Codigo alfanumerico
+              </label>
+              <div className="field-group__input-wrapper">
+                <img src={keyIcon} alt="" className="field-group__icon field-group__icon--muted" />
+                <input
+                  id="codigo"
+                  className="field-group__input"
+                  type="text"
+                  pattern="[A-Z0-9]{4,10}"
+                  maxLength={10}
+                  minLength={4}
+                  placeholder="7K2P9A"
+                  value={codigoAlfa}
+                  onChange={(e) => setCodigoAlfa(e.target.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase())}
+                  required
+                  disabled={isSubmitting}
+                  autoComplete="off"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {state.kind === "error" && (
             <p className="registro-message__text" style={{ color: "#d32f2f", textAlign: "center" }}>
@@ -202,7 +205,7 @@ export function RegistroPage() {
           <button
             type="submit"
             className="registro-submit"
-            disabled={isSubmitting || !documento.trim() || !codigoAlfa.trim()}
+            disabled={isSubmitting || !documento.trim() || (exigirCodigo && !codigoAlfa.trim())}
           >
             <img src={arrowIcon} alt="" className="registro-submit__icon" />
             <span className="registro-submit__text">Registrar asistencia</span>

@@ -4,12 +4,13 @@ export interface TokenValidarResponse {
   token: string;
   sede_nombre: string;
   expira_en: string;
+  exigir_codigo: boolean;
 }
 
 export interface RegistroRequest {
   token: string;
   documento: string;
-  codigo_alfa: string;
+  codigo_alfa?: string;
 }
 
 export interface RegistroResponse {
