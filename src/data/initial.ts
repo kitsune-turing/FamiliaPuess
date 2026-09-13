@@ -78,13 +78,3 @@ export function todosLosPermisos(): string[] {
     ACCIONES_PERMISO.map((accion) => clavePermiso(modulo, accion.valor)),
   );
 }
-
-
-export const CREDENCIALES_DEMO = [
-  {
-    usuario: "admin@familiapuess.com",
-    clave: "admin123",
-    nombre: "Admin General",
-    rol: "Súper administrador",
-  },
-];

@@ -46,9 +46,6 @@ const CLAVE_SEDE = "fp_sede_activa";
  * inútil a `/auth/me`. Un token mal formado se trata como expirado.
  */
 function tokenExpirado(token: string): boolean {
-  // Los tokens de demostración no son JWT: se dan por válidos.
-  if (token.startsWith("demo-")) return false;
-
   try {
     const cuerpo = token.split(".")[1];
     if (!cuerpo) return true;

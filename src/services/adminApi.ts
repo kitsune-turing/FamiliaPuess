@@ -10,7 +10,6 @@
    un archivo `.env` y borrar el bloque de respaldo marcado más abajo.
    ========================================================================== */
 
-import { CREDENCIALES_DEMO } from "../data/initial";
 import type { PermisoModulo, Perfil, RolApi, UsuarioSesion } from "../types/admin";
 import type {
   RegistroRequest,
@@ -107,31 +106,9 @@ export async function iniciarSesion(
       throw new ErrorCredenciales(cuerpo?.detail ?? "Usuario o contraseña incorrectos.");
     } catch (error) {
       if (error instanceof ErrorCredenciales) throw error;
-      // Error de red: continúa con el respaldo de demostración.
+      throw new Error("No se pudo conectar con el servidor. Inténtalo de nuevo más tarde.");
     }
   }
-
-  // ---- Respaldo de demostración (eliminar al conectar la API) ------------
-  await new Promise((resolve) => window.setTimeout(resolve, 550));
-
-  const coincidencia = CREDENCIALES_DEMO.find(
-    (c) => c.usuario.toLowerCase() === usuario.trim().toLowerCase() && c.clave === clave,
-  );
-
-  if (!coincidencia) {
-    throw new ErrorCredenciales("Usuario o contraseña incorrectos. Verifica los datos e inténtalo de nuevo.");
-  }
-
-  return {
-    token: `demo-${Date.now()}`,
-    usuario: {
-      usuarioId: 1,
-      nombre: coincidencia.nombre,
-      username: coincidencia.usuario,
-      rolCodigo: coincidencia.rol === "Súper administrador" ? "SUPER_ADMIN" : "ADMIN",
-      rolNombre: coincidencia.rol,
-    },
-  };
 }
 
 /* --------------------------------------------------------- Persistencia -- */
