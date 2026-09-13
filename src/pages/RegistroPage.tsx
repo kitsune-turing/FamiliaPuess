@@ -12,10 +12,10 @@ import "../styles/registro.css";
 type PageState =
   | { kind: "loading" }
   | { kind: "invalid"; message: string }
-  | { kind: "form"; token: string; sedeNombre: string; exigirCodigo: boolean }
-  | { kind: "submitting"; token: string; sedeNombre: string; exigirCodigo: boolean }
-  | { kind: "success"; empleadoNombre: string; sedeNombre: string; registradoEn: string }
-  | { kind: "error"; message: string; token: string; sedeNombre: string; exigirCodigo: boolean };
+  | { kind: "form"; token: string; sedeNombre: string; exigirCodigo: boolean; tipoRegistro: string }
+  | { kind: "submitting"; token: string; sedeNombre: string; exigirCodigo: boolean; tipoRegistro: string }
+  | { kind: "success"; empleadoNombre: string; sedeNombre: string; registradoEn: string; tipoRegistro: string }
+  | { kind: "error"; message: string; token: string; sedeNombre: string; exigirCodigo: boolean; tipoRegistro: string };
 
 function MazorcaDecorations() {
   return (
@@ -25,6 +25,15 @@ function MazorcaDecorations() {
       <img src={mazorcaImg} alt="" className="mazorca mazorca--top-right" />
       <img src={mazorcaImg} alt="" className="mazorca mazorca--bottom-right" />
     </>
+  );
+}
+
+function TipoRegistroBadge({ tipo }: { tipo: string }) {
+  const esEntrada = tipo === "ENTRADA";
+  return (
+    <div className={`registro-tipo ${esEntrada ? "registro-tipo--entrada" : "registro-tipo--salida"}`}>
+      {esEntrada ? "Registro de entrada" : "Registro de salida"}
+    </div>
   );
 }
 
@@ -48,7 +57,13 @@ export function RegistroPage() {
     validarToken(token)
       .then((result) => {
         if (!cancelled) {
-          setState({ kind: "form", token: result.token, sedeNombre: result.sede_nombre, exigirCodigo: result.exigir_codigo ?? true });
+          setState({
+            kind: "form",
+            token: result.token,
+            sedeNombre: result.sede_nombre,
+            exigirCodigo: result.exigir_codigo ?? true,
+            tipoRegistro: result.tipo_registro ?? "ENTRADA",
+          });
         }
       })
       .catch((err: Error) => {
@@ -65,8 +80,8 @@ export function RegistroPage() {
       e.preventDefault();
       if (state.kind !== "form" && state.kind !== "error") return;
 
-      const { token, sedeNombre, exigirCodigo } = state;
-      setState({ kind: "submitting", token, sedeNombre, exigirCodigo });
+      const { token, sedeNombre, exigirCodigo, tipoRegistro } = state;
+      setState({ kind: "submitting", token, sedeNombre, exigirCodigo, tipoRegistro });
 
       registrarAsistencia({ token, documento, ...(exigirCodigo ? { codigo_alfa: codigoAlfa } : {}) })
         .then((result) => {
@@ -78,10 +93,11 @@ export function RegistroPage() {
               hour: "2-digit",
               minute: "2-digit",
             }),
+            tipoRegistro: result.tipo_registro ?? tipoRegistro,
           });
         })
         .catch((err: Error) => {
-          setState({ kind: "error", message: err.message, token, sedeNombre, exigirCodigo });
+          setState({ kind: "error", message: err.message, token, sedeNombre, exigirCodigo, tipoRegistro });
         });
     },
     [state, documento, codigoAlfa],
@@ -116,14 +132,16 @@ export function RegistroPage() {
   }
 
   if (state.kind === "success") {
+    const tipoTexto = state.tipoRegistro === "SALIDA" ? "salida" : "entrada";
     return (
       <div className="registro-page">
         <MazorcaDecorations />
         <div className="registro-message registro-message--error registro-message--success">
           <div className="registro-message__icon">&#10004;</div>
+          <TipoRegistroBadge tipo={state.tipoRegistro} />
           <h2 className="registro-message__title">Asistencia registrada</h2>
           <p className="registro-message__text">
-            {state.empleadoNombre}, su asistencia ha sido registrada
+            {state.empleadoNombre}, su {tipoTexto} ha sido registrada
             correctamente a las {state.registradoEn} en {state.sedeNombre}.
           </p>
         </div>
@@ -133,6 +151,7 @@ export function RegistroPage() {
 
   const formSede = state.sedeNombre;
   const exigirCodigo = state.exigirCodigo;
+  const tipoRegistro = state.tipoRegistro;
   const isSubmitting = state.kind === "submitting";
 
   return (
@@ -145,6 +164,8 @@ export function RegistroPage() {
           <img src={mapPinIcon} alt="" className="registro-sede__icon" />
           <span className="registro-sede__text">{formSede}</span>
         </div>
+
+        <TipoRegistroBadge tipo={tipoRegistro} />
 
         <form className="registro-form" onSubmit={handleSubmit}>
           <div className="field-group">

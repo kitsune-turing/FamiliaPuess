@@ -5,6 +5,8 @@ export interface TokenValidarResponse {
   sede_nombre: string;
   expira_en: string;
   exigir_codigo: boolean;
+  exigir_salida: boolean;
+  tipo_registro: string;
 }
 
 export interface RegistroRequest {
@@ -17,6 +19,7 @@ export interface RegistroResponse {
   empleado_nombre: string;
   sede_nombre: string;
   registrado_en: string;
+  tipo_registro: string;
 }
 
 export async function validarToken(token: string): Promise<TokenValidarResponse> {

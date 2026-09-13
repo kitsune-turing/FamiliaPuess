@@ -95,6 +95,29 @@
   letter-spacing: 1.6px;
 }
 
+/* ---------- Tipo registro badge ---------- */
+
+.registro-tipo {
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 6px 20px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+
+.registro-tipo--entrada {
+  background-color: #fce4ec;
+  color: #c62828;
+}
+
+.registro-tipo--salida {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
 /* ---------- Form ---------- */
 
 .registro-form {
