@@ -11,5 +11,5 @@ FROM node:20-alpine
 WORKDIR /app
 RUN npm install -g serve
 COPY --from=build /app/dist ./dist
-EXPOSE 8080
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-8080}"]
+EXPOSE 5173
+CMD ["sh", "-c", "serve -s dist -l tcp://0.0.0.0:5173"]
