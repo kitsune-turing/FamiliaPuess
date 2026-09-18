@@ -351,7 +351,7 @@ class DesktopMainWindow(QWidget):
         estado.addWidget(self._connection_label)
         estado.addWidget(
             _etiqueta(
-                "Version: 1.0.0",
+                "Version: 1.1.0",
                 f"color: {TEXTO_TENUE}; font-size: 11px; background: transparent;",
             )
         )
@@ -393,7 +393,7 @@ class DesktopMainWindow(QWidget):
 
     def show_inactive(self, mensaje: str | None = None) -> None:
         """Muestra que el dispositivo está esperando activación."""
-        self._qr_label.clear()
+        self._qr_label.setPixmap(QPixmap())
         self._qr_label.setText("⏳")
         self._qr_label.setStyleSheet(
             f"background: {CREMA_CAJA}; border: none; border-radius: 10px;"

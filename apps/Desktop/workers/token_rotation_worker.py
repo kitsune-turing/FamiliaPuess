@@ -20,7 +20,7 @@ from apps.Desktop.api.token_client import (
 
 INTERVALO_POR_DEFECTO_SEGUNDOS = 30
 INTERVALO_POLLING_INACTIVO_SEGUNDOS = 15
-INTERVALO_FUERA_HORARIO_SEGUNDOS = 300
+INTERVALO_FUERA_HORARIO_SEGUNDOS = 60
 INTERVALO_CHECK_USADO_SEGUNDOS = 3
 
 
@@ -141,9 +141,9 @@ class TokenRotationWorker(QObject):
             self._programar(INTERVALO_POLLING_INACTIVO_SEGUNDOS)
             return
         except FueraDeHorarioError:
-            logger.info("Fuera de horario")
-            self.fuera_de_horario.emit()
+            logger.info("Fuera de horario — ocultando QR, reintento en %ds", INTERVALO_FUERA_HORARIO_SEGUNDOS)
             self._fuera_horario = True
+            self.fuera_de_horario.emit()
             self._programar(INTERVALO_FUERA_HORARIO_SEGUNDOS)
             return
         except DeviceInactiveError:
@@ -165,16 +165,21 @@ class TokenRotationWorker(QObject):
 
     def _check_horario(self) -> None:
         try:
-            self._client.solicitar_token()
+            recibido = self._client.solicitar_token()
         except FueraDeHorarioError:
+            logger.info("Sigue fuera de horario, reintentando en %ds", INTERVALO_FUERA_HORARIO_SEGUNDOS)
             self.fuera_de_horario.emit()
             self._programar(INTERVALO_FUERA_HORARIO_SEGUNDOS)
             return
         except TokenClientError:
             self._programar(INTERVALO_FUERA_HORARIO_SEGUNDOS)
             return
+        logger.info("Ventana de horario abierta, mostrando token")
         self._fuera_horario = False
-        self._rotar()
+        self._current_token_value = recibido.token
+        self.token_ready.emit(recibido)
+        self._programar(self._next_interval_seconds(recibido))
+        self._start_usage_polling()
 
     def _check_inactive_reason(self) -> None:
         try:
