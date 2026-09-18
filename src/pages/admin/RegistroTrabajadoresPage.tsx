@@ -222,16 +222,18 @@ export function RegistroTrabajadoresPage() {
             placeholder="Buscar trabajador"
             etiquetaAccesible="Buscar trabajador por nombre o documento"
           />
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => setEditando({ ...VACIO })}
-          >
-            <PlusIcon size={20} /> Nuevo trabajador
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={exportar}>
-            <DownloadIcon size={20} /> Exportar
-          </button>
+          <div className="filters__actions">
+            <button type="button" className="btn btn--ghost" onClick={exportar}>
+              <DownloadIcon size={20} /> Exportar
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => setEditando({ ...VACIO })}
+            >
+              <PlusIcon size={20} /> Nuevo trabajador
+            </button>
+          </div>
         </div>
       </Card>
 

@@ -142,20 +142,22 @@ export function ReportesPage() {
               ...sedes.map((s) => ({ valor: s.nombre, etiqueta: s.nombre })),
             ]}
           />
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={generar}
-            disabled={generando}
-          >
-            {generando ? <span className="spinner" /> : <FilePlusIcon size={20} />}
-            {generando ? "Consultando…" : "Consultar"}
-          </button>
-          {consultado && resultados.length > 0 && (
-            <button type="button" className="btn btn--soft" onClick={descargar}>
-              <DownloadIcon size={20} /> Descargar Excel
+          <div className="filters__actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={generar}
+              disabled={generando}
+            >
+              {generando ? <span className="spinner" /> : <FilePlusIcon size={20} />}
+              {generando ? "Consultando…" : "Consultar"}
             </button>
-          )}
+            {consultado && resultados.length > 0 && (
+              <button type="button" className="btn btn--soft" onClick={descargar}>
+                <DownloadIcon size={20} /> Descargar Excel
+              </button>
+            )}
+          </div>
         </div>
       </Card>
 

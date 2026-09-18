@@ -160,21 +160,23 @@ export function UsuariosPage() {
               { valor: "inactivo", etiqueta: "Inactivos" },
             ]}
           />
-          <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
-            <RefreshIcon size={20} /> Limpiar filtros
-          </button>
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() =>
-              setEditando({
-                ...VACIO,
-                rol: rolesAsignables[0]?.codigo ?? "OPERADOR",
-              })
-            }
-          >
-            <PlusIcon size={20} /> Nuevo usuario
-          </button>
+          <div className="filters__actions">
+            <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
+              <RefreshIcon size={20} /> Limpiar filtros
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() =>
+                setEditando({
+                  ...VACIO,
+                  rol: rolesAsignables[0]?.codigo ?? "OPERADOR",
+                })
+              }
+            >
+              <PlusIcon size={20} /> Nuevo usuario
+            </button>
+          </div>
         </div>
       </Card>
 

@@ -153,9 +153,11 @@ export function CatalogosPage() {
         </div>
         <div className="filters">
           <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar valor" />
-          <button type="button" className="btn btn--primary" onClick={() => setEditando(nuevo())}>
-            <PlusIcon size={20} /> Nuevo valor
-          </button>
+          <div className="filters__actions">
+            <button type="button" className="btn btn--primary" onClick={() => setEditando(nuevo())}>
+              <PlusIcon size={20} /> Nuevo valor
+            </button>
+          </div>
         </div>
       </Card>
 

@@ -182,12 +182,14 @@ export function RegistrosPage() {
               ...codigosDispositivo.map((c) => ({ valor: c, etiqueta: c })),
             ]}
           />
-          <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
-            <RefreshIcon size={20} /> Limpiar filtros
-          </button>
-          <button type="button" className="btn btn--primary" onClick={exportar}>
-            <DownloadIcon size={19} /> Exportar
-          </button>
+          <div className="filters__actions">
+            <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
+              <RefreshIcon size={20} /> Limpiar filtros
+            </button>
+            <button type="button" className="btn btn--primary" onClick={exportar}>
+              <DownloadIcon size={19} /> Exportar
+            </button>
+          </div>
         </div>
       </Card>
 

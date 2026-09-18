@@ -147,13 +147,15 @@ export function DispositivosPage() {
               { valor: "inactivo", etiqueta: "Inactivos" },
             ]}
           />
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" })}
-          >
-            <PlusIcon size={20} /> Agregar dispositivo
-          </button>
+          <div className="filters__actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => setEditando({ ...VACIO, sede: sedes[0]?.nombre ?? "" })}
+            >
+              <PlusIcon size={20} /> Agregar dispositivo
+            </button>
+          </div>
         </div>
       </Card>
 

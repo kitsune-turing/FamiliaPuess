@@ -296,9 +296,11 @@ export function RolesPage() {
               { valor: "inactivo", etiqueta: "Inactivos" },
             ]}
           />
-          <button type="button" className="btn btn--primary" onClick={nuevoRol}>
-            <PlusIcon size={20} /> Nuevo rol
-          </button>
+          <div className="filters__actions">
+            <button type="button" className="btn btn--primary" onClick={nuevoRol}>
+              <PlusIcon size={20} /> Nuevo rol
+            </button>
+          </div>
         </div>
       </Card>
 

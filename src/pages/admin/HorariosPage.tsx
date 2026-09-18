@@ -212,15 +212,17 @@ export function HorariosPage() {
               ...sedesNombres.map((s) => ({ valor: s, etiqueta: s })),
             ]}
           />
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() =>
-              setEditando({ ...VACIO, sede: sedesActivas[0]?.nombre ?? "" })
-            }
-          >
-            <PlusIcon size={20} /> Nuevo horario
-          </button>
+          <div className="filters__actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() =>
+                setEditando({ ...VACIO, sede: sedesActivas[0]?.nombre ?? "" })
+              }
+            >
+              <PlusIcon size={20} /> Nuevo horario
+            </button>
+          </div>
         </div>
       </Card>
 

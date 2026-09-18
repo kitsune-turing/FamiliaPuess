@@ -258,7 +258,6 @@
 .search {
   position: relative;
   flex: 1 1 180px;
-  max-width: 260px;
   min-width: 0;
 }
 
@@ -607,8 +606,8 @@ select option:hover {
 .filters {
   display: flex;
   align-items: flex-end;
-  gap: 18px;
-  flex-wrap: wrap;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
 
 .filters > .field {
@@ -618,11 +617,25 @@ select option:hover {
 
 .filters > .field .select__control {
   width: auto;
-  min-width: 160px;
+  min-width: 120px;
 }
 
 .filters > .search {
-  flex: 1 1 240px;
+  flex: 1 1 160px;
+  min-width: 120px;
+}
+
+.filters > .daterange {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.filters > .filters__actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* --------------------------------------------------------------- Tabla */
@@ -1129,7 +1142,8 @@ select option:hover {
   }
 
   .filters {
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .filters > .field,
@@ -1139,6 +1153,16 @@ select option:hover {
 
   .filters > .field .select__control {
     width: 100%;
+    min-width: 0;
+  }
+
+  .filters > .filters__actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .filters > .filters__actions .btn {
+    flex: 1 1 auto;
     min-width: 0;
   }
 

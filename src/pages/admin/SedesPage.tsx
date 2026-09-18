@@ -193,12 +193,14 @@ export function SedesPage() {
               { valor: "inactiva", etiqueta: "Inactivas" },
             ]}
           />
-          <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
-            <RefreshIcon size={20} /> Limpiar filtros
-          </button>
-          <button type="button" className="btn btn--primary" onClick={() => setEditando({ ...VACIA })}>
-            <PlusIcon size={20} /> Nueva sede
-          </button>
+          <div className="filters__actions">
+            <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>
+              <RefreshIcon size={20} /> Limpiar filtros
+            </button>
+            <button type="button" className="btn btn--primary" onClick={() => setEditando({ ...VACIA })}>
+              <PlusIcon size={20} /> Nueva sede
+            </button>
+          </div>
         </div>
       </Card>
 
