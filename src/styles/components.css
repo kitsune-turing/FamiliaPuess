@@ -257,7 +257,8 @@
 /* Buscador con icono */
 .search {
   position: relative;
-  flex: 1 1 260px;
+  flex: 1 1 180px;
+  max-width: 260px;
   min-width: 0;
 }
 
@@ -415,7 +416,7 @@ select option:hover {
   padding: 0 16px;
   background: var(--fp-surface);
   border: 1.5px solid var(--fp-border-input);
-  border-radius: var(--fp-r-pill);
+  border-radius: var(--fp-r-md);
   font-size: 14px;
   font-weight: 500;
   color: var(--fp-text);

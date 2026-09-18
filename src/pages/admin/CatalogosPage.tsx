@@ -133,26 +133,24 @@ export function CatalogosPage() {
         />
       </div>
 
-      {/* --------------------------------------------- Selector de catálogo */}
-      <div className="settings-tabs" role="tablist" aria-label="Catálogos del sistema">
-        {CATALOGOS.map((catalogo) => (
-          <button
-            key={catalogo.valor}
-            type="button"
-            role="tab"
-            aria-selected={catalogoActivo === catalogo.valor}
-            className={`settings-tab ${catalogoActivo === catalogo.valor ? "settings-tab--active" : ""}`.trim()}
-            onClick={() => {
-              setCatalogoActivo(catalogo.valor);
-              setBusqueda("");
-            }}
-          >
-            {catalogo.etiqueta}
-          </button>
-        ))}
-      </div>
-
       <Card>
+        <div className="settings-tabs" role="tablist" aria-label="Catálogos del sistema">
+          {CATALOGOS.map((catalogo) => (
+            <button
+              key={catalogo.valor}
+              type="button"
+              role="tab"
+              aria-selected={catalogoActivo === catalogo.valor}
+              className={`settings-tab ${catalogoActivo === catalogo.valor ? "settings-tab--active" : ""}`.trim()}
+              onClick={() => {
+                setCatalogoActivo(catalogo.valor);
+                setBusqueda("");
+              }}
+            >
+              {catalogo.etiqueta}
+            </button>
+          ))}
+        </div>
         <div className="filters">
           <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar valor" />
           <button type="button" className="btn btn--primary" onClick={() => setEditando(nuevo())}>

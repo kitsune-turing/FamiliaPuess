@@ -17,7 +17,7 @@ import {
 } from "../../components/ui/Icons";
 import { useAuth } from "../../context/AuthProvider";
 import { useDatos } from "../../context/DataProvider";
-import { ACTIVIDADES, SEGMENTOS_ASISTENCIA } from "../../data/initial";
+import { SEGMENTOS_ASISTENCIA } from "../../data/initial";
 import { useClickFuera } from "../../hooks";
 import { porcentaje } from "../../lib/format";
 
@@ -234,89 +234,59 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* ------------------------------------ Registros y actividades ---- */}
-      <div className="dash-row dash-row--bottom">
-        <Card>
-          <h2 className="card__title" style={{ marginBottom: 8 }}>
-            Registros recientes
-          </h2>
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Trabajador</th>
-                  <th>Documento</th>
-                  <th>Sede</th>
-                  <th>Entrada</th>
-                  <th>Estado</th>
-                  <th>Dispositivo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recientes.length === 0 ? (
-                  <EmptyRow columnas={6} mensaje="Aún no hay registros de entrada." />
-                ) : (
-                  recientes.map((registro) => (
-                    <tr key={registro.id}>
-                      <td>{registro.trabajador}</td>
-                      <td>{registro.documento}</td>
-                      <td>{registro.sede}</td>
-                      <td>{registro.entrada}</td>
-                      <td>
-                        <BadgeOutline
-                          tono={
-                            registro.estado === "a_tiempo"
-                              ? "neutral"
-                              : registro.estado === "tarde"
-                                ? "yellow"
-                                : "pink"
-                          }
-                        >
-                          {ETIQUETA_ESTADO[registro.estado] ?? registro.estado}
-                        </BadgeOutline>
-                      </td>
-                      <td>
-                        <span className="cell-device">
-                          <span className="dot" />
-                          {registro.dispositivo}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card className="activity-card">
-          <h2 className="activity-card__title">Actividades recientes</h2>
-          <div className="activity-list">
-            {ACTIVIDADES.length === 0 ? (
-              <p className="empty-note">Todavía no se ha registrado actividad en el sistema.</p>
-            ) : (
-              ACTIVIDADES.map((actividad) => (
-                <div key={actividad.id} className="activity-item">
-                  <span className="activity-item__avatar" style={{ background: actividad.color }}>
-                    {actividad.iniciales}
-                  </span>
-                  <div>
-                    <p className="activity-item__text">{actividad.texto}</p>
-                    <p className="activity-item__time">{actividad.tiempo}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-          <button
-            type="button"
-            className="btn btn--ghost btn--block"
-            onClick={() => navegar("/panel/auditoria")}
-          >
-            Ver todas las actividades
-          </button>
-        </Card>
-      </div>
+      {/* ------------------------------------ Registros recientes ---- */}
+      <Card>
+        <h2 className="card__title" style={{ marginBottom: 8 }}>
+          Registros recientes
+        </h2>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Trabajador</th>
+                <th>Documento</th>
+                <th>Sede</th>
+                <th>Entrada</th>
+                <th>Estado</th>
+                <th>Dispositivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recientes.length === 0 ? (
+                <EmptyRow columnas={6} mensaje="Aún no hay registros de entrada." />
+              ) : (
+                recientes.map((registro) => (
+                  <tr key={registro.id}>
+                    <td>{registro.trabajador}</td>
+                    <td>{registro.documento}</td>
+                    <td>{registro.sede}</td>
+                    <td>{registro.entrada}</td>
+                    <td>
+                      <BadgeOutline
+                        tono={
+                          registro.estado === "a_tiempo"
+                            ? "neutral"
+                            : registro.estado === "tarde"
+                              ? "yellow"
+                              : "pink"
+                        }
+                      >
+                        {ETIQUETA_ESTADO[registro.estado] ?? registro.estado}
+                      </BadgeOutline>
+                    </td>
+                    <td>
+                      <span className="cell-device">
+                        <span className="dot" />
+                        {registro.dispositivo}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </>
   );
 }

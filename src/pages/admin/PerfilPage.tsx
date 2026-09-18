@@ -10,9 +10,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Badge,
   Card,
-  ConfirmDialog,
   SelectField,
-  Switch,
   TextAreaField,
   TextField,
 } from "../../components/ui";
@@ -23,7 +21,6 @@ import {
   MailIcon,
   MapPinIcon,
   PhoneIcon,
-  PowerIcon,
   SaveIcon,
   ShieldIcon,
   TrashIcon,
@@ -34,7 +31,7 @@ import { useDatos } from "../../context/DataProvider";
 import { useToast } from "../../context/ToastProvider";
 import { MODULOS_PERMISOS } from "../../data/initial";
 import { fechaHoraActual, iniciales } from "../../lib/format";
-import type { Perfil, SesionActiva } from "../../types/admin";
+import type { Perfil } from "../../types/admin";
 
 const ZONAS = [
   { valor: "America/Bogota", etiqueta: "Bogotá (GMT-5)" },
@@ -53,7 +50,7 @@ const TAMANO_MAXIMO = 1024 * 1024; // 1 MB
 
 export function PerfilPage() {
   const { usuario, perfil, actualizarPerfil } = useAuth();
-  const { sedes, roles, sesiones, cerrarSesionRemota, registrarAuditoria } = useDatos();
+  const { sedes, roles, registrarAuditoria } = useDatos();
   const { mostrar } = useToast();
 
   const [editando, setEditando] = useState(false);
@@ -64,10 +61,6 @@ export function PerfilPage() {
   const [claveNueva, setClaveNueva] = useState("");
   const [claveConfirmar, setClaveConfirmar] = useState("");
 
-  const [dobleFactor, setDobleFactor] = useState(false);
-  const [expirarSesion, setExpirarSesion] = useState(true);
-  const [bloqueoIntentos, setBloqueoIntentos] = useState(true);
-  const [aCerrar, setACerrar] = useState<SesionActiva | null>(null);
 
   const refArchivo = useRef<HTMLInputElement>(null);
 
@@ -432,37 +425,6 @@ export function PerfilPage() {
             />
           </div>
 
-          <div className="setting-row">
-            <div>
-              <p className="setting-row__label">Avisos por correo</p>
-              <p className="setting-row__hint">
-                Recibe un correo cuando ocurra una novedad de asistencia en tu sede.
-              </p>
-            </div>
-            <Switch
-              marcado={datos.notificarCorreo}
-              etiqueta="Avisos por correo"
-              alCambiar={(v) =>
-                editando ? cambiar("notificarCorreo", v) : actualizarPerfil({ notificarCorreo: v })
-              }
-            />
-          </div>
-
-          <div className="setting-row">
-            <div>
-              <p className="setting-row__label">Resumen diario</p>
-              <p className="setting-row__hint">
-                Un consolidado de entradas y ausencias cada mañana a las 8:00 a. m.
-              </p>
-            </div>
-            <Switch
-              marcado={datos.resumenDiario}
-              etiqueta="Resumen diario"
-              alCambiar={(v) =>
-                editando ? cambiar("resumenDiario", v) : actualizarPerfil({ resumenDiario: v })
-              }
-            />
-          </div>
         </Card>
 
         <Card>
@@ -498,89 +460,8 @@ export function PerfilPage() {
             </button>
           </div>
         </Card>
-        <Card>
-          <h2 className="card__title" style={{ marginBottom: 8 }}>
-            Políticas de acceso
-          </h2>
-          <div className="setting-row">
-            <div>
-              <p className="setting-row__label">Verificación en dos pasos</p>
-              <p className="setting-row__hint">
-                Solicita un código enviado por correo cada vez que se inicia sesión desde un equipo nuevo.
-              </p>
-            </div>
-            <Switch marcado={dobleFactor} etiqueta="Verificación en dos pasos" alCambiar={setDobleFactor} />
-          </div>
-          <div className="setting-row">
-            <div>
-              <p className="setting-row__label">Cerrar sesión por inactividad</p>
-              <p className="setting-row__hint">La sesión termina automáticamente tras 30 minutos sin actividad.</p>
-            </div>
-            <Switch marcado={expirarSesion} etiqueta="Cerrar sesión por inactividad" alCambiar={setExpirarSesion} />
-          </div>
-          <div className="setting-row">
-            <div>
-              <p className="setting-row__label">Bloquear tras intentos fallidos</p>
-              <p className="setting-row__hint">
-                La cuenta se bloquea 15 minutos después de 5 intentos de acceso incorrectos.
-              </p>
-            </div>
-            <Switch
-              marcado={bloqueoIntentos}
-              etiqueta="Bloquear tras intentos fallidos"
-              alCambiar={setBloqueoIntentos}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="card__title" style={{ marginBottom: 18 }}>
-            Sesiones activas
-          </h2>
-          <div className="security-list">
-            {sesiones.length === 0 ? (
-              <p style={{ color: "var(--fp-text-muted)", fontSize: 15 }}>No hay otras sesiones abiertas.</p>
-            ) : (
-              sesiones.map((sesion) => (
-                <div key={sesion.id} className="session-item">
-                  <div>
-                    <p className="setting-row__label">
-                      {sesion.usuario}
-                      {sesion.actual ? " · esta sesión" : ""}
-                    </p>
-                    <p className="session-item__meta">
-                      {sesion.dispositivo} · {sesion.ip} · {sesion.inicio}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn--ghost"
-                    disabled={sesion.actual}
-                    onClick={() => setACerrar(sesion)}
-                  >
-                    <PowerIcon size={18} /> Cerrar sesión
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
       </div>
 
-      <ConfirmDialog
-        abierto={aCerrar !== null}
-        titulo="Cerrar sesión remota"
-        mensaje={`Se cerrará la sesión de ${aCerrar?.usuario ?? ""} en ${aCerrar?.dispositivo ?? ""}.`}
-        textoConfirmar="Cerrar sesión"
-        alCerrar={() => setACerrar(null)}
-        alConfirmar={() => {
-          if (aCerrar) {
-            cerrarSesionRemota(aCerrar.id);
-            mostrar("Sesión cerrada.");
-          }
-          setACerrar(null);
-        }}
-      />
     </div>
   );
 }
