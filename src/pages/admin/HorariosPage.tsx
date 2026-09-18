@@ -235,15 +235,16 @@ export function HorariosPage() {
                 <th>Sede</th>
                 <th>Entrada</th>
                 <th>Salida</th>
+                <th>Tolerancia</th>
                 <th>Vigencia</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando ? (
-                <EmptyRow columnas={6} mensaje="Cargando horarios…" />
+                <EmptyRow columnas={7} mensaje="Cargando horarios…" />
               ) : visibles.length === 0 ? (
-                <EmptyRow columnas={6} mensaje="No hay horarios registrados." />
+                <EmptyRow columnas={7} mensaje="No hay horarios registrados." />
               ) : (
                   visibles.map((h) => (
                     <tr key={h.id}>
@@ -251,6 +252,7 @@ export function HorariosPage() {
                       <td>{h.sede}</td>
                       <td>{h.horaEntrada}</td>
                       <td>{h.horaSalida || "—"}</td>
+                      <td>{h.toleranciaMin} min</td>
                       <td>
                         {h.vigenteDesde}
                         {h.vigenteHasta ? ` – ${h.vigenteHasta}` : " – vigente"}
@@ -341,6 +343,20 @@ export function HorariosPage() {
                 tipo="time"
                 valor={editando.horaSalida}
                 alCambiar={(v) => setEditando({ ...editando, horaSalida: v })}
+              />
+            </div>
+
+            <div className="modal__grid">
+              <TextField
+                etiqueta="Tolerancia (min) *"
+                tipo="number"
+                valor={String(editando.toleranciaMin)}
+                alCambiar={(v) =>
+                  setEditando({
+                    ...editando,
+                    toleranciaMin: Math.max(0, Math.min(120, Number(v) || 0)),
+                  })
+                }
               />
             </div>
 
