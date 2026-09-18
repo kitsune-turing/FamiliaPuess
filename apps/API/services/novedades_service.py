@@ -10,6 +10,7 @@ from apps.API.core.timezone import now as tz_now
 from apps.API.models.novedad import Novedad
 from apps.API.repositories import (
     cat_novedad_repository,
+    config_general_repository,
     horario_repository,
     novedad_repository,
 )
@@ -51,7 +52,10 @@ async def detectar_novedad_asistencia(
         )
         return None
 
-    limite = _sumar_tolerancia(horario.hora_entrada, horario.tolerancia_min)
+    tolerancia = int(
+        await config_general_repository.get_valor(session, "TOLERANCIA_MIN")
+    )
+    limite = _sumar_tolerancia(horario.hora_entrada, tolerancia)
 
     if hora_registro <= limite:
         return None
@@ -65,7 +69,7 @@ async def detectar_novedad_asistencia(
     observacion = (
         f"Registro a las {hora_registro.strftime('%H:%M')} - "
         f"Entrada programada: {horario.hora_entrada.strftime('%H:%M')} "
-        f"(tolerancia: {horario.tolerancia_min} min)"
+        f"(tolerancia: {tolerancia} min)"
     )
 
     novedad = await novedad_repository.create(

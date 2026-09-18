@@ -28,6 +28,7 @@ CLAVE_CODIGO_LONGITUD = "CODIGO_LONGITUD"
 CLAVE_CODIGO_FORMATO = "CODIGO_FORMATO"
 CLAVE_EXIGIR_CODIGO = "EXIGIR_CODIGO"
 CLAVE_EXIGIR_SALIDA = "EXIGIR_SALIDA"
+CLAVE_TOLERANCIA_MIN = "TOLERANCIA_MIN"
 
 
 async def _leer_bool(session: AsyncSession, clave: str) -> bool:
@@ -73,17 +74,20 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
 
     tipo_registro = TipoRegistroCodigo.ENTRADA
     if horarios:
+        tolerancia = int(
+            await config_general_repository.get_valor(session, CLAVE_TOLERANCIA_MIN)
+        )
         en_ventana_entrada = False
         en_ventana_salida = False
         for h in horarios:
             entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
-            limite_entrada = entrada_dt + timedelta(minutes=h.tolerancia_min)
+            limite_entrada = entrada_dt + timedelta(minutes=tolerancia)
             if entrada_dt <= ahora <= limite_entrada:
                 en_ventana_entrada = True
 
             if h.hora_salida is not None:
                 salida_dt = datetime.combine(ahora.date(), h.hora_salida, tzinfo=ahora.tzinfo)
-                limite_salida = salida_dt + timedelta(minutes=h.tolerancia_min)
+                limite_salida = salida_dt + timedelta(minutes=tolerancia)
                 if salida_dt <= ahora <= limite_salida:
                     en_ventana_salida = True
 
