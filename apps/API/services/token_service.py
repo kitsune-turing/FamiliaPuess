@@ -75,46 +75,48 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         fecha_referencia=ahora.date(),
     )
 
+    tolerancia = int(
+        await config_general_repository.get_valor(session, CLAVE_TOLERANCIA_MIN)
+    )
+
     tipo_registro = TipoRegistroCodigo.ENTRADA
     logger.info(
-        "Horarios para sede %s: %d encontrados, ahora=%s",
-        dispositivo.id_sede, len(horarios), ahora.isoformat(),
+        "Horarios para sede %s: %d encontrados, ahora=%s, tolerancia=%d",
+        dispositivo.id_sede, len(horarios), ahora.isoformat(), tolerancia,
     )
-    if horarios:
-        tolerancia = int(
-            await config_general_repository.get_valor(session, CLAVE_TOLERANCIA_MIN)
-        )
-        en_ventana_entrada = False
-        en_ventana_salida = False
-        for h in horarios:
-            entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
-            limite_entrada = entrada_dt + timedelta(minutes=tolerancia)
-            logger.info(
-                "  Horario id=%s entrada=%s limite=%s salida=%s tolerancia=%d",
-                h.id, entrada_dt.isoformat(), limite_entrada.isoformat(),
-                h.hora_salida, tolerancia,
-            )
-            if entrada_dt <= ahora <= limite_entrada:
-                en_ventana_entrada = True
+    if not horarios:
+        logger.info("  Sin horarios -> fuera de horario")
+        raise FueraDeHorarioError(dispositivo_identificador)
 
-            if h.hora_salida is not None:
-                salida_dt = datetime.combine(ahora.date(), h.hora_salida, tzinfo=ahora.tzinfo)
-                limite_salida = salida_dt + timedelta(minutes=tolerancia)
-                if salida_dt <= ahora <= limite_salida:
-                    en_ventana_salida = True
-
+    en_ventana_entrada = False
+    en_ventana_salida = False
+    for h in horarios:
+        entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
+        limite_entrada = entrada_dt + timedelta(minutes=tolerancia)
         logger.info(
-            "  Resultado: en_ventana_entrada=%s, en_ventana_salida=%s",
-            en_ventana_entrada, en_ventana_salida,
+            "  Horario id=%s entrada=%s limite=%s salida=%s",
+            h.id, entrada_dt.isoformat(), limite_entrada.isoformat(),
+            h.hora_salida,
         )
-        if en_ventana_entrada:
-            tipo_registro = TipoRegistroCodigo.ENTRADA
-        elif en_ventana_salida:
-            tipo_registro = TipoRegistroCodigo.SALIDA
-        else:
-            raise FueraDeHorarioError(dispositivo_identificador)
+        if entrada_dt <= ahora <= limite_entrada:
+            en_ventana_entrada = True
+
+        if h.hora_salida is not None:
+            salida_dt = datetime.combine(ahora.date(), h.hora_salida, tzinfo=ahora.tzinfo)
+            limite_salida = salida_dt + timedelta(minutes=tolerancia)
+            if salida_dt <= ahora <= limite_salida:
+                en_ventana_salida = True
+
+    logger.info(
+        "  Resultado: en_ventana_entrada=%s, en_ventana_salida=%s",
+        en_ventana_entrada, en_ventana_salida,
+    )
+    if en_ventana_entrada:
+        tipo_registro = TipoRegistroCodigo.ENTRADA
+    elif en_ventana_salida:
+        tipo_registro = TipoRegistroCodigo.SALIDA
     else:
-        logger.info("  Sin horarios -> token sin restriccion")
+        raise FueraDeHorarioError(dispositivo_identificador)
 
     expiracion_seg = int(
         await config_general_repository.get_valor(session, CLAVE_QR_EXPIRACION_SEG)
