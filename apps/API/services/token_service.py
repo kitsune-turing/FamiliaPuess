@@ -1,10 +1,7 @@
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = logging.getLogger(__name__)
 
 from apps.API.core import timezone
 from apps.API.repositories import (
