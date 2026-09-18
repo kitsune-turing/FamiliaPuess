@@ -1,7 +1,10 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from apps.API.core import timezone
 from apps.API.repositories import (
@@ -73,6 +76,10 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
     )
 
     tipo_registro = TipoRegistroCodigo.ENTRADA
+    logger.info(
+        "Horarios para sede %s: %d encontrados, ahora=%s",
+        dispositivo.id_sede, len(horarios), ahora.isoformat(),
+    )
     if horarios:
         tolerancia = int(
             await config_general_repository.get_valor(session, CLAVE_TOLERANCIA_MIN)
@@ -82,6 +89,11 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         for h in horarios:
             entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
             limite_entrada = entrada_dt + timedelta(minutes=tolerancia)
+            logger.info(
+                "  Horario id=%s entrada=%s limite=%s salida=%s tolerancia=%d",
+                h.id, entrada_dt.isoformat(), limite_entrada.isoformat(),
+                h.hora_salida, tolerancia,
+            )
             if entrada_dt <= ahora <= limite_entrada:
                 en_ventana_entrada = True
 
@@ -91,12 +103,18 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
                 if salida_dt <= ahora <= limite_salida:
                     en_ventana_salida = True
 
+        logger.info(
+            "  Resultado: en_ventana_entrada=%s, en_ventana_salida=%s",
+            en_ventana_entrada, en_ventana_salida,
+        )
         if en_ventana_entrada:
             tipo_registro = TipoRegistroCodigo.ENTRADA
         elif en_ventana_salida:
             tipo_registro = TipoRegistroCodigo.SALIDA
         else:
             raise FueraDeHorarioError(dispositivo_identificador)
+    else:
+        logger.info("  Sin horarios -> token sin restriccion")
 
     expiracion_seg = int(
         await config_general_repository.get_valor(session, CLAVE_QR_EXPIRACION_SEG)
