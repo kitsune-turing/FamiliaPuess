@@ -864,7 +864,6 @@ export async function crearHorario(data: {
   nombre?: string;
   hora_entrada: string;
   hora_salida?: string;
-  tolerancia_min: number;
   vigente_desde: string;
   vigente_hasta?: string;
 }): Promise<HorarioApi> {
@@ -880,7 +879,6 @@ export async function actualizarHorario(
     nombre?: string;
     hora_entrada?: string;
     hora_salida?: string;
-    tolerancia_min?: number;
     vigente_hasta?: string;
   },
 ): Promise<HorarioApi> {
