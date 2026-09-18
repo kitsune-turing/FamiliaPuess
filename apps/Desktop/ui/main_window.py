@@ -399,11 +399,14 @@ class DesktopMainWindow(QWidget):
             f"background: {CREMA_CAJA}; border: none; border-radius: 10px;"
             f" font-size: 64px; color: {CAFE};"
         )
+        self._codigo_titulo.setVisible(False)
         self._codigo_label.setText(mensaje or "ESPERANDO ACTIVACIÓN")
+        self._codigo_label.setVisible(True)
         self._codigo_label.setStyleSheet(
             f"background: {CREMA_CAJA}; color: {ROSA}; border-radius: 14px;"
             " font-size: 18px; font-weight: 700; letter-spacing: 2px; padding: 16px 26px;"
         )
+        self._tipo_registro_label.setVisible(False)
         self._fijar_texto_temporizador(0)
         self._connection_label.setText("Pendiente de activación")
         self._wifi_icon.setVisible(False)
