@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import panelLateral from "../assets/images/login-panel.jpg";
+import panelLateral from "../assets/images/login-bg.png";
 import mazorca from "../assets/images/mazorca-deco.png";
 import logo from "../assets/images/logo-familiapues.png";
 import { Checkbox } from "../components/ui";
@@ -138,9 +138,6 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="login__hint">
-            Acceso de prueba: admin / Admin123!
-          </p>
         </div>
       </div>
     </div>

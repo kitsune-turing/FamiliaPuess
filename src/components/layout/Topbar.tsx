@@ -8,7 +8,6 @@ import { iniciales } from "../../lib/format";
 import {
   BellIcon,
   ChevronDownIcon,
-  LockIcon,
   LogOutIcon,
   MapPinIcon,
   MenuIcon,
@@ -186,17 +185,6 @@ export function Topbar({ titulo, subtitulo, alAbrirMenu }: Props) {
                 }}
               >
                 <SettingsIcon size={18} /> Configuración
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="dropdown__item"
-                onClick={() => {
-                  cerrarMenu();
-                  navegar("/panel/seguridad");
-                }}
-              >
-                <LockIcon size={18} /> Seguridad
               </button>
               <div className="dropdown__divider" />
               <button
