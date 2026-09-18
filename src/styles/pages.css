@@ -519,15 +519,15 @@
 
 .settings-tabs {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .settings-tab {
   height: 42px;
   padding: 0 18px;
-  border-radius: var(--fp-r-pill);
+  border-radius: var(--fp-r-md);
   font-size: 14.5px;
   color: var(--fp-text-body);
   background: var(--fp-surface);
@@ -611,6 +611,8 @@
   }
 
   .settings-tabs {
+    flex-wrap: wrap;
+    flex: 1 1 100%;
     gap: 6px;
   }
 
