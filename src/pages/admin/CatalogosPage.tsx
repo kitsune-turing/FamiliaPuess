@@ -135,6 +135,7 @@ export function CatalogosPage() {
 
       <Card>
         <div className="filters">
+          <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar valor" />
           <div className="settings-tabs" role="tablist" aria-label="Catálogos del sistema">
             {CATALOGOS.map((catalogo) => (
               <button
@@ -152,7 +153,6 @@ export function CatalogosPage() {
               </button>
             ))}
           </div>
-          <SearchInput valor={busqueda} alCambiar={setBusqueda} placeholder="Buscar valor" />
           <div className="filters__actions">
             <button type="button" className="btn btn--primary" onClick={() => setEditando(nuevo())}>
               <PlusIcon size={20} /> Nuevo valor
