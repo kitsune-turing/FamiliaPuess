@@ -78,13 +78,13 @@ async def generate_token(session: AsyncSession, dispositivo_identificador: str) 
         for h in horarios:
             entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
             limite_entrada = entrada_dt + timedelta(minutes=h.tolerancia_min)
-            if ahora <= limite_entrada:
+            if entrada_dt <= ahora <= limite_entrada:
                 en_ventana_entrada = True
 
-            if exigir_salida and h.hora_salida is not None:
+            if h.hora_salida is not None:
                 salida_dt = datetime.combine(ahora.date(), h.hora_salida, tzinfo=ahora.tzinfo)
                 limite_salida = salida_dt + timedelta(minutes=h.tolerancia_min)
-                if entrada_dt < ahora <= limite_salida:
+                if salida_dt <= ahora <= limite_salida:
                     en_ventana_salida = True
 
         if en_ventana_entrada:
