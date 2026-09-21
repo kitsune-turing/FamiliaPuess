@@ -155,6 +155,27 @@ async def debug_horarios(
     }
 
 
+@router.delete(
+    "/debug/dispositivo/{dispositivo_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def debug_delete_dispositivo(
+    dispositivo_id: int,
+    session: AsyncSession = Depends(get_session),
+    _api_key: str = Depends(require_desktop_api_key),
+) -> dict:
+    import traceback
+    try:
+        from apps.API.services import dispositivos_service
+        await dispositivos_service.delete_dispositivo(
+            session, dispositivo_id, user_id=0, ip_address="debug",
+        )
+        return {"status": "deleted"}
+    except Exception as exc:
+        await session.rollback()
+        return {"error": str(exc), "type": type(exc).__name__, "traceback": traceback.format_exc()}
+
+
 @router.get(
     "/tokens/{token_value}/used",
     response_model=TokenUsedResponse,
