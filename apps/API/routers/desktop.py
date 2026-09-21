@@ -2,9 +2,16 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.API.core import timezone
 from apps.API.database.session import get_session
 from apps.API.dependencies.desktop_auth import require_desktop_api_key
-from apps.API.repositories import cat_estado_repository, dispositivo_repository, token_qr_repository
+from apps.API.repositories import (
+    cat_estado_repository,
+    config_general_repository,
+    dispositivo_repository,
+    horario_repository,
+    token_qr_repository,
+)
 from apps.API.schemas.dispositivos import DispositivoResponse
 from apps.API.schemas.token_qr import TokenGenerarRequest, TokenGenerarResponse
 from apps.API.services import dispositivos_service, token_service
@@ -106,6 +113,46 @@ async def generar_token(
         exigir_salida=generado.exigir_salida,
         tipo_registro=generado.tipo_registro,
     )
+
+
+@router.get(
+    "/debug/horarios/{identificador}",
+    status_code=status.HTTP_200_OK,
+)
+async def debug_horarios(
+    identificador: str,
+    session: AsyncSession = Depends(get_session),
+    _api_key: str = Depends(require_desktop_api_key),
+) -> dict:
+    dispositivo = await dispositivo_repository.get_by_identificador(session, identificador)
+    if dispositivo is None:
+        return {"error": "dispositivo no encontrado"}
+    ahora = timezone.now()
+    horarios = await horario_repository.get_all(
+        session,
+        id_sede=dispositivo.id_sede,
+        solo_vigentes=True,
+        fecha_referencia=ahora.date(),
+    )
+    tolerancia_raw = await config_general_repository.get_valor(session, "TOLERANCIA_MIN")
+    return {
+        "server_time": ahora.isoformat(),
+        "server_date": str(ahora.date()),
+        "id_sede": dispositivo.id_sede,
+        "tolerancia_min": tolerancia_raw,
+        "horarios_count": len(horarios),
+        "horarios": [
+            {
+                "id": h.id,
+                "nombre": h.nombre,
+                "hora_entrada": str(h.hora_entrada),
+                "hora_salida": str(h.hora_salida) if h.hora_salida else None,
+                "vigente_desde": str(h.vigente_desde),
+                "vigente_hasta": str(h.vigente_hasta) if h.vigente_hasta else None,
+            }
+            for h in horarios
+        ],
+    }
 
 
 @router.get(
