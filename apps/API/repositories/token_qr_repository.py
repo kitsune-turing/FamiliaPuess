@@ -52,6 +52,15 @@ async def mark_consumed(
     await session.execute(stmt)
 
 
+async def clear_dispositivo(session: AsyncSession, id_dispositivo: int) -> None:
+    stmt = (
+        update(TokenQR)
+        .where(TokenQR.id_dispositivo == id_dispositivo)
+        .values(id_dispositivo=None)
+    )
+    await session.execute(stmt)
+
+
 async def try_consume_atomically(
     session: AsyncSession,
     *,

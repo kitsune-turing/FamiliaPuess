@@ -14,6 +14,7 @@ from apps.API.repositories import (
     cat_estado_repository,
     dispositivo_repository,
     sede_repository,
+    token_qr_repository,
 )
 from apps.API.repositories.dispositivo_repository import UNSET
 from shared.constants.estado import EstadoCodigo
@@ -247,6 +248,7 @@ async def delete_dispositivo(
         timestamp_accion=timestamp,
     )
 
+    await token_qr_repository.clear_dispositivo(session, dispositivo_id)
     await dispositivo_repository.hard_delete(session, dispositivo_id)
 
     logger.info(
