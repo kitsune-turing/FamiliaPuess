@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.models.token_qr import TokenQR
@@ -52,9 +52,21 @@ async def mark_consumed(
     await session.execute(stmt)
 
 
-async def delete_by_dispositivo(session: AsyncSession, id_dispositivo: int) -> None:
-    stmt = delete(TokenQR).where(TokenQR.id_dispositivo == id_dispositivo)
-    await session.execute(stmt)
+async def detach_dispositivo(session: AsyncSession, id_dispositivo: int) -> None:
+    await session.execute(
+        text("ALTER TABLE token_qr ALTER COLUMN id_dispositivo DROP NOT NULL")
+    )
+    await session.execute(
+        text(
+            "ALTER TABLE token_qr DROP CONSTRAINT IF EXISTS fk_token_dispositivo,"
+            " ADD CONSTRAINT fk_token_dispositivo"
+            " FOREIGN KEY (id_dispositivo) REFERENCES dispositivo(id) ON DELETE SET NULL"
+        )
+    )
+    await session.execute(
+        text("UPDATE token_qr SET id_dispositivo = NULL WHERE id_dispositivo = :id"),
+        {"id": id_dispositivo},
+    )
 
 
 async def try_consume_atomically(

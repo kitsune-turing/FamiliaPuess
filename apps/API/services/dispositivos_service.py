@@ -237,7 +237,7 @@ async def delete_dispositivo(
         "descripcion": dispositivo.descripcion,
     }
 
-    await token_qr_repository.delete_by_dispositivo(session, dispositivo_id)
+    await token_qr_repository.detach_dispositivo(session, dispositivo_id)
     await session.flush()
     await dispositivo_repository.hard_delete(session, dispositivo_id)
 
