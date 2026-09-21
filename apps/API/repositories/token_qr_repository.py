@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.models.token_qr import TokenQR
@@ -52,12 +52,8 @@ async def mark_consumed(
     await session.execute(stmt)
 
 
-async def clear_dispositivo(session: AsyncSession, id_dispositivo: int) -> None:
-    stmt = (
-        update(TokenQR)
-        .where(TokenQR.id_dispositivo == id_dispositivo)
-        .values(id_dispositivo=None)
-    )
+async def delete_by_dispositivo(session: AsyncSession, id_dispositivo: int) -> None:
+    stmt = delete(TokenQR).where(TokenQR.id_dispositivo == id_dispositivo)
     await session.execute(stmt)
 
 
