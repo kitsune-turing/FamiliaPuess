@@ -168,7 +168,7 @@ async def debug_delete_dispositivo(
     try:
         from apps.API.services import dispositivos_service
         await dispositivos_service.delete_dispositivo(
-            session, dispositivo_id, user_id=0, ip_address=None,
+            session, dispositivo_id, user_id=None, ip_address=None,
         )
         return {"status": "deleted"}
     except Exception as exc:

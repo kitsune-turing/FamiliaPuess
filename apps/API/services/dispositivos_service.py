@@ -224,12 +224,22 @@ async def delete_dispositivo(
     session: AsyncSession,
     dispositivo_id: int,
     *,
-    user_id: int,
+    user_id: int | None,
     ip_address: str | None = None,
 ) -> None:
     dispositivo = await dispositivo_repository.get_by_id(session, dispositivo_id)
     if dispositivo is None:
         raise DispositivoNoEncontradoPorIdError(dispositivo_id)
+
+    valor_anterior = {
+        "identificador": dispositivo.identificador,
+        "id_sede": dispositivo.id_sede,
+        "descripcion": dispositivo.descripcion,
+    }
+
+    await token_qr_repository.clear_dispositivo(session, dispositivo_id)
+    await session.flush()
+    await dispositivo_repository.hard_delete(session, dispositivo_id)
 
     timestamp = tz_now()
 
@@ -239,18 +249,10 @@ async def delete_dispositivo(
         recurso=RecursoAuditoria.DISPOSITIVO,
         id_recurso=str(dispositivo_id),
         operacion=OperacionAuditoria.DELETE,
-        valor_anterior={
-            "identificador": dispositivo.identificador,
-            "id_sede": dispositivo.id_sede,
-            "descripcion": dispositivo.descripcion,
-        },
+        valor_anterior=valor_anterior,
         ip_address=ip_address,
         timestamp_accion=timestamp,
     )
-
-    await token_qr_repository.clear_dispositivo(session, dispositivo_id)
-    await session.flush()
-    await dispositivo_repository.hard_delete(session, dispositivo_id)
 
     logger.info(
         "Dispositivo eliminado: id=%d, identificador=%s",
