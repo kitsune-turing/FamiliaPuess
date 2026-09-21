@@ -1,5 +1,9 @@
 # Familia Puess — Sistema de Control de Asistencia
 
+## Descargar Instalador
+
+[**Descargar FamiliaPuess_Setup_1.1.0.exe**](installer_output/FamiliaPuess_Setup_1.1.0.exe)
+
 ## Instalador Desktop
 
 El instalador se genera con Inno Setup desde el script `installer.iss`:
@@ -7,8 +11,6 @@ El instalador se genera con Inno Setup desde el script `installer.iss`:
 ```bash
 "C:\Program Files\Inno Setup 7\ISCC.exe" installer.iss
 ```
-
-El resultado queda en `installer_output/FamiliaPuess_Setup_1.1.0.exe`.
 
 ### Requisitos
 
