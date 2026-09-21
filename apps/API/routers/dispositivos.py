@@ -113,12 +113,17 @@ async def delete_dispositivo(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(require_permission("DISPOSITIVOS", "eliminar")),
 ) -> None:
-    await dispositivos_service.delete_dispositivo(
-        session,
-        dispositivo_id,
-        user_id=int(current_user["sub"]),
-        ip_address=_extract_ip(request),
-    )
+    import logging as _log
+    try:
+        await dispositivos_service.delete_dispositivo(
+            session,
+            dispositivo_id,
+            user_id=int(current_user["sub"]),
+            ip_address=_extract_ip(request),
+        )
+    except Exception as exc:
+        _log.getLogger("desktop.delete").exception("Error eliminando dispositivo %d", dispositivo_id)
+        raise
 
 
 @router.post(
