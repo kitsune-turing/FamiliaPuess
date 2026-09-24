@@ -91,6 +91,8 @@ async def update_horario(
         "user_id": int(current_user["sub"]),
         "ip_address": _extract_ip(request),
     }
+    if "id_sede" in payload.model_fields_set:
+        kwargs["id_sede"] = payload.id_sede
     if "nombre" in payload.model_fields_set:
         kwargs["nombre"] = payload.nombre
     if "hora_entrada" in payload.model_fields_set:
@@ -99,6 +101,8 @@ async def update_horario(
         kwargs["hora_salida"] = payload.hora_salida
     if "tolerancia_min" in payload.model_fields_set:
         kwargs["tolerancia_min"] = payload.tolerancia_min
+    if "vigente_desde" in payload.model_fields_set:
+        kwargs["vigente_desde"] = payload.vigente_desde
     if "vigente_hasta" in payload.model_fields_set:
         kwargs["vigente_hasta"] = payload.vigente_hasta
 

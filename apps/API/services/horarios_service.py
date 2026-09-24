@@ -182,10 +182,12 @@ async def update_horario(
     session: AsyncSession,
     horario_id: int,
     *,
+    id_sede: int | None = None,
     nombre: str | None = None,
     hora_entrada: time | None = None,
     hora_salida: time | None = None,
     tolerancia_min: int | None = None,
+    vigente_desde: date | None = None,
     vigente_hasta: date | None = None,
     user_id: int,
     ip_address: str | None = None,
@@ -194,21 +196,28 @@ async def update_horario(
     if horario is None:
         raise HorarioNoEncontradoError(horario_id)
 
+    if id_sede is not None:
+        await _validar_sede_activa(session, id_sede)
+
     if tolerancia_min is not None:
         _validar_tolerancia(tolerancia_min)
 
+    nueva_desde = vigente_desde if vigente_desde is not None else horario.vigente_desde
     nueva_hasta = vigente_hasta if vigente_hasta is not None else horario.vigente_hasta
-    if nueva_hasta is not None and nueva_hasta < horario.vigente_desde:
-        raise HorarioVigenciaInvalidaError()
+    _validar_vigencia(nueva_desde, nueva_hasta)
 
     valor_anterior = {
+        "id_sede": horario.id_sede,
         "nombre": horario.nombre,
         "hora_entrada": str(horario.hora_entrada),
         "hora_salida": str(horario.hora_salida) if horario.hora_salida else None,
         "tolerancia_min": horario.tolerancia_min,
+        "vigente_desde": str(horario.vigente_desde),
         "vigente_hasta": str(horario.vigente_hasta) if horario.vigente_hasta else None,
     }
 
+    if id_sede is not None:
+        horario.id_sede = id_sede
     if nombre is not None:
         horario.nombre = nombre
     if hora_entrada is not None:
@@ -217,12 +226,16 @@ async def update_horario(
         horario.hora_salida = hora_salida
     if tolerancia_min is not None:
         horario.tolerancia_min = tolerancia_min
+    if vigente_desde is not None:
+        horario.vigente_desde = vigente_desde
     if vigente_hasta is not None:
         horario.vigente_hasta = vigente_hasta
 
     await session.flush()
 
     valor_nuevo: dict = {}
+    if id_sede is not None:
+        valor_nuevo["id_sede"] = id_sede
     if nombre is not None:
         valor_nuevo["nombre"] = nombre
     if hora_entrada is not None:
@@ -231,6 +244,8 @@ async def update_horario(
         valor_nuevo["hora_salida"] = str(hora_salida)
     if tolerancia_min is not None:
         valor_nuevo["tolerancia_min"] = tolerancia_min
+    if vigente_desde is not None:
+        valor_nuevo["vigente_desde"] = str(vigente_desde)
     if vigente_hasta is not None:
         valor_nuevo["vigente_hasta"] = str(vigente_hasta)
 

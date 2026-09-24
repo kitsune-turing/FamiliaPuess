@@ -14,10 +14,12 @@ class CreateHorarioRequest(BaseModel):
 
 
 class UpdateHorarioRequest(BaseModel):
+    id_sede: int | None = Field(None, gt=0)
     nombre: str | None = Field(None, min_length=1, max_length=100)
     hora_entrada: time | None = Field(None)
     hora_salida: time | None = Field(None)
     tolerancia_min: int | None = Field(None, ge=0, le=120)
+    vigente_desde: date | None = Field(None)
     vigente_hasta: date | None = Field(None)
 
 
