@@ -8,6 +8,10 @@ _SECURITY_HEADERS = [
     (b"cache-control", b"no-store"),
     (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
     (b"strict-transport-security", b"max-age=63072000; includeSubDomains"),
+    (
+        b"content-security-policy",
+        b"default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+    ),
 ]
 
 
