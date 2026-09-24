@@ -148,9 +148,11 @@ export function HorariosPage() {
         mostrar("Horario creado.");
       } else {
         const actualizado = await actualizarHorario(numId, {
+          id_sede: idSede,
           nombre: editando.nombre || undefined,
           hora_entrada: editando.horaEntrada,
           hora_salida: editando.horaSalida || undefined,
+          vigente_desde: editando.vigenteDesde,
           vigente_hasta: editando.vigenteHasta || undefined,
         });
         setHorarios((prev) =>

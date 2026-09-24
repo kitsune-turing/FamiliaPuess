@@ -876,9 +876,11 @@ export async function crearHorario(data: {
 export async function actualizarHorario(
   id: number,
   data: {
+    id_sede?: number;
     nombre?: string;
     hora_entrada?: string;
     hora_salida?: string;
+    vigente_desde?: string;
     vigente_hasta?: string;
   },
 ): Promise<HorarioApi> {
