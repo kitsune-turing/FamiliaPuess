@@ -360,6 +360,7 @@ export function TextField({
         disabled={deshabilitado}
         aria-invalid={Boolean(error)}
         onChange={(e) => alCambiar(e.target.value)}
+        {...(tipo === "time" ? { lang: "en-GB" } : {})}
       />
       {error ? <span className="field__error">{error}</span> : null}
       {!error && ayuda ? <span className="field__hint">{ayuda}</span> : null}
