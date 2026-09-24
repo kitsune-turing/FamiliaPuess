@@ -34,7 +34,7 @@ app.use(express.static(DIST, { maxAge: "1y", immutable: true, index: false }));
 
 app.use("/assets", express.static(join(DIST, "assets"), { maxAge: "1y", immutable: true }));
 
-app.get("*", (_req, res) => {
+app.get("/{*path}", (_req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.sendFile(join(DIST, "index.html"));
 });
