@@ -25,7 +25,6 @@ logger = logging.getLogger("desktop")
 
 if getattr(sys, "frozen", False):
     _PROJECT_ROOT = Path(sys.executable).resolve().parent
-    # SSL certs for httpx inside PyInstaller bundle
     _cert_file = Path(sys._MEIPASS) / "certifi" / "cacert.pem"
     if _cert_file.is_file():
         os.environ.setdefault("SSL_CERT_FILE", str(_cert_file))

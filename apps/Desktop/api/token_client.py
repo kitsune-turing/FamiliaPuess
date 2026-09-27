@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import ssl
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -67,6 +70,16 @@ class TokenClient:
         self._dispositivo_identificador = dispositivo_identificador
         self._api_key = api_key
         self._timeout = timeout
+        if getattr(sys, "frozen", False):
+            cert_file = os.environ.get("SSL_CERT_FILE")
+            if cert_file and os.path.isfile(cert_file):
+                ctx = ssl.create_default_context()
+                ctx.load_verify_locations(cert_file)
+                self._verify: ssl.SSLContext | bool = ctx
+            else:
+                self._verify = ssl.create_default_context()
+        else:
+            self._verify = ssl.create_default_context()
 
     def _headers(self) -> dict[str, str]:
         headers: dict[str, str] = {}
@@ -85,6 +98,7 @@ class TokenClient:
                 json=payload,
                 headers=self._headers(),
                 timeout=self._timeout,
+                verify=self._verify,
             )
             if respuesta.status_code == 401:
                 raise AuthenticationError("API key inválida o ausente")
@@ -110,6 +124,7 @@ class TokenClient:
                 f"{self._base_url}/desktop/status/{self._dispositivo_identificador}",
                 headers=self._headers(),
                 timeout=self._timeout,
+                verify=self._verify,
             )
             if respuesta.status_code == 401:
                 raise AuthenticationError("API key inválida o ausente")
@@ -138,6 +153,7 @@ class TokenClient:
                 json={"dispositivo_identificador": self._dispositivo_identificador},
                 headers=self._headers(),
                 timeout=self._timeout,
+                verify=self._verify,
             )
             if respuesta.status_code == 401:
                 raise AuthenticationError("API key inválida o ausente")
@@ -179,6 +195,7 @@ class TokenClient:
                 f"{self._base_url}/desktop/tokens/{token_value}/used",
                 headers=self._headers(),
                 timeout=self._timeout,
+                verify=self._verify,
             )
             if respuesta.status_code == 200:
                 return respuesta.json().get("used", False)
