@@ -265,10 +265,12 @@ export function DashboardPage() {
                       <BadgeOutline
                         tono={
                           registro.estado === "a_tiempo"
-                            ? "neutral"
+                            ? "green"
                             : registro.estado === "tarde"
                               ? "yellow"
-                              : "pink"
+                              : registro.estado === "ausente"
+                                ? "pink"
+                                : "neutral"
                         }
                       >
                         {ETIQUETA_ESTADO[registro.estado] ?? registro.estado}
