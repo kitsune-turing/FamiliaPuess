@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from datetime import date, time, timedelta
+from datetime import date, time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +20,6 @@ from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.exceptions.horarios import (
     HorarioInmutableError,
     HorarioNoEncontradoError,
-    HorarioSolapamientoError,
     HorarioToleranciaInvalidaError,
     HorarioVigenciaInvalidaError,
 )
@@ -50,32 +49,6 @@ async def _validar_sede_activa(session: AsyncSession, id_sede: int) -> None:
         raise SedeInactivaError(id_sede)
 
 
-async def _verificar_solapamiento(
-    session: AsyncSession,
-    id_sede: int,
-    vigente_desde: date,
-    vigente_hasta: date | None,
-    excluir_id: int | None = None,
-) -> None:
-    existentes = await horario_repository.get_all(session, id_sede=id_sede)
-    for h in existentes:
-        if excluir_id is not None and h.id == excluir_id:
-            continue
-        h_fin = h.vigente_hasta
-        nuevo_fin = vigente_hasta
-        if h_fin is None and nuevo_fin is None:
-            raise HorarioSolapamientoError(id_sede)
-        if h_fin is None:
-            if nuevo_fin >= h.vigente_desde:
-                raise HorarioSolapamientoError(id_sede)
-        elif nuevo_fin is None:
-            if vigente_desde <= h_fin:
-                raise HorarioSolapamientoError(id_sede)
-        else:
-            if vigente_desde <= h_fin and nuevo_fin >= h.vigente_desde:
-                raise HorarioSolapamientoError(id_sede)
-
-
 async def list_horarios(
     session: AsyncSession,
     *,
@@ -96,13 +69,10 @@ async def get_horario(session: AsyncSession, horario_id: int) -> Horario:
     return horario
 
 
-async def get_horario_vigente_sede(
+async def get_horarios_vigentes_sede(
     session: AsyncSession, id_sede: int, fecha: date
-) -> Horario:
-    horario = await horario_repository.get_vigente_by_sede(session, id_sede, fecha)
-    if horario is None:
-        raise HorarioNoEncontradoError(0)
-    return horario
+) -> Sequence[Horario]:
+    return await horario_repository.get_vigentes_by_sede(session, id_sede, fecha)
 
 
 async def create_horario(
@@ -122,16 +92,6 @@ async def create_horario(
     _validar_vigencia(vigente_desde, vigente_hasta)
 
     await _validar_sede_activa(session, id_sede)
-
-    anterior = await horario_repository.get_vigente_by_sede(
-        session, id_sede, vigente_desde
-    )
-    if anterior is not None:
-        cierre = vigente_desde - timedelta(days=1)
-        if cierre >= anterior.vigente_desde:
-            await horario_repository.set_vigente_hasta(session, anterior.id, cierre)
-        else:
-            raise HorarioSolapamientoError(id_sede)
 
     timestamp = tz_now()
 

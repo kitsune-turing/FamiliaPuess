@@ -10,7 +10,6 @@ from apps.API.core.timezone import now as tz_now
 from apps.API.models.novedad import Novedad
 from apps.API.repositories import (
     cat_novedad_repository,
-    config_general_repository,
     horario_repository,
     novedad_repository,
 )
@@ -41,10 +40,10 @@ async def detectar_novedad_asistencia(
     fecha_registro: date,
     hora_registro: time,
 ) -> Novedad | None:
-    horario = await horario_repository.get_vigente_by_sede(
+    horarios = await horario_repository.get_vigentes_by_sede(
         session, id_sede, fecha_registro
     )
-    if horario is None:
+    if not horarios:
         logger.warning(
             "Sede %d sin horario vigente para fecha %s, omitiendo deteccion",
             id_sede,
@@ -52,12 +51,15 @@ async def detectar_novedad_asistencia(
         )
         return None
 
-    tolerancia = int(
-        await config_general_repository.get_valor(session, "TOLERANCIA_MIN")
-    )
-    limite = _sumar_tolerancia(horario.hora_entrada, tolerancia)
+    horario_aplicable = None
+    for h in horarios:
+        limite = _sumar_tolerancia(h.hora_entrada, h.tolerancia_min)
+        if hora_registro <= limite:
+            return None
+        if horario_aplicable is None:
+            horario_aplicable = h
 
-    if hora_registro <= limite:
+    if horario_aplicable is None:
         return None
 
     tipo = await cat_novedad_repository.get_by_codigo(session, NovedadCodigo.TARDANZA)
@@ -68,8 +70,8 @@ async def detectar_novedad_asistencia(
 
     observacion = (
         f"Registro a las {hora_registro.strftime('%H:%M')} - "
-        f"Entrada programada: {horario.hora_entrada.strftime('%H:%M')} "
-        f"(tolerancia: {tolerancia} min)"
+        f"Entrada programada: {horario_aplicable.hora_entrada.strftime('%H:%M')} "
+        f"(tolerancia: {horario_aplicable.tolerancia_min} min)"
     )
 
     novedad = await novedad_repository.create(

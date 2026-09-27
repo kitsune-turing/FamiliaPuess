@@ -60,6 +60,23 @@ async def get_vigente_by_sede(
     return result.scalar_one_or_none()
 
 
+async def get_vigentes_by_sede(
+    session: AsyncSession, id_sede: int, fecha: date
+) -> Sequence[Horario]:
+    stmt = (
+        select(Horario)
+        .options(joinedload(Horario.sede))
+        .where(Horario.id_sede == id_sede)
+        .where(Horario.vigente_desde <= fecha)
+        .where(
+            (Horario.vigente_hasta.is_(None)) | (Horario.vigente_hasta >= fecha)
+        )
+        .order_by(Horario.hora_entrada)
+    )
+    result = await session.execute(stmt)
+    return result.scalars().unique().all()
+
+
 async def create(
     session: AsyncSession,
     *,
