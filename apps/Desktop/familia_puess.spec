@@ -19,6 +19,7 @@ a = Analysis(
     pathex=[str(PROJECT_ROOT)],
     binaries=[],
     datas=[
+        (str(HERE / "assets" / "app.ico"), os.path.join("apps", "Desktop", "assets")),
         (str(HERE / "assets" / "icons"), os.path.join("apps", "Desktop", "assets", "icons")),
         (str(HERE / "assets" / "images"), os.path.join("apps", "Desktop", "assets", "images")),
         (str(HERE / "assets" / "fonts"), os.path.join("apps", "Desktop", "assets", "fonts")),

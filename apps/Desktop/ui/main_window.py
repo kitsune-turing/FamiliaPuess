@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from PySide6.QtCore import QByteArray, Qt, QTimer
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QFrame,
@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 
 from apps.Desktop.api.token_client import TokenRecibido
 from apps.Desktop.services.qr_service import build_qr_pixmap
-from apps.Desktop.utils.assets import icon_path, image_path
+from apps.Desktop.utils.assets import app_icon_path, icon_path, image_path
 from apps.Desktop.utils.formatting import format_datetime_es
 
 # ------------------------------------------------------------ Colores ----
@@ -77,6 +77,7 @@ class DesktopMainWindow(QWidget):
         self._dispositivo_identificador = dispositivo_identificador
 
         self.setWindowTitle("Familia Puess · Control de asistencia")
+        self.setWindowIcon(QIcon(str(app_icon_path())))
         self.setMinimumSize(1180, 700)
         self.setStyleSheet(f"background: {CREMA};")
 

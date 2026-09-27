@@ -18,6 +18,10 @@ _POPPINS_WEIGHTS = (
 )
 
 
+def app_icon_path() -> Path:
+    return _ASSETS_DIR / "app.ico"
+
+
 def icon_path(name: str) -> Path:
     """Ruta a un icono SVG, por ejemplo ``point.svg``."""
     return _ASSETS_DIR / "icons" / name
