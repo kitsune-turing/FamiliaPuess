@@ -38,7 +38,6 @@ interface HorarioLocal {
   idSede: number;
   horaEntrada: string;
   horaSalida: string;
-  toleranciaMin: number;
   vigenteDesde: string;
   vigenteHasta: string;
 }
@@ -50,7 +49,6 @@ const VACIO: HorarioLocal = {
   idSede: 0,
   horaEntrada: "07:00",
   horaSalida: "",
-  toleranciaMin: 15,
   vigenteDesde: new Date().toISOString().slice(0, 10),
   vigenteHasta: "",
 };
@@ -63,7 +61,6 @@ function mapHorario(h: HorarioApi): HorarioLocal {
     idSede: h.id_sede,
     horaEntrada: h.hora_entrada?.slice(0, 5) ?? "07:00",
     horaSalida: h.hora_salida?.slice(0, 5) ?? "",
-    toleranciaMin: h.tolerancia_min,
     vigenteDesde: h.vigente_desde,
     vigenteHasta: h.vigente_hasta ?? "",
   };
@@ -144,7 +141,6 @@ export function HorariosPage() {
           nombre: editando.nombre || undefined,
           hora_entrada: editando.horaEntrada,
           hora_salida: editando.horaSalida || undefined,
-          tolerancia_min: editando.toleranciaMin,
           vigente_desde: editando.vigenteDesde,
           vigente_hasta: editando.vigenteHasta || undefined,
         });
@@ -156,7 +152,6 @@ export function HorariosPage() {
           nombre: editando.nombre || undefined,
           hora_entrada: editando.horaEntrada,
           hora_salida: editando.horaSalida || undefined,
-          tolerancia_min: editando.toleranciaMin,
           vigente_desde: editando.vigenteDesde,
           vigente_hasta: editando.vigenteHasta || undefined,
         });
@@ -237,16 +232,15 @@ export function HorariosPage() {
                 <th>Sede</th>
                 <th>Entrada</th>
                 <th>Salida</th>
-                <th>Tolerancia</th>
                 <th>Vigencia</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando ? (
-                <EmptyRow columnas={7} mensaje="Cargando horarios…" />
+                <EmptyRow columnas={6} mensaje="Cargando horarios…" />
               ) : visibles.length === 0 ? (
-                <EmptyRow columnas={7} mensaje="No hay horarios registrados." />
+                <EmptyRow columnas={6} mensaje="No hay horarios registrados." />
               ) : (
                   visibles.map((h) => (
                     <tr key={h.id}>
@@ -254,7 +248,6 @@ export function HorariosPage() {
                       <td>{h.sede}</td>
                       <td>{h.horaEntrada}</td>
                       <td>{h.horaSalida || "—"}</td>
-                      <td>{h.toleranciaMin} min</td>
                       <td>
                         {h.vigenteDesde}
                         {h.vigenteHasta ? ` – ${h.vigenteHasta}` : " – vigente"}
@@ -345,17 +338,6 @@ export function HorariosPage() {
                 tipo="time"
                 valor={editando.horaSalida}
                 alCambiar={(v) => setEditando({ ...editando, horaSalida: v })}
-              />
-              <TextField
-                etiqueta="Tolerancia (min)"
-                tipo="number"
-                valor={String(editando.toleranciaMin)}
-                alCambiar={(v) =>
-                  setEditando({
-                    ...editando,
-                    toleranciaMin: Math.max(0, Math.min(120, Number(v) || 0)),
-                  })
-                }
               />
             </div>
 
