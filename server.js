@@ -39,6 +39,4 @@ app.get("/{*path}", (_req, res) => {
   res.sendFile(join(DIST, "index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(`Imputar running on port ${PORT}`);
-});
+app.listen(PORT);
