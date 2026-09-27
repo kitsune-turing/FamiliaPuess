@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload
 from apps.API.models.asistencia import Asistencia
 from apps.API.models.novedad import Novedad
 from apps.API.models.reporte_semanal import ReporteSemanal
+from apps.API.models.token_qr import TokenQR
 
 
 async def get_asistencias_filtradas(
@@ -26,6 +27,7 @@ async def get_asistencias_filtradas(
             joinedload(Asistencia.empleado),
             joinedload(Asistencia.sede),
             joinedload(Asistencia.tipo_registro),
+            joinedload(Asistencia.token_qr).joinedload(TokenQR.dispositivo),
         )
         .order_by(Asistencia.fecha_registro.desc(), Asistencia.registrado_en.desc())
     )

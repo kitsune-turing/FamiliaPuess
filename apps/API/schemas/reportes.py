@@ -13,6 +13,7 @@ class RegistroReporteResponse(BaseModel):
     tipo_registro: str
     fecha_registro: date
     registrado_en: datetime
+    dispositivo_nombre: str | None = None
     novedad_tipo: str | None = None
     novedad_nombre: str | None = None
     novedad_color: str | None = None
@@ -30,6 +31,12 @@ class RegistroReporteResponse(BaseModel):
                 "novedad_color": novedad.tipo_novedad.color,
                 "novedad_icono": novedad.tipo_novedad.icono,
             }
+
+        dispositivo_nombre = None
+        if asistencia.token_qr and asistencia.token_qr.dispositivo:
+            d = asistencia.token_qr.dispositivo
+            dispositivo_nombre = d.descripcion or d.identificador
+
         return cls(
             id=asistencia.id,
             id_empleado=asistencia.id_empleado,
@@ -40,6 +47,7 @@ class RegistroReporteResponse(BaseModel):
             tipo_registro=asistencia.tipo_registro.nombre,
             fecha_registro=asistencia.fecha_registro,
             registrado_en=asistencia.registrado_en,
+            dispositivo_nombre=dispositivo_nombre,
             **novedad_fields,
         )
 

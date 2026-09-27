@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.API.core.timezone import now as tz_now
 from apps.API.models.sede import Sede
+from sqlalchemy import text
+
 from apps.API.repositories import (
     auditoria_repository,
     cat_estado_repository,
@@ -198,6 +200,33 @@ async def delete_sede(
         ip_address=ip_address,
         timestamp_accion=timestamp,
     )
+
+    params = {"sid": sede_id}
+    await session.execute(
+        text("UPDATE dispositivo SET id_sede = NULL WHERE id_sede = :sid"), params,
+    )
+    await session.execute(
+        text("DELETE FROM empleado_sede WHERE id_sede = :sid"), params,
+    )
+    await session.execute(
+        text("UPDATE empleado SET id_sede_actual = NULL WHERE id_sede_actual = :sid"), params,
+    )
+    await session.execute(
+        text("DELETE FROM novedad WHERE id_asistencia IN (SELECT id FROM asistencia WHERE id_sede = :sid)"), params,
+    )
+    await session.execute(
+        text("DELETE FROM asistencia WHERE id_sede = :sid"), params,
+    )
+    await session.execute(
+        text("ALTER TABLE token_qr ALTER COLUMN id_sede DROP NOT NULL"),
+    )
+    await session.execute(
+        text("UPDATE token_qr SET id_sede = NULL WHERE id_sede = :sid"), params,
+    )
+    await session.execute(
+        text("DELETE FROM horario WHERE id_sede = :sid"), params,
+    )
+    await session.flush()
 
     await sede_repository.hard_delete(session, sede_id)
 

@@ -9,6 +9,7 @@ from apps.API.models.base import Base
 from apps.API.models.cat_tipo_registro import CatTipoRegistro
 from apps.API.models.empleado import Empleado
 from apps.API.models.sede import Sede
+from apps.API.models.token_qr import TokenQR
 
 
 class Asistencia(Base):
@@ -35,3 +36,4 @@ class Asistencia(Base):
     empleado: Mapped[Empleado] = relationship(lazy="joined")
     sede: Mapped[Sede] = relationship(lazy="joined")
     tipo_registro: Mapped[CatTipoRegistro] = relationship(lazy="joined")
+    token_qr: Mapped[TokenQR] = relationship(lazy="noload", foreign_keys=[id_token_qr])
