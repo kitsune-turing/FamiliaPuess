@@ -2,7 +2,7 @@
 ; Requires Inno Setup 6+ (https://jrsoftware.org/isinfo.php)
 
 #define MyAppName "Familia Puess"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "Familia Puess"
 #define MyAppExeName "FamiliaPuess.exe"
 
@@ -17,6 +17,7 @@ DisableProgramGroupPage=yes
 OutputDir=..\..\dist\installer
 OutputBaseFilename=FamiliaPuess_Setup_{#MyAppVersion}
 SetupIconFile=assets\app.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -29,36 +30,42 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:"; Flags: unchecked
+Name: "startupicon"; Description: "Iniciar con Windows"; GroupDescription: "Opciones adicionales:"; Flags: unchecked
 
 [Files]
 Source: "..\..\dist\FamiliaPuess\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Iniciar {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
+[INI]
+Filename: "{%USERPROFILE}\.familia_puess\config.ini"; Section: "auth"; Key: "api_key"; String: "{code:GetApiKey}"; Flags: createkeyifdoesntexist
+
 [Code]
-procedure CurStepChanged(CurStep: TSetupStep);
 var
-  ApiKey: string;
-  ConfigDir: string;
-  ConfigFile: string;
+  ApiKeyPage: TInputQueryWizardPage;
+
+procedure InitializeWizard;
 begin
-  if CurStep = ssPostInstall then
-  begin
-    if InputQuery('{#MyAppName}', 'Ingrese la API Key para conectar con el servidor (puede configurarlo despues):', ApiKey) then
-    begin
-      if ApiKey <> '' then
-      begin
-        ConfigDir := ExpandConstant('{%USERPROFILE}') + '\.familia_puess';
-        ForceDirectories(ConfigDir);
-        ConfigFile := ConfigDir + '\config.ini';
-        SaveStringToFile(ConfigFile, '[auth]' + #13#10 + 'api_key = ' + ApiKey + #13#10, False);
-      end;
-    end;
-  end;
+  ApiKeyPage := CreateInputQueryPage(wpSelectTasks,
+    'Configuración de API Key',
+    'Conectar con el servidor',
+    'Ingrese la API Key para conectar con el servidor (puede configurarlo después desde la aplicación):');
+  ApiKeyPage.Add('API Key:', False);
+end;
+
+function GetApiKey(Param: string): string;
+begin
+  Result := ApiKeyPage.Values[0];
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
 end;

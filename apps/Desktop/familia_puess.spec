@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for Familia Puess Desktop kiosk app (single-file)."""
+"""PyInstaller spec for Familia Puess Desktop kiosk app (directory mode for installer)."""
 
 import os
 from pathlib import Path
@@ -11,7 +11,6 @@ PROJECT_ROOT = HERE.parents[1]  # FamiliaPuess/
 
 block_cipher = None
 
-# Bundle certifi's CA certs so httpx can verify SSL in the frozen app
 _certifi_pem = certifi.where()
 
 a = Analysis(
@@ -56,9 +55,8 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="FamiliaPuess",
     debug=False,
     bootloader_ignore_signals=False,
@@ -71,4 +69,14 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=str(HERE / "assets" / "app.ico"),
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name="FamiliaPuess",
 )
