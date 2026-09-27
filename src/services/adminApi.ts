@@ -756,6 +756,7 @@ export interface RegistroAsistenciaApi {
   tipo_registro: string;
   fecha_registro: string;
   registrado_en: string;
+  dispositivo_nombre: string | null;
 }
 
 export async function listarRegistrosAsistencia(params?: {

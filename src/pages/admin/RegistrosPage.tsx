@@ -35,7 +35,7 @@ const ETIQUETA: Record<EstadoRegistro, string> = {
 };
 
 const TONO: Record<EstadoRegistro, "neutral" | "yellow" | "pink" | "green"> = {
-  a_tiempo: "neutral",
+  a_tiempo: "green",
   tarde: "yellow",
   ausente: "pink",
   sin_registrar: "neutral",

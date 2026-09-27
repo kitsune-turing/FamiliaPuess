@@ -158,7 +158,7 @@ function mapRegistroAsistencia(r: RegistroAsistenciaApi): RegistroEntrada {
     sede: r.sede_nombre,
     entrada: hora,
     estado: r.tipo_registro === "TARDANZA" ? "tarde" : "a_tiempo",
-    dispositivo: "",
+    dispositivo: r.dispositivo_nombre ?? "",
     fecha: r.fecha_registro,
   };
 }
