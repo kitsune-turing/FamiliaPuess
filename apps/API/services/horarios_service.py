@@ -20,19 +20,11 @@ from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.exceptions.horarios import (
     HorarioInmutableError,
     HorarioNoEncontradoError,
-    HorarioToleranciaInvalidaError,
     HorarioVigenciaInvalidaError,
 )
 from shared.exceptions.sedes import SedeInactivaError, SedeNoEncontradaError
 
 logger = logging.getLogger(__name__)
-
-_TOLERANCIA_MAX = 120
-
-
-def _validar_tolerancia(valor: int) -> None:
-    if valor < 0 or valor > _TOLERANCIA_MAX:
-        raise HorarioToleranciaInvalidaError()
 
 
 def _validar_vigencia(vigente_desde: date, vigente_hasta: date | None) -> None:
@@ -81,14 +73,12 @@ async def create_horario(
     id_sede: int,
     hora_entrada: time,
     hora_salida: time | None = None,
-    tolerancia_min: int = 15,
     nombre: str | None = None,
     vigente_desde: date,
     vigente_hasta: date | None = None,
     user_id: int,
     ip_address: str | None = None,
 ) -> Horario:
-    _validar_tolerancia(tolerancia_min)
     _validar_vigencia(vigente_desde, vigente_hasta)
 
     await _validar_sede_activa(session, id_sede)
@@ -100,7 +90,6 @@ async def create_horario(
         id_sede=id_sede,
         hora_entrada=hora_entrada,
         hora_salida=hora_salida,
-        tolerancia_min=tolerancia_min,
         nombre=nombre,
         vigente_desde=vigente_desde,
         vigente_hasta=vigente_hasta,
@@ -120,7 +109,6 @@ async def create_horario(
             "nombre": nombre,
             "hora_entrada": str(hora_entrada),
             "hora_salida": str(hora_salida) if hora_salida else None,
-            "tolerancia_min": tolerancia_min,
             "vigente_desde": str(vigente_desde),
             "vigente_hasta": str(vigente_hasta) if vigente_hasta else None,
         },
@@ -129,11 +117,10 @@ async def create_horario(
     )
 
     logger.info(
-        "Horario creado: id=%d, sede=%d, entrada=%s, tolerancia=%d",
+        "Horario creado: id=%d, sede=%d, entrada=%s",
         horario.id,
         id_sede,
         hora_entrada,
-        tolerancia_min,
     )
     return horario
 
@@ -146,7 +133,6 @@ async def update_horario(
     nombre: str | None = None,
     hora_entrada: time | None = None,
     hora_salida: time | None = None,
-    tolerancia_min: int | None = None,
     vigente_desde: date | None = None,
     vigente_hasta: date | None = None,
     user_id: int,
@@ -159,9 +145,6 @@ async def update_horario(
     if id_sede is not None:
         await _validar_sede_activa(session, id_sede)
 
-    if tolerancia_min is not None:
-        _validar_tolerancia(tolerancia_min)
-
     nueva_desde = vigente_desde if vigente_desde is not None else horario.vigente_desde
     nueva_hasta = vigente_hasta if vigente_hasta is not None else horario.vigente_hasta
     _validar_vigencia(nueva_desde, nueva_hasta)
@@ -171,7 +154,6 @@ async def update_horario(
         "nombre": horario.nombre,
         "hora_entrada": str(horario.hora_entrada),
         "hora_salida": str(horario.hora_salida) if horario.hora_salida else None,
-        "tolerancia_min": horario.tolerancia_min,
         "vigente_desde": str(horario.vigente_desde),
         "vigente_hasta": str(horario.vigente_hasta) if horario.vigente_hasta else None,
     }
@@ -184,8 +166,6 @@ async def update_horario(
         horario.hora_entrada = hora_entrada
     if hora_salida is not None:
         horario.hora_salida = hora_salida
-    if tolerancia_min is not None:
-        horario.tolerancia_min = tolerancia_min
     if vigente_desde is not None:
         horario.vigente_desde = vigente_desde
     if vigente_hasta is not None:
@@ -202,8 +182,6 @@ async def update_horario(
         valor_nuevo["hora_entrada"] = str(hora_entrada)
     if hora_salida is not None:
         valor_nuevo["hora_salida"] = str(hora_salida)
-    if tolerancia_min is not None:
-        valor_nuevo["tolerancia_min"] = tolerancia_min
     if vigente_desde is not None:
         valor_nuevo["vigente_desde"] = str(vigente_desde)
     if vigente_hasta is not None:
@@ -251,7 +229,6 @@ async def finalizar_horario(
             "id_sede": horario.id_sede,
             "nombre": horario.nombre,
             "hora_entrada": str(horario.hora_entrada),
-            "tolerancia_min": horario.tolerancia_min,
             "vigente_desde": str(horario.vigente_desde),
             "vigente_hasta": str(horario.vigente_hasta) if horario.vigente_hasta else None,
         },

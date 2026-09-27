@@ -65,7 +65,6 @@ async def create_horario(
         id_sede=payload.id_sede,
         hora_entrada=payload.hora_entrada,
         hora_salida=payload.hora_salida,
-        tolerancia_min=payload.tolerancia_min,
         nombre=payload.nombre,
         vigente_desde=payload.vigente_desde,
         vigente_hasta=payload.vigente_hasta,
@@ -99,8 +98,6 @@ async def update_horario(
         kwargs["hora_entrada"] = payload.hora_entrada
     if "hora_salida" in payload.model_fields_set:
         kwargs["hora_salida"] = payload.hora_salida
-    if "tolerancia_min" in payload.model_fields_set:
-        kwargs["tolerancia_min"] = payload.tolerancia_min
     if "vigente_desde" in payload.model_fields_set:
         kwargs["vigente_desde"] = payload.vigente_desde
     if "vigente_hasta" in payload.model_fields_set:

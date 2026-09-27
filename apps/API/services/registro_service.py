@@ -36,6 +36,7 @@ from shared.exceptions.registration import (
 TOKEN_MIN_LENGTH = 10
 CLAVE_EXIGIR_CODIGO = "EXIGIR_CODIGO"
 CLAVE_EXIGIR_SALIDA = "EXIGIR_SALIDA"
+CLAVE_TOLERANCIA_MIN = "TOLERANCIA_MIN"
 
 
 async def _leer_bool(session: AsyncSession, clave: str) -> bool:
@@ -46,20 +47,21 @@ async def _leer_bool(session: AsyncSession, clave: str) -> bool:
 def _determinar_tipo_registro(
     ahora: datetime,
     horarios,
+    tolerancia: int,
 ) -> str:
     if not horarios:
         return TipoRegistroCodigo.ENTRADA
 
     for h in horarios:
         entrada_dt = datetime.combine(ahora.date(), h.hora_entrada, tzinfo=ahora.tzinfo)
-        limite_entrada = entrada_dt + timedelta(minutes=h.tolerancia_min)
+        limite_entrada = entrada_dt + timedelta(minutes=tolerancia)
         if entrada_dt <= ahora <= limite_entrada:
             return TipoRegistroCodigo.ENTRADA
 
     for h in horarios:
         if h.hora_salida is not None:
             salida_dt = datetime.combine(ahora.date(), h.hora_salida, tzinfo=ahora.tzinfo)
-            limite_salida = salida_dt + timedelta(minutes=h.tolerancia_min)
+            limite_salida = salida_dt + timedelta(minutes=tolerancia)
             if salida_dt <= ahora <= limite_salida:
                 return TipoRegistroCodigo.SALIDA
 
@@ -109,10 +111,13 @@ async def validar_token(session: AsyncSession, token_value: str) -> TokenValidad
     exigir_codigo = await _leer_bool(session, CLAVE_EXIGIR_CODIGO)
     exigir_salida = await _leer_bool(session, CLAVE_EXIGIR_SALIDA)
 
+    tolerancia_raw = await config_general_repository.get_valor(session, CLAVE_TOLERANCIA_MIN)
+    tolerancia = int(tolerancia_raw) if tolerancia_raw else 15
+
     horarios = await horario_repository.get_vigentes_by_sede(
         session, sede.id, ahora.date()
     )
-    tipo_registro = _determinar_tipo_registro(ahora, horarios)
+    tipo_registro = _determinar_tipo_registro(ahora, horarios, tolerancia)
 
     return TokenValidado(
         token=token_value,
@@ -182,10 +187,14 @@ async def registrar_asistencia(
         raise TokenConsumidoError()
 
     exigir_salida = await _leer_bool(session, CLAVE_EXIGIR_SALIDA)
+
+    tolerancia_raw = await config_general_repository.get_valor(session, CLAVE_TOLERANCIA_MIN)
+    tolerancia = int(tolerancia_raw) if tolerancia_raw else 15
+
     horarios = await horario_repository.get_vigentes_by_sede(
         session, token_qr.dispositivo.id_sede, ahora.date()
     )
-    tipo_codigo = _determinar_tipo_registro(ahora, horarios)
+    tipo_codigo = _determinar_tipo_registro(ahora, horarios, tolerancia)
 
     tipo_id = await cat_tipo_registro_repository.get_tipo_registro_id(
         session, tipo_codigo

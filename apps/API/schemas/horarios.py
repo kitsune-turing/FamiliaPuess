@@ -8,7 +8,6 @@ class CreateHorarioRequest(BaseModel):
     nombre: str | None = Field(None, min_length=1, max_length=100)
     hora_entrada: time = Field(...)
     hora_salida: time | None = Field(None)
-    tolerancia_min: int = Field(15, ge=0, le=120)
     vigente_desde: date = Field(...)
     vigente_hasta: date | None = Field(None)
 
@@ -18,7 +17,6 @@ class UpdateHorarioRequest(BaseModel):
     nombre: str | None = Field(None, min_length=1, max_length=100)
     hora_entrada: time | None = Field(None)
     hora_salida: time | None = Field(None)
-    tolerancia_min: int | None = Field(None, ge=0, le=120)
     vigente_desde: date | None = Field(None)
     vigente_hasta: date | None = Field(None)
 
@@ -30,7 +28,6 @@ class HorarioResponse(BaseModel):
     nombre: str | None
     hora_entrada: time
     hora_salida: time | None
-    tolerancia_min: int
     vigente_desde: date
     vigente_hasta: date | None
     created_at: datetime
@@ -46,7 +43,6 @@ class HorarioResponse(BaseModel):
             nombre=horario.nombre,
             hora_entrada=horario.hora_entrada,
             hora_salida=horario.hora_salida,
-            tolerancia_min=horario.tolerancia_min,
             vigente_desde=horario.vigente_desde,
             vigente_hasta=horario.vigente_hasta,
             created_at=horario.created_at,
