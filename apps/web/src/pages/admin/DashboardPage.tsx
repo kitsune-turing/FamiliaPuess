@@ -20,7 +20,7 @@ import { useAuth } from "../../context/AuthProvider";
 import { useDatos } from "../../context/DataProvider";
 import { ACTIVIDADES, SEGMENTOS_ASISTENCIA } from "../../data/initial";
 import { useClickFuera } from "../../hooks";
-import { porcentaje } from "../../lib/format";
+import { isoAFecha, porcentaje } from "../../lib/format";
 
 const PERIODOS = [
   { valor: "hoy", etiqueta: "Hoy" },
@@ -255,6 +255,7 @@ export function DashboardPage() {
                   <th>Trabajador</th>
                   <th>Documento</th>
                   <th>Sede</th>
+                  <th>Fecha</th>
                   <th>Entrada</th>
                   <th>Estado</th>
                   <th>Dispositivo</th>
@@ -262,13 +263,14 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {recientes.length === 0 ? (
-                  <EmptyRow columnas={6} mensaje="Aún no hay registros de entrada." />
+                  <EmptyRow columnas={7} mensaje="Aún no hay registros de entrada." />
                 ) : (
                   recientes.map((registro) => (
                     <tr key={registro.id}>
                       <td>{registro.trabajador}</td>
                       <td>{registro.documento}</td>
                       <td>{registro.sede}</td>
+                      <td>{registro.fecha ? isoAFecha(registro.fecha) : ""}</td>
                       <td>{registro.entrada}</td>
                       <td>
                         <BadgeOutline
