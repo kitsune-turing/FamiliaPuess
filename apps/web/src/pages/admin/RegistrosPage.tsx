@@ -22,7 +22,7 @@ import { useAuth } from "../../context/AuthProvider";
 import { useDatos } from "../../context/DataProvider";
 import { useToast } from "../../context/ToastProvider";
 import { usePaginacion } from "../../hooks";
-import { coincide, descargarExcel, porcentaje } from "../../lib/format";
+import { coincide, descargarExcel, isoAFecha, porcentaje } from "../../lib/format";
 import type { EstadoRegistro } from "../../types/admin";
 
 const POR_PAGINA = 10;
@@ -199,6 +199,7 @@ export function RegistrosPage() {
                 <th>Trabajador</th>
                 <th>Documento</th>
                 <th>Sede</th>
+                <th>Fecha</th>
                 <th>Entrada</th>
                 <th>Estado</th>
                 <th>Dispositivo</th>
@@ -206,7 +207,7 @@ export function RegistrosPage() {
             </thead>
             <tbody>
               {paginacion.visibles.length === 0 ? (
-                <EmptyRow columnas={6} mensaje={
+                <EmptyRow columnas={7} mensaje={
                   registros.length === 0
                     ? "Aún no hay registros de entrada."
                     : "No hay registros en el periodo seleccionado."
@@ -217,6 +218,7 @@ export function RegistrosPage() {
                     <td>{registro.trabajador}</td>
                     <td>{registro.documento}</td>
                     <td>{registro.sede}</td>
+                    <td>{registro.fecha ? isoAFecha(registro.fecha) : ""}</td>
                     <td>{registro.entrada}</td>
                     <td>
                       <BadgeOutline tono={TONO[registro.estado]}>{ETIQUETA[registro.estado]}</BadgeOutline>
