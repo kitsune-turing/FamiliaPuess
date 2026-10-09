@@ -152,17 +152,12 @@ function mapReporteSemanal(r: ReporteSemanalApi): Reporte {
 function mapRegistroAsistencia(r: RegistroAsistenciaApi): RegistroEntrada {
   const hora = r.registrado_en ? new Date(r.registrado_en).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }) : "";
   return {
-    id: r.id != null ? String(r.id) : `nr-${r.id_empleado}-${r.fecha_registro}`,
+    id: String(r.id),
     trabajador: r.empleado_nombre,
     documento: r.empleado_documento,
     sede: r.sede_nombre,
     entrada: hora,
-    estado:
-      r.tipo_registro === "SIN_REGISTRAR"
-        ? "sin_registrar"
-        : r.tipo_registro === "TARDANZA"
-          ? "tarde"
-          : "a_tiempo",
+    estado: r.tipo_registro === "TARDANZA" ? "tarde" : "a_tiempo",
     dispositivo: r.dispositivo_nombre ?? "",
     fecha: r.fecha_registro,
   };
