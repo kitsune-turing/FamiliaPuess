@@ -243,6 +243,7 @@ export function DashboardPage() {
           <table className="table">
             <thead>
               <tr>
+                <th>Fecha</th>
                 <th>Trabajador</th>
                 <th>Documento</th>
                 <th>Sede</th>
@@ -253,10 +254,11 @@ export function DashboardPage() {
             </thead>
             <tbody>
               {recientes.length === 0 ? (
-                <EmptyRow columnas={6} mensaje="Aún no hay registros de entrada." />
+                <EmptyRow columnas={7} mensaje="Aún no hay registros de entrada." />
               ) : (
                 recientes.map((registro) => (
                   <tr key={registro.id}>
+                    <td>{registro.fecha ? new Date(registro.fecha + "T00:00:00").toLocaleDateString("es-CO") : ""}</td>
                     <td>{registro.trabajador}</td>
                     <td>{registro.documento}</td>
                     <td>{registro.sede}</td>
