@@ -747,7 +747,7 @@ export async function listarReportesSemanales(): Promise<{ items: ReporteSemanal
 /* ------------------------------------------------- Registros asistencia -- */
 
 export interface RegistroAsistenciaApi {
-  id: number;
+  id: number | null;
   id_empleado: number;
   empleado_nombre: string;
   empleado_documento: string;
@@ -755,7 +755,7 @@ export interface RegistroAsistenciaApi {
   sede_nombre: string;
   tipo_registro: string;
   fecha_registro: string;
-  registrado_en: string;
+  registrado_en: string | null;
   dispositivo_nombre: string | null;
 }
 
