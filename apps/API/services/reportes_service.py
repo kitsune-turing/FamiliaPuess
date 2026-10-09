@@ -15,8 +15,10 @@ from apps.API.models.novedad import Novedad
 from apps.API.models.reporte_semanal import ReporteSemanal
 from apps.API.repositories import (
     auditoria_repository,
+    empleado_repository,
     reporte_repository,
 )
+from apps.API.schemas.reportes import RegistroReporteResponse
 from shared.constants.operacion_auditoria import OperacionAuditoria
 from shared.constants.recurso_auditoria import RecursoAuditoria
 from shared.exceptions.reportes import (
@@ -84,6 +86,54 @@ async def consultar_asistencia(
     )
 
     return asistencias, novedades_map
+
+
+async def consultar_asistencia_con_ausentes(
+    session: AsyncSession,
+    *,
+    id_empleado: int | None = None,
+    id_sede: int | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+) -> list[RegistroReporteResponse]:
+    asistencias, novedades_map = await consultar_asistencia(
+        session,
+        id_empleado=id_empleado,
+        id_sede=id_sede,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+
+    items = [
+        RegistroReporteResponse.from_model(a, novedades_map.get(a.id))
+        for a in asistencias
+    ]
+
+    hoy = tz_now().date()
+    f_desde = fecha_desde or (min((a.fecha_registro for a in asistencias), default=hoy))
+    f_hasta = fecha_hasta or hoy
+    if f_hasta > hoy:
+        f_hasta = hoy
+
+    empleados = await empleado_repository.get_all(
+        session, id_estado=1, id_sede=id_sede,
+    )
+    if id_empleado is not None:
+        empleados = [e for e in empleados if e.id == id_empleado]
+
+    registrados: set[tuple[int, date]] = {
+        (a.id_empleado, a.fecha_registro) for a in asistencias
+    }
+
+    current = f_desde
+    while current <= f_hasta:
+        for emp in empleados:
+            if (emp.id, current) not in registrados:
+                items.append(RegistroReporteResponse.sin_registrar(emp, current))
+        current += timedelta(days=1)
+
+    items.sort(key=lambda x: (x.fecha_registro, x.empleado_nombre), reverse=True)
+    return items
 
 
 async def generar_reporte_semanal(

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class RegistroReporteResponse(BaseModel):
-    id: int
+    id: int | None = None
     id_empleado: int
     empleado_nombre: str
     empleado_documento: str
@@ -12,7 +12,7 @@ class RegistroReporteResponse(BaseModel):
     sede_nombre: str
     tipo_registro: str
     fecha_registro: date
-    registrado_en: datetime
+    registrado_en: datetime | None = None
     dispositivo_nombre: str | None = None
     novedad_tipo: str | None = None
     novedad_nombre: str | None = None
@@ -49,6 +49,19 @@ class RegistroReporteResponse(BaseModel):
             registrado_en=asistencia.registrado_en,
             dispositivo_nombre=dispositivo_nombre,
             **novedad_fields,
+        )
+
+    @classmethod
+    def sin_registrar(cls, empleado, fecha: date) -> "RegistroReporteResponse":
+        sede = empleado.sede_actual
+        return cls(
+            id_empleado=empleado.id,
+            empleado_nombre=f"{empleado.nombre} {empleado.apellido}",
+            empleado_documento=empleado.numero_documento,
+            id_sede=sede.id if sede else 0,
+            sede_nombre=sede.nombre if sede else "",
+            tipo_registro="SIN_REGISTRAR",
+            fecha_registro=fecha,
         )
 
 

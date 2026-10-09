@@ -30,17 +30,13 @@ async def consultar_asistencia(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(require_permission("REPORTES", "leer")),
 ) -> ReporteAsistenciaResponse:
-    asistencias, novedades_map = await reportes_service.consultar_asistencia(
+    items = await reportes_service.consultar_asistencia_con_ausentes(
         session,
         id_empleado=id_empleado,
         id_sede=id_sede,
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
     )
-    items = [
-        RegistroReporteResponse.from_model(a, novedades_map.get(a.id))
-        for a in asistencias
-    ]
     return ReporteAsistenciaResponse(items=items, total=len(items))
 
 
